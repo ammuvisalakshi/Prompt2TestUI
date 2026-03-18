@@ -67,7 +67,7 @@ export default function PlatformLayout() {
         {/* Logo */}
         <div className="flex items-center gap-1.5 mr-2">
           <div className="w-2 h-2 rounded-full bg-gradient-to-br from-[#028090] to-[#00A896]" />
-          <span className="text-[15px] font-bold text-slate-900 tracking-tight">
+          <span className="text-[17px] font-bold text-slate-900 tracking-tight">
             TestPilot<span className="text-slate-400 text-[10px] ml-0.5">AI</span>
           </span>
         </div>
@@ -79,7 +79,7 @@ export default function PlatformLayout() {
               key={tab.to}
               to={tab.to}
               className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium cursor-pointer border-none transition-all whitespace-nowrap ${
+                `flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[14px] font-medium cursor-pointer border-none transition-all whitespace-nowrap ${
                   isActive
                     ? 'text-[#0B7285] bg-[#E0F7FA] font-semibold'
                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'

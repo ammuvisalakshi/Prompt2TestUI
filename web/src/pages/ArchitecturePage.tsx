@@ -47,7 +47,7 @@ export default function ArchitecturePage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-3 text-[13px] font-medium cursor-pointer border-b-2 -mb-px transition-colors ${
+            className={`px-4 py-3 text-[14px] font-medium cursor-pointer border-b-2 -mb-px transition-colors ${
               tab === t ? 'text-[#0C7B8E] border-[#0C7B8E]' : 'text-slate-400 border-transparent hover:text-slate-600'
             }`}
           >
@@ -59,19 +59,19 @@ export default function ArchitecturePage() {
       <div className="flex-1 overflow-y-auto p-5">
         {tab === 'Platform' && (
           <div className="space-y-3 max-w-3xl">
-            <p className="text-[13px] text-slate-500 mb-4">Three-layer architecture — only Layer 1 involves an LLM during authoring. Execution (Layer 2) is fully deterministic with zero tokens.</p>
+            <p className="text-[14px] text-slate-500 mb-4">Three-layer architecture — only Layer 1 involves an LLM during authoring. Execution (Layer 2) is fully deterministic with zero tokens.</p>
             {PLATFORM_LAYERS.map(l => (
               <div key={l.n} className="bg-white border rounded-xl p-4 shadow-sm" style={{ borderColor: l.color + '40' }}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-black text-white flex-shrink-0" style={{ background: l.color }}>{l.n}</div>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[14px] font-black text-white flex-shrink-0" style={{ background: l.color }}>{l.n}</div>
                   <div>
-                    <div className="text-[13px] font-bold text-slate-900">{l.label}</div>
-                    <div className="text-[11px] text-slate-400">{l.sub}</div>
+                    <div className="text-[15px] font-bold text-slate-900">{l.label}</div>
+                    <div className="text-[14px] text-slate-400">{l.sub}</div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   {l.points.map(p => (
-                    <div key={p} className="text-[12px] text-slate-600 pl-3 border-l-2" style={{ borderColor: l.color }}>
+                    <div key={p} className="text-[14px] text-slate-600 pl-3 border-l-2" style={{ borderColor: l.color }}>
                       {p}
                     </div>
                   ))}
@@ -83,13 +83,13 @@ export default function ArchitecturePage() {
 
         {tab === 'Infrastructure' && (
           <div>
-            <p className="text-[13px] text-slate-500 mb-4">All AWS services used in the platform.</p>
+            <p className="text-[14px] text-slate-500 mb-4">All AWS services used in the platform.</p>
             <div className="grid grid-cols-3 gap-3">
               {AWS_SERVICES.map(s => (
                 <div key={s.name} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                   <div className="text-xl mb-2">{s.icon}</div>
-                  <div className="text-[13px] font-bold text-slate-900">{s.name}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{s.desc}</div>
+                  <div className="text-[15px] font-bold text-slate-900">{s.name}</div>
+                  <div className="text-[14px] text-slate-400 mt-0.5">{s.desc}</div>
                 </div>
               ))}
             </div>
@@ -111,8 +111,8 @@ export default function ArchitecturePage() {
               ].map(([step, system], i) => (
                 <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-slate-100 last:border-b-0">
                   <div className="w-6 h-6 rounded-full bg-[#E0F2F7] text-[#0C7B8E] flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i + 1}</div>
-                  <div className="flex-1 text-[12px] font-medium text-slate-700">{step}</div>
-                  <div className="text-[11px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{system}</div>
+                  <div className="flex-1 text-[14px] font-medium text-slate-700">{step}</div>
+                  <div className="text-[12px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{system}</div>
                 </div>
               ))}
             </div>
@@ -122,8 +122,8 @@ export default function ArchitecturePage() {
         {tab === 'Cost model' && (
           <div className="max-w-xl">
             <div className="bg-[#F0F9FC] border border-[#0C7B8E] rounded-xl p-4 mb-4">
-              <div className="text-[13px] font-bold text-[#0C7B8E] mb-1">Key metric: ~1,850 tokens per TC authoring</div>
-              <div className="text-[12px] text-slate-600">6-step workflow uses ~1,770 tokens — under 1% of 200k context window. Execution is zero-token forever.</div>
+              <div className="text-[15px] font-bold text-[#0C7B8E] mb-1">Key metric: ~1,850 tokens per TC authoring</div>
+              <div className="text-[14px] text-slate-600">6-step workflow uses ~1,770 tokens — under 1% of 200k context window. Execution is zero-token forever.</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               {[
@@ -134,7 +134,7 @@ export default function ArchitecturePage() {
                 ['ECS Fargate (agent)', 'Only during authoring sessions'],
                 ['OpenSearch Serverless', 'Pay per query'],
               ].map(([item, cost]) => (
-                <div key={item} className="flex justify-between px-4 py-3 border-b border-slate-100 last:border-b-0 text-[13px]">
+                <div key={item} className="flex justify-between px-4 py-3 border-b border-slate-100 last:border-b-0 text-[14px]">
                   <span className="text-slate-600">{item}</span>
                   <span className="font-medium text-slate-900">{cost}</span>
                 </div>

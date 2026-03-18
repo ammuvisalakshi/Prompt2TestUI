@@ -34,8 +34,8 @@ export default function ConceptsPage() {
     <div className="h-full overflow-y-auto p-5 bg-[#F5F7FA]">
       <div className="max-w-3xl">
         <div className="mb-5">
-          <div className="text-[15px] font-bold text-slate-900">Core Concepts</div>
-          <div className="text-[13px] text-slate-400 mt-0.5">Architecture, design decisions, and engineering rationale for TestPilot AI.</div>
+          <div className="text-[17px] font-bold text-slate-900">Core Concepts</div>
+          <div className="text-[14px] text-slate-400 mt-0.5">Architecture, design decisions, and engineering rationale for TestPilot AI.</div>
         </div>
         <div className="space-y-3">
           {SECTIONS.map((s, i) => (
@@ -44,18 +44,18 @@ export default function ConceptsPage() {
                 className="w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer text-left"
                 onClick={() => setOpen(open === i ? null : i)}
               >
-                <div className="flex-1 text-[13px] font-semibold text-slate-900">{s.title}</div>
-                <span className="text-slate-400 text-[11px]">{open === i ? '▲' : '▼'}</span>
+                <div className="flex-1 text-[15px] font-semibold text-slate-900">{s.title}</div>
+                <span className="text-slate-400 text-[13px]" >{open === i ? '▲'' : '▼'}</span>
               </button>
               {open === i && (
                 <div className="border-t border-slate-100 p-4">
-                  <p className="text-[13px] text-slate-600 leading-relaxed mb-4">{s.content}</p>
+                  <p className="text-[14px] text-slate-600 leading-relaxed mb-4">{s.content}</p>
                   <div className="grid grid-cols-2 gap-3">
                     {s.bullets.map(b => (
                       <div key={b.label} className={`border rounded-lg p-3 ${b.color}`}>
-                        <div className="text-[11px] font-bold uppercase tracking-wider mb-2 opacity-80">{b.label}</div>
+                        <div className="text-[12px] font-bold uppercase tracking-wider mb-2 opacity-80">{b.label}</div>
                         {b.items.map(item => (
-                          <div key={item} className="text-[12px] py-1.5 border-b border-current/10 last:border-b-0">{item}</div>
+                          <div key={item} className="text-[13px] py-1.5 border-b border-current/10 last:border-b-0">{item}</div>
                         ))}
                       </div>
                     ))}
