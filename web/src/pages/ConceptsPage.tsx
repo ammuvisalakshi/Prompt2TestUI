@@ -45,7 +45,7 @@ export default function ConceptsPage() {
                 onClick={() => setOpen(open === i ? null : i)}
               >
                 <div className="flex-1 text-[15px] font-semibold text-slate-900">{s.title}</div>
-                <span className="text-slate-400 text-[13px]" >{open === i ? '▲'' : '▼'}</span>
+                <span className="text-slate-400 text-[13px]">{open === i ? '▲' : '▼'}</span>
               </button>
               {open === i && (
                 <div className="border-t border-slate-100 p-4">
