@@ -3,10 +3,10 @@ import { useState } from 'react'
 const SECTIONS = [
   {
     title: 'Vision & problem statement',
-    content: 'TestPilot AI is an AI-powered test automation platform built for API and workflow testing. A QA describes a workflow in plain English. An AI agent executes it against real APIs, observes real responses, and freezes the run as a deterministic plan. From that point the plan runs forever without LLM involvement.',
+    content: 'Prompt2Test is an AI-powered test automation platform built for API and workflow testing. A QA describes a workflow in plain English. An AI agent executes it against real APIs, observes real responses, and freezes the run as a deterministic plan. From that point the plan runs forever without LLM involvement.',
     bullets: [
       { label: 'Today with Postman', items: ['Collections break on schema change', 'Multi-account runs are manual', 'Only engineers can author tests', 'Cross-service chaining needs custom scripts'], color: 'text-slate-600 bg-slate-50 border-slate-200' },
-      { label: 'With TestPilot', items: ['One template update fixes all TCs', 'All accounts run in parallel automatically', 'Any QA can author in plain English', 'Agent chains steps and captures values'], color: 'text-[#0C7B8E] bg-[#F0F9FC] border-[#0C7B8E]' },
+      { label: 'With Prompt2Test', items: ['One template update fixes all TCs', 'All accounts run in parallel automatically', 'Any QA can author in plain English', 'Agent chains steps and captures values'], color: 'text-[#0C7B8E] bg-[#F0F9FC] border-[#0C7B8E]' },
     ],
   },
   {
@@ -19,10 +19,10 @@ const SECTIONS = [
   },
   {
     title: 'Adoption strategy',
-    content: 'TestPilot is not a Postman replacement. Postman handles exploration. TestPilot handles regression, multi-account execution, and CI/CD.',
+    content: 'Prompt2Test is not a Postman replacement. Postman handles exploration. Prompt2Test handles regression, multi-account execution, and CI/CD.',
     bullets: [
       { label: 'Postman / Bruno', items: ['Exploration and debugging', 'One-off API calls', 'Engineer-authored collections', 'Manual maintenance on schema change'], color: 'text-slate-600 bg-slate-50 border-slate-200' },
-      { label: 'TestPilot', items: ['Regression and CI/CD', 'Multi-account parallel execution', 'Plain English — any QA can author', 'One template update covers all TCs'], color: 'text-[#0C7B8E] bg-[#F0F9FC] border-[#0C7B8E]' },
+      { label: 'Prompt2Test', items: ['Regression and CI/CD', 'Multi-account parallel execution', 'Plain English — any QA can author', 'One template update covers all TCs'], color: 'text-[#0C7B8E] bg-[#F0F9FC] border-[#0C7B8E]' },
     ],
   },
 ]
@@ -35,7 +35,7 @@ export default function ConceptsPage() {
       <div className="max-w-3xl">
         <div className="mb-5">
           <div className="text-[17px] font-bold text-slate-900">Core Concepts</div>
-          <div className="text-[14px] text-slate-400 mt-0.5">Architecture, design decisions, and engineering rationale for TestPilot AI.</div>
+          <div className="text-[14px] text-slate-400 mt-0.5">Architecture, design decisions, and engineering rationale for Prompt2Test.</div>
         </div>
         <div className="space-y-3">
           {SECTIONS.map((s, i) => (

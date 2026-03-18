@@ -68,7 +68,7 @@ export default function PlatformLayout() {
         <div className="flex items-center gap-1.5 mr-2">
           <div className="w-2 h-2 rounded-full bg-gradient-to-br from-[#028090] to-[#00A896]" />
           <span className="text-[17px] font-bold text-slate-900 tracking-tight">
-            TestPilot<span className="text-slate-400 text-[10px] ml-0.5">AI</span>
+            Prompt2Test
           </span>
         </div>
 

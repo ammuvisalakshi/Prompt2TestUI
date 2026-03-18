@@ -11,7 +11,7 @@ export default function LoginPage() {
   return (
     <div className="fixed inset-0 bg-slate-100 flex items-center justify-center">
       <div className="bg-white border border-slate-200 rounded-2xl p-11 w-[400px] text-center shadow-lg">
-        <div className="text-[26px] font-bold text-slate-900 mb-1.5">TestPilot AI</div>
+        <div className="text-[26px] font-bold text-slate-900 mb-1.5">Prompt2Test</div>
         <div className="text-[14px] text-slate-500 mb-7">AI-powered test authoring &amp; automation platform</div>
         <div className="inline-block text-[12px] text-[#028090] border border-[#028090] px-3 py-0.5 rounded-full mb-7">
           Bedrock Agent Core · AWS · Team workspace

@@ -104,7 +104,7 @@ export default function ArchitecturePage() {
                 ['Agent searches endpoint index', 'OpenSearch Serverless'],
                 ['Agent calls real API via MCP', 'Target microservice'],
                 ['capture_and_compress called', 'S3 archive + agent.state'],
-                ['QA reviews and approves plan', 'TestPilot UI'],
+                ['QA reviews and approves plan', 'Prompt2Test UI'],
                 ['save_execution_plan called', 'S3 + DynamoDB index'],
                 ['Test run triggered', 'SQS → Lambda workers'],
                 ['Results stored', 'DynamoDB + OpenSearch'],

@@ -76,7 +76,7 @@ export default function AgentPage() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div className="text-[12px] text-slate-400 mb-1">
-                  {msg.role === 'user' ? 'Jane D' : 'TestPilot AI'}
+                  {msg.role === 'user' ? 'Jane D' : 'Prompt2Test'}
                 </div>
                 <div
                   className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-[14px] leading-relaxed whitespace-pre-line ${
