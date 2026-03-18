@@ -1,0 +1,141 @@
+import { useState, useRef, useEffect } from 'react'
+
+type Message = { role: 'user' | 'agent'; text: string }
+
+const HINTS = [
+  'Test billing plan is correct',
+  'Verify export button visibility',
+  'Check max user limit shown',
+]
+
+export default function AgentPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'agent', text: "Hi Jane! Ready to author tests.\n\nDescribe what you want to test in plain English — I'll ask you to choose the service and test account as part of planning." },
+  ])
+  const [input, setInput] = useState('')
+  const [mode, setMode] = useState<'plan' | 'auto'>('plan')
+  const chatRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+  }, [messages])
+
+  function send() {
+    const text = input.trim()
+    if (!text) return
+    setMessages(prev => [...prev, { role: 'user', text }])
+    setInput('')
+    // Simulate agent response
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        role: 'agent',
+        text: `Got it. I'll plan a test for: "${text}"\n\nWhich service should I test against?\n• Billing\n• Payment\n• Auth\n• User`,
+      }])
+    }, 800)
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-[#0A1520]">
+      {/* Agent topbar */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#071624] border-b border-[#1E3A4A] flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-white">
+            Author Agent{' '}
+            <span className="text-[10px] font-medium text-[#028090] bg-[#071624] border border-[#1E3A4A] px-2 py-0.5 rounded-full ml-1">
+              Bedrock · DEV
+            </span>
+          </span>
+          {/* Mode toggle */}
+          <div className="flex bg-[#0A1520] border border-[#1E3A4A] rounded-lg overflow-hidden">
+            {(['plan', 'auto'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-3 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                  mode === m
+                    ? 'bg-[#028090] text-white'
+                    : 'text-[#5A7A8A] hover:text-white'
+                }`}
+              >
+                {m === 'plan' ? 'Plan' : 'Automate'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-[#5A7A8A]">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#028090] to-[#06B6D4] flex items-center justify-center text-[10px] font-bold text-white">JD</div>
+          <span>Jane D</span>
+          <span className="px-2 py-0.5 bg-[#071624] border border-[#1E3A4A] rounded-full text-[#00A896]">DEV</span>
+        </div>
+      </div>
+
+      {/* Main workspace */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Chat panel */}
+        <div className="flex flex-col w-[420px] border-r border-[#1E3A4A] flex-shrink-0">
+          <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className="text-[10px] text-[#3A6070] mb-1">
+                  {msg.role === 'user' ? 'Jane D' : 'TestPilot AI'}
+                </div>
+                <div
+                  className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-[12px] leading-relaxed whitespace-pre-line ${
+                    msg.role === 'user'
+                      ? 'bg-[#028090] text-white rounded-br-sm'
+                      : 'bg-[#0D1B2A] border border-[#1E3A4A] text-[#8EABBE] rounded-bl-sm'
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="p-3 border-t border-[#1E3A4A]">
+            <div className="flex gap-2 items-end">
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                placeholder="Describe what you want to test…"
+                rows={2}
+                className="flex-1 bg-[#071624] border border-[#1E3A4A] rounded-lg px-3 py-2 text-[12px] text-white placeholder-[#3A6070] outline-none resize-none focus:border-[#028090] transition-colors font-sans"
+              />
+              <button
+                onClick={send}
+                className="px-3 py-2 bg-[#028090] hover:bg-[#01555F] text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
+                  <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {HINTS.map(h => (
+                <button
+                  key={h}
+                  onClick={() => setInput(h)}
+                  className="text-[11px] px-2.5 py-1 bg-[#071624] border border-[#1E3A4A] rounded-full text-[#3A6070] hover:border-[#028090] hover:text-[#00A896] transition-colors cursor-pointer"
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Plan panel */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#1E3A4A] flex-shrink-0">
+            <div className="text-[11px] font-semibold text-[#3A6070] uppercase tracking-wider">Execution Plan</div>
+          </div>
+          <div className="flex-1 flex items-center justify-center text-[13px] text-[#3A6070]">
+            Plan will appear here once the agent authors a test case.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
