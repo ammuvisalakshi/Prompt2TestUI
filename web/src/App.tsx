@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { getCurrentUser } from '@aws-amplify/auth'
 import LoginPage from './pages/LoginPage'
 import PlatformLayout from './layouts/PlatformLayout'
 import AgentPage from './pages/AgentPage'
@@ -8,12 +10,27 @@ import ArchitecturePage from './pages/ArchitecturePage'
 import ConceptsPage from './pages/ConceptsPage'
 import MembersPage from './pages/MembersPage'
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const [checked, setChecked] = useState(false)
+  const [authed, setAuthed] = useState(false)
+
+  useEffect(() => {
+    getCurrentUser()
+      .then(() => setAuthed(true))
+      .catch(() => setAuthed(false))
+      .finally(() => setChecked(true))
+  }, [])
+
+  if (!checked) return null
+  return authed ? <>{children}</> : <Navigate to="/login" replace />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<PlatformLayout />}>
+        <Route path="/" element={<RequireAuth><PlatformLayout /></RequireAuth>}>
           <Route index element={<Navigate to="/agent" replace />} />
           <Route path="agent" element={<AgentPage />} />
           <Route path="inventory" element={<InventoryPage />} />

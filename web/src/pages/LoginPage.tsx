@@ -1,11 +1,26 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { signIn } from '@aws-amplify/auth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [email, setEmail] = useState('jane@company.com')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    navigate('/agent')
+    setError('')
+    setLoading(true)
+    try {
+      await signIn({ username: email, password })
+      navigate('/agent')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Sign in failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -19,21 +34,31 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="flex flex-col gap-2.5">
           <input
             type="email"
-            defaultValue="jane@company.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
             placeholder="your@company.com"
+            required
             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#028090] transition-colors font-sans"
           />
           <input
             type="password"
-            defaultValue="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
             placeholder="Password"
+            required
             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#028090] transition-colors font-sans"
           />
+          {error && (
+            <div className="text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-left">
+              {error}
+            </div>
+          )}
           <button
             type="submit"
-            className="w-full py-2.5 bg-[#028090] hover:bg-[#01555F] text-white rounded-lg text-[14px] font-semibold mt-1 transition-colors cursor-pointer font-sans"
+            disabled={loading}
+            className="w-full py-2.5 bg-[#028090] hover:bg-[#01555F] disabled:opacity-60 text-white rounded-lg text-[14px] font-semibold mt-1 transition-colors cursor-pointer font-sans"
           >
-            Sign in with SSO →
+            {loading ? 'Signing in…' : 'Sign in →'}
           </button>
         </form>
       </div>

@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-amplify/auth": "^6.19.1",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1012.0",
+    "aws-amplify": "^6.16.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1"
