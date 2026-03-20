@@ -101,6 +101,11 @@ export default function AgentPage() {
         // If no steps returned, the agent is asking a clarifying question — show as conversation
         if (!agentPlan.steps || agentPlan.steps.length === 0) {
           const conversationalText = agentPlan.raw ?? agentPlan.summary ?? 'Could you provide more details?'
+          // Auto-switch to Automate mode if agent is telling user to switch
+          const switchKeywords = ['automate tab', 'automate mode', 'switch to automate', 'click automate', 'use automate']
+          if (switchKeywords.some(k => conversationalText.toLowerCase().includes(k))) {
+            setMode('auto')
+          }
           setMessages(prev => [
             ...prev.slice(0, -1),
             { role: 'agent', text: conversationalText },
@@ -111,8 +116,9 @@ export default function AgentPage() {
         setPlan(agentPlan)
         setMessages(prev => [
           ...prev.slice(0, -1),
-          { role: 'agent', text: `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nSwitch to Automate mode to execute.` },
+          { role: 'agent', text: `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nSwitching to Automate mode — type anything to execute.` },
         ])
+        setMode('auto')
       } else {
         if (!plan) {
           setMessages(prev => [...prev, { role: 'agent', text: 'Please generate a plan first in Plan mode.' }])
