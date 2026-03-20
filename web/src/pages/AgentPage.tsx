@@ -22,6 +22,7 @@ const HINTS = [
 
 const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN as string
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+const NOVNC_URL = import.meta.env.VITE_NOVNC_URL as string | undefined
 
 async function callAgent(payload: object, sessionId: string): Promise<string> {
   const session = await fetchAuthSession()
@@ -236,8 +237,23 @@ export default function AgentPage() {
         {/* Plan panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
-            <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Execution Plan</div>
+            <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">
+              {mode === 'auto' && loading ? 'Live Browser' : 'Execution Plan'}
+            </div>
           </div>
+
+          {/* Live browser iframe — shown while automating */}
+          {mode === 'auto' && loading && NOVNC_URL && (
+            <div className="flex-shrink-0 border-b border-slate-200" style={{ height: '55%' }}>
+              <iframe
+                src={`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=2000&resize=scale`}
+                className="w-full h-full border-0"
+                allow="fullscreen"
+                title="Live browser view"
+              />
+            </div>
+          )}
+
           {plan ? (
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {plan.summary && (
