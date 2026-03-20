@@ -67,6 +67,8 @@ export default function AgentPage() {
   const [mode, setMode] = useState<'plan' | 'auto'>('plan')
   const [plan, setPlan] = useState<Plan | null>(null)
   const [loading, setLoading] = useState(false)
+  const [poppedOut, setPoppedOut] = useState(false)
+  const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const chatRef = useRef<HTMLDivElement>(null)
 
@@ -253,7 +255,25 @@ export default function AgentPage() {
                   <span className="text-[13px] font-semibold text-slate-700 uppercase tracking-wider">Live Browser</span>
                 </div>
                 <button
-                  onClick={() => window.open(`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&resize=scale`, '_blank', 'width=1280,height=800,toolbar=0,menubar=0')}
+                  onClick={() => {
+                    // Close the iframe first so websockify frees its connection,
+                    // then open popup which gets the sole WebSocket slot.
+                    setPoppedOut(true)
+                    setTimeout(() => {
+                      popupRef.current = window.open(
+                        `${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&resize=scale`,
+                        'novnc-popup',
+                        'width=1280,height=820,toolbar=0,menubar=0,location=0'
+                      )
+                      // When popup closes, restore the iframe
+                      const poll = setInterval(() => {
+                        if (popupRef.current?.closed) {
+                          clearInterval(poll)
+                          setPoppedOut(false)
+                        }
+                      }, 1000)
+                    }, 300)
+                  }}
                   className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-[#028090] border border-slate-200 hover:border-[#028090] rounded-lg px-2.5 py-1 transition-colors cursor-pointer"
                   title="Pop out to new window"
                 >
@@ -264,12 +284,27 @@ export default function AgentPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <iframe
-                  src={`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=2000&resize=scale`}
-                  className="w-full h-full border-0"
-                  allow="fullscreen"
-                  title="Live browser view"
-                />
+                {poppedOut ? (
+                  <div className="flex-1 h-full flex flex-col items-center justify-center gap-3 bg-slate-900 text-slate-400">
+                    <svg viewBox="0 0 24 24" className="w-8 h-8 stroke-current fill-none stroke-1.5 opacity-40">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                    </svg>
+                    <span className="text-[13px]">Live browser open in separate window</span>
+                    <button
+                      onClick={() => { popupRef.current?.focus(); }}
+                      className="text-[12px] text-[#028090] underline cursor-pointer"
+                    >
+                      Bring to front
+                    </button>
+                  </div>
+                ) : (
+                  <iframe
+                    src={`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=2000&resize=scale`}
+                    className="w-full h-full border-0"
+                    allow="fullscreen"
+                    title="Live browser view"
+                  />
+                )}
               </div>
             </>
           ) : (
