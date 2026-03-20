@@ -94,32 +94,39 @@ export default function AgentPage() {
 
     try {
       if (mode === 'plan') {
-        setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
-        const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history }, sessionId)
-        const result = JSON.parse(raw)
-        const agentPlan: Plan = result.plan ?? result
-
-        // If no steps returned, the agent is asking a clarifying question — show as conversation
-        if (!agentPlan.steps || agentPlan.steps.length === 0) {
-          const conversationalText = agentPlan.raw ?? agentPlan.summary ?? 'Could you provide more details?'
-          // Auto-switch to Automate mode if agent is telling user to switch
-          const switchKeywords = ['automate tab', 'automate mode', 'switch to automate', 'click automate', 'use automate']
-          if (switchKeywords.some(k => conversationalText.toLowerCase().includes(k))) {
-            setMode('auto')
-          }
+        // If a plan exists and user is confirming execution — run it
+        if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
+          setMode('auto')
+          setMessages(prev => [...prev, { role: 'agent', text: 'Executing test plan via Playwright MCP…' }])
+          const raw = await callAgent({ inputText: text, mode: 'automate', plan, sessionId }, sessionId)
+          const result = JSON.parse(raw)
+          const passed = result.result?.passed ?? result.passed
           setMessages(prev => [
             ...prev.slice(0, -1),
-            { role: 'agent', text: conversationalText },
+            { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
           ])
-          return
-        }
+        } else {
+          // Generate / refine the plan
+          setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
+          const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history }, sessionId)
+          const result = JSON.parse(raw)
+          const agentPlan: Plan = result.plan ?? result
 
-        setPlan(agentPlan)
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          { role: 'agent', text: `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nSwitching to Automate mode — type anything to execute.` },
-        ])
-        setMode('auto')
+          if (!agentPlan.steps || agentPlan.steps.length === 0) {
+            const conversationalText = agentPlan.raw ?? agentPlan.summary ?? 'Could you provide more details?'
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'agent', text: conversationalText },
+            ])
+            return
+          }
+
+          setPlan(agentPlan)
+          setMessages(prev => [
+            ...prev.slice(0, -1),
+            { role: 'agent', text: `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nWould you like me to execute this test? Reply **yes** to run it, or keep chatting to refine the plan.` },
+          ])
+        }
       } else {
         if (!plan) {
           setMessages(prev => [...prev, { role: 'agent', text: 'Please generate a plan first in Plan mode.' }])
@@ -179,8 +186,8 @@ export default function AgentPage() {
 
       {/* Main workspace */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Chat panel */}
-        <div className="flex flex-col w-[440px] border-r border-slate-200 flex-shrink-0 bg-white">
+        {/* Chat panel — narrow during live browser execution */}
+        <div className={`flex flex-col border-r border-slate-200 flex-shrink-0 bg-white transition-all duration-300 ${mode === 'auto' && loading ? 'w-[300px]' : 'w-[440px]'}`}>
           <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -205,7 +212,7 @@ export default function AgentPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                placeholder={mode === 'plan' ? 'Describe what you want to test…' : 'Type "run" to execute the plan…'}
+                placeholder={mode === 'plan' ? (plan ? 'Type "yes" to run, or refine the plan…' : 'Describe what you want to test…') : 'Type "run" to execute the plan…'}
                 rows={2}
                 disabled={loading}
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none focus:border-[#028090] transition-colors font-sans disabled:opacity-60"
