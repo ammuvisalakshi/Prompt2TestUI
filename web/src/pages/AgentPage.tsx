@@ -234,62 +234,80 @@ export default function AgentPage() {
           </div>
         </div>
 
-        {/* Plan panel */}
+        {/* Plan / Live Browser panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
-            <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">
-              {mode === 'auto' && loading ? 'Live Browser' : 'Execution Plan'}
-            </div>
-          </div>
 
-          {/* Live browser iframe — shown while automating */}
-          {mode === 'auto' && loading && NOVNC_URL && (
-            <div className="flex-shrink-0 border-b border-slate-200" style={{ height: '55%' }}>
-              <iframe
-                src={`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=2000&resize=scale`}
-                className="w-full h-full border-0"
-                allow="fullscreen"
-                title="Live browser view"
-              />
-            </div>
-          )}
-
-          {plan ? (
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {plan.summary && (
-                <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-                  <div className="text-[12px] text-slate-400 uppercase tracking-wider mb-1">Summary</div>
-                  <div className="text-[14px] text-slate-800 font-medium">{plan.summary}</div>
-                  {(plan.estimatedTokens || plan.mcpCalls) && (
-                    <div className="flex gap-3 mt-2 text-[12px] text-slate-500">
-                      {plan.estimatedTokens && <span>~{plan.estimatedTokens} tokens</span>}
-                      {plan.mcpCalls && <span>{plan.mcpCalls} MCP calls</span>}
+          {/* Live browser — full panel when executing */}
+          {mode === 'auto' && loading && NOVNC_URL ? (
+            <>
+              <div className="px-4 py-2.5 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-[13px] font-semibold text-slate-700 uppercase tracking-wider">Live Browser</span>
+                </div>
+                <button
+                  onClick={() => window.open(`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&resize=scale`, '_blank', 'width=1280,height=800,toolbar=0,menubar=0')}
+                  className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-[#028090] border border-slate-200 hover:border-[#028090] rounded-lg px-2.5 py-1 transition-colors cursor-pointer"
+                  title="Pop out to new window"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2">
+                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                  </svg>
+                  Pop out
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <iframe
+                  src={`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=2000&resize=scale`}
+                  className="w-full h-full border-0"
+                  allow="fullscreen"
+                  title="Live browser view"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+                <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Execution Plan</div>
+              </div>
+              {plan ? (
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {plan.summary && (
+                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+                      <div className="text-[12px] text-slate-400 uppercase tracking-wider mb-1">Summary</div>
+                      <div className="text-[14px] text-slate-800 font-medium">{plan.summary}</div>
+                      {(plan.estimatedTokens || plan.mcpCalls) && (
+                        <div className="flex gap-3 mt-2 text-[12px] text-slate-500">
+                          {plan.estimatedTokens && <span>~{plan.estimatedTokens} tokens</span>}
+                          {plan.mcpCalls && <span>{plan.mcpCalls} MCP calls</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {plan.steps?.map(step => (
+                    <div key={step.stepNumber} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex gap-3">
+                      <div className="w-6 h-6 rounded-full bg-[#028090] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                        {step.stepNumber}
+                      </div>
+                      <div>
+                        <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
+                        <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
+                        <div className="text-[11px] text-[#028090] mt-1 font-medium uppercase tracking-wide">{step.type} · {step.tool ?? ''}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {plan.raw && (
+                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+                      <pre className="text-[12px] text-slate-600 whitespace-pre-wrap">{plan.raw}</pre>
                     </div>
                   )}
                 </div>
-              )}
-              {plan.steps?.map(step => (
-                <div key={step.stepNumber} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-[#028090] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                    {step.stepNumber}
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
-                    <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
-                    <div className="text-[11px] text-[#028090] mt-1 font-medium uppercase tracking-wide">{step.type} · {step.tool ?? ''}</div>
-                  </div>
-                </div>
-              ))}
-              {plan.raw && (
-                <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-                  <pre className="text-[12px] text-slate-600 whitespace-pre-wrap">{plan.raw}</pre>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-[14px] text-slate-400">
+                  Plan will appear here once the agent authors a test case.
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-[14px] text-slate-400">
-              Plan will appear here once the agent authors a test case.
-            </div>
+            </>
           )}
         </div>
       </div>
