@@ -3,10 +3,10 @@
 @import "tailwindcss";
 
 :root {
-  --teal: #0C7B8E;
-  --teal-d: #0A6577;
-  --teal-l: #E0F2F7;
-  --teal-ll: #F0F9FC;
+  --primary: #7C3AED;
+  --primary-d: #5B21B6;
+  --primary-l: #EDE9FE;
+  --primary-ll: #F5F3FF;
 }
 
 @media (prefers-color-scheme: dark) {

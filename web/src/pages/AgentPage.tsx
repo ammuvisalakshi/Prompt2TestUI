@@ -209,7 +209,7 @@ export default function AgentPage() {
         <div className="flex items-center gap-3">
           <span className="text-[15px] font-semibold text-slate-900">
             Author Agent{' '}
-            <span className="text-[12px] font-medium text-[#028090] bg-[#E0F7FA] border border-[#B2EBF2] px-2 py-0.5 rounded-full ml-1">
+            <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full ml-1">
               Bedrock · DEV
             </span>
           </span>
@@ -219,7 +219,7 @@ export default function AgentPage() {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`px-3 py-1 text-[13px] font-medium transition-colors cursor-pointer ${
-                  mode === m ? 'bg-[#028090] text-white' : 'text-slate-500 hover:text-slate-800'
+                  mode === m ? 'bg-[#7C3AED] text-white' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 {m === 'plan' ? 'Plan' : 'Automate'}
@@ -228,7 +228,7 @@ export default function AgentPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-[13px] text-slate-500">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#028090] to-[#06B6D4] flex items-center justify-center text-[11px] font-bold text-white">JD</div>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white">JD</div>
           <span>Jane D</span>
           <span className="px-2 py-0.5 bg-green-50 border border-green-200 rounded-full text-green-700 text-[12px]">DEV</span>
           <button onClick={handleSignOut} className="text-[12px] text-slate-400 hover:text-slate-700 cursor-pointer ml-1">Sign out</button>
@@ -247,7 +247,7 @@ export default function AgentPage() {
                 </div>
                 <div className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-[14px] leading-relaxed whitespace-pre-line ${
                   msg.role === 'user'
-                    ? 'bg-[#028090] text-white rounded-br-sm'
+                    ? 'bg-[#7C3AED] text-white rounded-br-sm'
                     : 'bg-slate-50 border border-slate-200 text-slate-700 rounded-bl-sm'
                 }`}>
                   {msg.text}
@@ -266,12 +266,12 @@ export default function AgentPage() {
                 placeholder={mode === 'plan' ? (plan ? 'Type "yes" to run, or refine the plan…' : 'Describe what you want to test…') : 'Type "run" to execute the plan…'}
                 rows={2}
                 disabled={loading}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none focus:border-[#028090] transition-colors font-sans disabled:opacity-60"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none focus:border-[#7C3AED] transition-colors font-sans disabled:opacity-60"
               />
               <button
                 onClick={send}
                 disabled={loading}
-                className="px-3 py-2 bg-[#028090] hover:bg-[#01555F] disabled:opacity-60 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
+                className="px-3 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
               >
                 <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
                   <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
@@ -283,7 +283,7 @@ export default function AgentPage() {
                 <button
                   key={h}
                   onClick={() => setInput(h)}
-                  className="text-[12px] px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-500 hover:border-[#028090] hover:text-[#028090] transition-colors cursor-pointer"
+                  className="text-[12px] px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-500 hover:border-[#7C3AED] hover:text-[#7C3AED] transition-colors cursor-pointer"
                 >
                   {h}
                 </button>
@@ -314,7 +314,7 @@ export default function AgentPage() {
                         'width=1280,height=820,toolbar=0,menubar=0,location=0'
                       )
                     }}
-                    className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-[#028090] border border-slate-200 hover:border-[#028090] rounded-lg px-2.5 py-1 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-[#7C3AED] border border-slate-200 hover:border-[#7C3AED] rounded-lg px-2.5 py-1 transition-colors cursor-pointer"
                     title="Open browser view in new window"
                   >
                     <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2">
@@ -327,7 +327,7 @@ export default function AgentPage() {
               <div className="flex-1 overflow-hidden flex flex-col items-center justify-center gap-4 bg-slate-900 text-slate-400">
                 {loading ? (
                   <>
-                    <svg className="w-8 h-8 animate-spin text-[#028090]" viewBox="0 0 24 24" fill="none">
+                    <svg className="w-8 h-8 animate-spin text-[#7C3AED]" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                     </svg>
@@ -348,7 +348,7 @@ export default function AgentPage() {
                           'width=1280,height=820,toolbar=0,menubar=0,location=0'
                         )
                       }}
-                      className="text-[13px] px-4 py-2 bg-[#028090] hover:bg-[#01555F] text-white rounded-lg cursor-pointer transition-colors"
+                      className="text-[13px] px-4 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] text-white rounded-lg cursor-pointer transition-colors"
                     >
                       Open browser view
                     </button>
@@ -377,13 +377,13 @@ export default function AgentPage() {
                   )}
                   {plan.steps?.map(step => (
                     <div key={step.stepNumber} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex gap-3">
-                      <div className="w-6 h-6 rounded-full bg-[#028090] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                         {step.stepNumber}
                       </div>
                       <div>
                         <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
                         <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
-                        <div className="text-[11px] text-[#028090] mt-1 font-medium uppercase tracking-wide">{step.type} · {step.tool ?? ''}</div>
+                        <div className="text-[11px] text-[#7C3AED] mt-1 font-medium uppercase tracking-wide">{step.type} · {step.tool ?? ''}</div>
                       </div>
                     </div>
                   ))}

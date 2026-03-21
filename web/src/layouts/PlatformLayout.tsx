@@ -65,8 +65,8 @@ export default function PlatformLayout() {
       {/* Top nav */}
       <div className="flex items-center h-[52px] px-5 bg-white border-b border-slate-200 flex-shrink-0 gap-3 shadow-sm">
         {/* Logo */}
-        <div className="flex items-center gap-1.5 mr-2">
-          <div className="w-2 h-2 rounded-full bg-gradient-to-br from-[#028090] to-[#00A896]" />
+        <div className="flex items-center gap-2 mr-2">
+          <img src="/favicon.svg" width="28" height="28" alt="Prompt2Test" className="flex-shrink-0" />
           <span className="text-[17px] font-bold text-slate-900 tracking-tight">
             Prompt2Test
           </span>
@@ -81,7 +81,7 @@ export default function PlatformLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[14px] font-medium cursor-pointer border-none transition-all whitespace-nowrap ${
                   isActive
-                    ? 'text-[#0B7285] bg-[#E0F7FA] font-semibold'
+                    ? 'text-[#5B21B6] bg-[#EDE9FE] font-semibold'
                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`
               }
@@ -94,7 +94,7 @@ export default function PlatformLayout() {
 
         {/* Avatar */}
         <div
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#028090] to-[#06B6D4] flex items-center justify-center text-[11px] font-bold text-white ml-auto cursor-pointer flex-shrink-0"
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white ml-auto cursor-pointer flex-shrink-0"
           onClick={() => navigate('/login')}
           title="Sign out"
         >
