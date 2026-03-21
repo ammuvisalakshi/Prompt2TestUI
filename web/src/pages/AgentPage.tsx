@@ -23,7 +23,11 @@ const HINTS = [
 const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN as string
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
-async function callAgent(payload: object, sessionId: string): Promise<string> {
+async function callAgent(
+  payload: object,
+  sessionId: string,
+  onEvent?: (event: Record<string, unknown>) => void,
+): Promise<string> {
   const session = await fetchAuthSession()
   if (!session.credentials) throw new Error('Not authenticated')
 
@@ -42,19 +46,37 @@ async function callAgent(payload: object, sessionId: string): Promise<string> {
 
   const response = await client.send(cmd)
 
-  // Response is a streaming blob
   if (!response.response) return ''
   const reader = (response.response as ReadableStream<Uint8Array>).getReader()
+  const decoder = new TextDecoder()
   const chunks: Uint8Array[] = []
+  let buffer = ''
+
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
-    if (value) chunks.push(value)
+    if (value) {
+      chunks.push(value)
+      buffer += decoder.decode(value, { stream: true })
+      // Parse and dispatch complete newline-delimited JSON events as they arrive
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.trim()) continue
+        try {
+          const event = JSON.parse(line)
+          if (onEvent) onEvent(event)
+        } catch { /* ignore partial lines */ }
+      }
+    }
   }
-  const text = new TextDecoder().decode(
+
+  // Return last complete line (the "complete" event for non-streaming callers)
+  const allText = decoder.decode(
     chunks.reduce((a, b) => { const c = new Uint8Array(a.length + b.length); c.set(a); c.set(b, a.length); return c }, new Uint8Array())
   )
-  return text
+  const lines = allText.split('\n').filter(l => l.trim())
+  return lines[lines.length - 1] ?? allText
 }
 
 export default function AgentPage() {
@@ -100,18 +122,24 @@ export default function AgentPage() {
         if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
           setMode('auto')
           setMessages(prev => [...prev, { role: 'agent', text: 'Spinning up browser session… (this takes ~30-60s)' }])
-          const raw = await callAgent({ inputText: text, mode: 'automate', plan, sessionId }, sessionId)
+          const raw = await callAgent(
+            { inputText: text, mode: 'automate', plan, sessionId },
+            sessionId,
+            (event) => {
+              if (event.event === 'session_ready' && event.novnc_url) {
+                const url = event.novnc_url as string
+                setNovncUrl(url)
+                setNovncExpiresIn((event.novnc_expires_in as number) ?? 300)
+                window.open(
+                  `${url}?autoconnect=true&resize=scale`,
+                  'novnc-popup',
+                  'width=1280,height=820,toolbar=0,menubar=0,location=0'
+                )
+              }
+            }
+          )
           const result = JSON.parse(raw)
           const passed = result.result?.passed ?? result.passed
-          if (result.novnc_url) {
-            setNovncUrl(result.novnc_url)
-            setNovncExpiresIn(result.novnc_expires_in ?? 300)
-            window.open(
-              `${result.novnc_url}?autoconnect=true&resize=scale`,
-              'novnc-popup',
-              'width=1280,height=820,toolbar=0,menubar=0,location=0'
-            )
-          }
           setMessages(prev => [
             ...prev.slice(0, -1),
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
@@ -144,18 +172,24 @@ export default function AgentPage() {
           return
         }
         setMessages(prev => [...prev, { role: 'agent', text: 'Spinning up browser session… (this takes ~30-60s)' }])
-        const raw = await callAgent({ inputText: text, mode: 'automate', plan, sessionId }, sessionId)
+        const raw = await callAgent(
+          { inputText: text, mode: 'automate', plan, sessionId },
+          sessionId,
+          (event) => {
+            if (event.event === 'session_ready' && event.novnc_url) {
+              const url = event.novnc_url as string
+              setNovncUrl(url)
+              setNovncExpiresIn((event.novnc_expires_in as number) ?? 300)
+              window.open(
+                `${url}?autoconnect=true&resize=scale`,
+                'novnc-popup',
+                'width=1280,height=820,toolbar=0,menubar=0,location=0'
+              )
+            }
+          }
+        )
         const result = JSON.parse(raw)
         const passed = result.result?.passed ?? result.passed
-        if (result.novnc_url) {
-          setNovncUrl(result.novnc_url)
-          setNovncExpiresIn(result.novnc_expires_in ?? 300)
-          window.open(
-            `${result.novnc_url}?autoconnect=true&resize=scale`,
-            'novnc-popup',
-            'width=1280,height=820,toolbar=0,menubar=0,location=0'
-          )
-        }
         setMessages(prev => [
           ...prev.slice(0, -1),
           { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
