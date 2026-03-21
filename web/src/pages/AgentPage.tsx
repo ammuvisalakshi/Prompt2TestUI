@@ -89,7 +89,6 @@ export default function AgentPage() {
   const [plan, setPlan] = useState<Plan | null>(null)
   const [loading, setLoading] = useState(false)
   const [novncUrl, setNovncUrl] = useState<string | null>(null)
-  const [novncExpiresIn, setNovncExpiresIn] = useState<number | null>(null)
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const chatRef = useRef<HTMLDivElement>(null)
@@ -128,7 +127,6 @@ export default function AgentPage() {
             (event) => {
               if (event.event === 'session_ready' && event.novnc_url) {
                 setNovncUrl(event.novnc_url as string)
-                setNovncExpiresIn((event.novnc_expires_in as number) ?? 300)
               }
             }
           )
@@ -173,7 +171,6 @@ export default function AgentPage() {
             if (event.event === 'session_ready' && event.novnc_url) {
               const url = event.novnc_url as string
               setNovncUrl(url)
-              setNovncExpiresIn((event.novnc_expires_in as number) ?? 300)
               window.open(
                 `${url}?autoconnect=true&resize=scale`,
                 'novnc-popup',
@@ -301,9 +298,6 @@ export default function AgentPage() {
                   <span className="text-[13px] font-semibold text-slate-700 uppercase tracking-wider">
                     {loading ? 'Test Running…' : 'Browser Session'}
                   </span>
-                  {!loading && novncExpiresIn && (
-                    <span className="text-[11px] text-slate-400 ml-1">· available ~{Math.round(novncExpiresIn / 60)} min</span>
-                  )}
                 </div>
                 {novncUrl && (
                   <button
@@ -352,7 +346,6 @@ export default function AgentPage() {
                     >
                       Open browser view
                     </button>
-                    <span className="text-[11px] text-slate-500">Session expires in ~{Math.round((novncExpiresIn ?? 300) / 60)} min</span>
                   </>
                 ) : null}
               </div>
