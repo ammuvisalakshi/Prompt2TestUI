@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 type Message = { role: 'user' | 'agent'; text: string }
 
 type Plan = {
+  confirmationMessage?: string
   summary?: string
   steps?: { stepNumber: number; type: string; tool?: string; action: string; detail: string }[]
   configNeeded?: string[]
@@ -144,7 +145,8 @@ export default function AgentPage() {
           const agentPlan: Plan = result.plan ?? result
 
           if (!agentPlan.steps || agentPlan.steps.length === 0) {
-            const conversationalText = agentPlan.raw ?? agentPlan.summary ?? 'Could you provide more details?'
+            // Conversational response (clarifying question) — show as chat
+            const conversationalText = agentPlan.raw ?? agentPlan.summary ?? ''
             setMessages(prev => [
               ...prev.slice(0, -1),
               { role: 'agent', text: conversationalText },
@@ -153,9 +155,13 @@ export default function AgentPage() {
           }
 
           setPlan(agentPlan)
+          // Show confirmationMessage (what was agreed) + plan-ready prompt as separate messages
+          const confirmMsg = agentPlan.confirmationMessage
+          const planReadyMsg = `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nWould you like me to execute this test? Reply **yes** to run it, or keep chatting to refine the plan.`
           setMessages(prev => [
             ...prev.slice(0, -1),
-            { role: 'agent', text: `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nWould you like me to execute this test? Reply **yes** to run it, or keep chatting to refine the plan.` },
+            ...(confirmMsg ? [{ role: 'agent' as const, text: confirmMsg }] : []),
+            { role: 'agent', text: planReadyMsg },
           ])
         }
       } else {
