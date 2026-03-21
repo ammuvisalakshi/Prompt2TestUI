@@ -9,12 +9,13 @@ Use this guide when you want to bring the platform back up after it has been pau
 | Resource | Status | Notes |
 |----------|--------|-------|
 | ECS Cluster + Service + Tasks | ❌ Destroyed | Rebuilt by `cdk deploy` |
-| ALB (Load Balancer) | ❌ Destroyed | New DNS name after redeploy |
+| ALB (Load Balancer) | ❌ Destroyed | **New DNS name after redeploy** |
 | VPC, Subnets, Security Groups | ❌ Destroyed | Rebuilt by `cdk deploy` |
 | CodePipeline + CodeBuild | ❌ Destroyed | Rebuilt by `cdk deploy` |
 | ECR Repo (`prompt2test-playwright-mcp`) | ✅ Retained | Images still there, faster rebuild |
 | AgentCore Runtime (`Prompt2TestAgent`) | ✅ Retained | Just needs endpoint URL updated |
-| S3 + CloudFront (Frontend) | ✅ Retained | Frontend still live |
+| CloudFront noVNC (`d1c90tgy4nfi4n.cloudfront.net`) | ✅ Retained | Just needs origin updated to new ALB |
+| Amplify Frontend (`master.dzjt4ryqd68ry.amplifyapp.com`) | ✅ Retained | No changes needed |
 | ECR Repo (`prompt2test-agent`) | ✅ Retained | Agent image still there |
 
 ---
@@ -26,104 +27,106 @@ Use this guide when you want to bring the platform back up after it has been pau
 ```bash
 cd C:\MyProjects\AWS\Prompt2TestPlaywrightMCP\infra
 npm install
-npx cdk deploy --region us-east-1
+npx cdk deploy --require-approval never --region us-east-1
 ```
 
-This takes ~5 minutes. CDK will create:
-- A new VPC
-- A new ECS Cluster, Service, and Task Definition
-- A new ALB with a **new DNS name** (this is important — note it down)
-- A new CodePipeline
+This takes ~5 minutes. CDK will create a new VPC, ECS Cluster, Service, ALB, and CodePipeline.
 
-When it finishes, look for the CDK output line like:
+When it finishes, look for the CDK output — note the new ALB DNS name:
 ```
-Prompt2TestPlaywrightMCPStack.ALBDNSName = prompt2test-playwright-mcp-XXXXXXXXXX.us-east-1.elb.amazonaws.com
+Prompt2TestPlaywrightMCPStack.PlaywrightMCPEndpoint = http://prompt2test-playwright-mcp-XXXXXXXXXX.us-east-1.elb.amazonaws.com:3000
 ```
-**Copy this DNS name — you need it in the next step.**
+**Copy the ALB DNS (without the port) — you need it in Steps 2, 3, and 4.**
 
 ---
 
-### Step 2 — Trigger the Pipeline to Deploy the Docker Image
+### Step 2 — Wait for the Pipeline
 
-The pipeline will start automatically after `cdk deploy`. Wait for it to finish:
+The pipeline starts automatically after `cdk deploy`. Check status:
 
 ```powershell
-# Check pipeline status (run every minute until it shows Succeeded)
 & 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' codepipeline get-pipeline-state `
     --name prompt2test-playwright-mcp-pipeline `
     --region us-east-1 `
-    --query 'stageStates[].latestExecution.status' `
-    --output text
+    --query 'stageStates[].{Stage:stageName,Status:latestExecution.status}' `
+    --output table
 ```
 
-Wait until all stages show `Succeeded`. This takes ~5 minutes.
+Wait until all stages show `Succeeded` (~5 min). If the pipeline doesn't start automatically, trigger it manually:
+
+```powershell
+& 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' codepipeline start-pipeline-execution `
+    --name prompt2test-playwright-mcp-pipeline --region us-east-1
+```
 
 ---
 
 ### Step 3 — Update AgentCore Runtime with New ALB Endpoint
 
-The AgentCore runtime still exists but its `PLAYWRIGHT_MCP_ENDPOINT` points to the old (deleted) ALB. Update it with the new DNS from Step 1.
-
-Save to files first to avoid JSON quoting issues:
-
 ```powershell
-# Create the JSON files
-'{"networkMode":"PUBLIC"}' | Out-File -FilePath network.json -Encoding utf8
-'{"containerConfiguration":{"containerUri":"590183962483.dkr.ecr.us-east-1.amazonaws.com/prompt2test-agent:latest"}}' | Out-File -FilePath artifact.json -Encoding utf8
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText('C:\MyProjects\AWS\network.json',  '{"networkMode":"PUBLIC"}', $utf8NoBom)
+[System.IO.File]::WriteAllText('C:\MyProjects\AWS\artifact.json', '{"containerConfiguration":{"containerUri":"590183962483.dkr.ecr.us-east-1.amazonaws.com/prompt2test-agent:latest"}}', $utf8NoBom)
+[System.IO.File]::WriteAllText('C:\MyProjects\AWS\envvars.json',  '{"BEDROCK_MODEL_ID":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","PLAYWRIGHT_MCP_ENDPOINT":"http://ALB_DNS_FROM_STEP_1:3000","AWS_REGION":"us-east-1"}', $utf8NoBom)
 
-# Update the runtime (replace ALB_DNS_FROM_STEP_1 with actual value)
 & 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' bedrock-agentcore-control update-agent-runtime `
     --agent-runtime-id Prompt2TestAgent-YTVbD4GrTi `
     --region us-east-1 `
-    --role-arn arn:aws:iam::590183962483:role/prompt2test-agentcore-role `
-    --network-configuration file://network.json `
-    --agent-runtime-artifact file://artifact.json `
-    --environment-variables '{\"BEDROCK_MODEL_ID\":\"us.anthropic.claude-sonnet-4-5-20250929-v1:0\",\"PLAYWRIGHT_MCP_ENDPOINT\":\"http://ALB_DNS_FROM_STEP_1:3000\",\"AWS_REGION\":\"us-east-1\"}'
+    --role-arn 'arn:aws:iam::590183962483:role/prompt2test-agentcore-role' `
+    --network-configuration  'file://C:\MyProjects\AWS\network.json' `
+    --agent-runtime-artifact 'file://C:\MyProjects\AWS\artifact.json' `
+    --environment-variables  'file://C:\MyProjects\AWS\envvars.json' `
+    --query '{status:status,version:agentRuntimeVersion}'
 ```
+
+Wait for status to return `READY`.
 
 ---
 
-### Step 4 — Update the Frontend noVNC URL
+### Step 4 — Update CloudFront noVNC Distribution to New ALB
 
-The noVNC live browser view URL also needs to point to the new ALB. Update the frontend `.env`:
+The CloudFront distribution `d1c90tgy4nfi4n.cloudfront.net` (ID: `E89UU6XNKAJJA`) routes noVNC traffic to the ALB on port 6080. Update its origin to the new ALB:
 
-```bash
-# Edit C:\MyProjects\AWS\Prompt2TestUI\web\.env (or .env.production)
-VITE_NOVNC_URL=http://ALB_DNS_FROM_STEP_1:6080
-```
-
-Then rebuild and redeploy the frontend:
-
-```bash
-cd C:\MyProjects\AWS\Prompt2TestUI\web
-npm run build
-& 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' s3 sync dist/ s3://YOUR_S3_BUCKET_NAME/ --delete --region us-east-1
-```
-
-Then invalidate the CloudFront cache:
 ```powershell
-& 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' cloudfront create-invalidation `
-    --distribution-id YOUR_CLOUDFRONT_DISTRIBUTION_ID `
-    --paths "/*" `
-    --region us-east-1
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+# Get current config and ETag
+$etag = & 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' cloudfront get-distribution-config `
+    --id E89UU6XNKAJJA --region us-east-1 --query 'ETag' --output text
+$cfg = & 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' cloudfront get-distribution-config `
+    --id E89UU6XNKAJJA --region us-east-1 --query 'DistributionConfig' | ConvertFrom-Json
+
+# Update origin to new ALB DNS
+$cfg.Origins.Items[0].DomainName = 'ALB_DNS_FROM_STEP_1'
+$cfgJson = $cfg | ConvertTo-Json -Depth 20
+[System.IO.File]::WriteAllText('C:\MyProjects\AWS\cf_novnc_updated.json', $cfgJson, $utf8NoBom)
+
+& 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' cloudfront update-distribution `
+    --id E89UU6XNKAJJA `
+    --distribution-config 'file://C:\MyProjects\AWS\cf_novnc_updated.json' `
+    --if-match $etag --region us-east-1 `
+    --query 'Distribution.{Status:Status}'
 ```
+
+Wait for CloudFront to show `Deployed` (~5 min):
+```powershell
+& 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' cloudfront get-distribution `
+    --id E89UU6XNKAJJA --region us-east-1 --query 'Distribution.Status' --output text
+```
+
+> **Note:** The Amplify frontend and its `VITE_NOVNC_URL` do NOT need updating — they always point to `https://d1c90tgy4nfi4n.cloudfront.net` which stays the same.
 
 ---
 
 ### Step 5 — Test the Full Stack
 
-Run the quick test to confirm the agent can connect to playwright-mcp:
-
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File 'C:\MyProjects\AWS\test-agent4.ps1'
 ```
 
-Expected response:
-```json
-{"sessionId":"test-123","mode":"automate","result":{"passed":true,...}}
-```
+Expected response includes `"mode":"plan"` and a plan object — confirms agent + playwright-mcp are connected.
 
-If it returns `"passed": true` — the stack is fully up. Open the frontend and run a test!
+Then open `https://master.dzjt4ryqd68ry.amplifyapp.com/agent`, type a prompt, generate a plan, and say **run** — the noVNC panel should connect and show the live browser.
 
 ---
 
@@ -135,9 +138,11 @@ If it returns `"passed": true` — the stack is fully up. Open the frontend and 
 | Region | `us-east-1` |
 | AgentCore Runtime ID | `Prompt2TestAgent-YTVbD4GrTi` |
 | AgentCore Role ARN | `arn:aws:iam::590183962483:role/prompt2test-agentcore-role` |
+| CloudFront noVNC Distribution ID | `E89UU6XNKAJJA` |
+| CloudFront noVNC URL | `https://d1c90tgy4nfi4n.cloudfront.net` |
+| Amplify Frontend URL | `https://master.dzjt4ryqd68ry.amplifyapp.com` |
 | ECR (playwright-mcp) | `590183962483.dkr.ecr.us-east-1.amazonaws.com/prompt2test-playwright-mcp` |
 | ECR (agent) | `590183962483.dkr.ecr.us-east-1.amazonaws.com/prompt2test-agent` |
-| CloudFront URL | `https://d1c90tgy4nfi4n.cloudfront.net` |
 | GitHub Repo (playwright-mcp) | `https://github.com/ammuvisalakshi/Prompt2TestPlaywrightMCP` |
 | GitHub Repo (agent) | `https://github.com/ammuvisalakshi/Prompt2TestAgent` |
 | GitHub Repo (UI) | `https://github.com/ammuvisalakshi/Prompt2TestUI` |
@@ -148,9 +153,9 @@ If it returns `"passed": true` — the stack is fully up. Open the frontend and 
 
 | Thing that changes | Where to update |
 |-------------------|----------------|
-| ALB DNS name | AgentCore env var (`PLAYWRIGHT_MCP_ENDPOINT`) + frontend `VITE_NOVNC_URL` |
+| ALB DNS name | AgentCore `PLAYWRIGHT_MCP_ENDPOINT` (Step 3) + CloudFront noVNC origin (Step 4) |
 
-Everything else (code, ECR images, AgentCore runtime ID, CloudFront URL) stays the same.
+Everything else stays the same — Amplify URL, CloudFront URL, AgentCore runtime ID, ECR images.
 
 ---
 
@@ -161,5 +166,5 @@ Everything else (code, ECR images, AgentCore runtime ID, CloudFront URL) stays t
 | `cdk deploy` | ~5 min |
 | Pipeline builds + deploys ECS | ~5 min |
 | Update AgentCore endpoint | ~1 min |
-| Frontend redeploy (if needed) | ~2 min |
-| **Total** | **~13 minutes** |
+| Update CloudFront noVNC origin | ~5 min (propagation) |
+| **Total** | **~16 minutes** |
