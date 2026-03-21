@@ -127,14 +127,8 @@ export default function AgentPage() {
             sessionId,
             (event) => {
               if (event.event === 'session_ready' && event.novnc_url) {
-                const url = event.novnc_url as string
-                setNovncUrl(url)
+                setNovncUrl(event.novnc_url as string)
                 setNovncExpiresIn((event.novnc_expires_in as number) ?? 300)
-                window.open(
-                  `${url}?autoconnect=true&resize=scale`,
-                  'novnc-popup',
-                  'width=1280,height=820,toolbar=0,menubar=0,location=0'
-                )
               }
             }
           )
@@ -303,9 +297,9 @@ export default function AgentPage() {
             <>
               <div className="px-4 py-2.5 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${loading ? 'bg-green-400 animate-pulse' : 'bg-slate-400'}`} />
+                  <span className={`w-2 h-2 rounded-full ${novncUrl ? 'bg-green-400 animate-pulse' : loading ? 'bg-yellow-400 animate-pulse' : 'bg-slate-400'}`} />
                   <span className="text-[13px] font-semibold text-slate-700 uppercase tracking-wider">
-                    {loading ? 'Browser Session Starting…' : 'Browser Session'}
+                    {loading && !novncUrl ? 'Browser Session Starting…' : loading && novncUrl ? 'Live Browser' : 'Browser Session'}
                   </span>
                   {!loading && novncExpiresIn && (
                     <span className="text-[11px] text-slate-400 ml-1">· available ~{Math.round(novncExpiresIn / 60)} min</span>
@@ -331,7 +325,7 @@ export default function AgentPage() {
                 )}
               </div>
               <div className="flex-1 overflow-hidden flex flex-col items-center justify-center gap-4 bg-slate-900 text-slate-400">
-                {loading ? (
+                {loading && !novncUrl ? (
                   <>
                     <svg className="w-8 h-8 animate-spin text-[#028090]" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -339,6 +333,18 @@ export default function AgentPage() {
                     </svg>
                     <span className="text-[13px]">Spinning up dedicated browser container…</span>
                     <span className="text-[11px] text-slate-500">~30–60 seconds</span>
+                  </>
+                ) : novncUrl && loading ? (
+                  <>
+                    <span className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[14px] text-white font-medium">Browser live — test running</span>
+                    <button
+                      onClick={() => window.open(`${novncUrl}?autoconnect=true&resize=scale`, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')}
+                      className="text-[13px] px-5 py-2.5 bg-[#028090] hover:bg-[#01555F] text-white rounded-lg cursor-pointer transition-colors font-medium"
+                    >
+                      Open live browser view
+                    </button>
+                    <span className="text-[11px] text-slate-500">Click to watch the test running</span>
                   </>
                 ) : novncUrl ? (
                   <>
