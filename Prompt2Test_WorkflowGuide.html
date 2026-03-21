@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt2Test – How It Works</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #e8eaf0;
+      padding: 40px 24px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── Cover ── */
+    .cover {
+      text-align: center;
+      padding: 60px 0 80px;
+      border-bottom: 1px solid #2a3044;
+      margin-bottom: 64px;
+    }
+    .cover .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #01A88D22, #60a5fa22);
+      border: 1px solid #01A88D55;
+      color: #01A88D;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .cover h1 {
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e8eaf0 0%, #60a5fa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+    .cover p {
+      font-size: 18px;
+      color: #8b92a5;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: 72px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .section-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .num-blue  { background: #1e3a5f; color: #60a5fa; border: 1px solid #60a5fa55; }
+    .num-teal  { background: #0d2e29; color: #2dd4bf; border: 1px solid #2dd4bf55; }
+    .num-orange{ background: #3b1f0a; color: #fb923c; border: 1px solid #fb923c55; }
+    .section h2 {
+      font-size: 28px;
+      font-weight: 600;
+      color: #e8eaf0;
+    }
+    .section-desc {
+      color: #8b92a5;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 32px;
+      max-width: 800px;
+    }
+
+    /* ── Diagram wrapper ── */
+    .diagram-wrapper {
+      background: #161b27;
+      border: 1px solid #2a3044;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      margin-bottom: 40px;
+    }
+    svg { display: block; width: 100%; height: auto; }
+
+    /* ── Info cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .card {
+      background: #161b27;
+      border: 1px solid #2a3044;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-icon { font-size: 24px; margin-bottom: 10px; }
+    .card h4 { font-size: 13px; font-weight: 600; color: #8b92a5; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .card p  { font-size: 14px; color: #c8ccd8; line-height: 1.5; }
+    .card.blue   { border-color: #60a5fa44; }
+    .card.teal   { border-color: #2dd4bf44; }
+    .card.orange { border-color: #fb923c44; }
+    .card.green  { border-color: #86efac44; }
+
+    /* ── Step table ── */
+    .step-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    .step-table th {
+      background: #1e2535;
+      color: #8b92a5;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #2a3044;
+    }
+    .step-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #1e2535;
+      font-size: 14px;
+      color: #c8ccd8;
+      vertical-align: top;
+    }
+    .step-table tr:last-child td { border-bottom: none; }
+    .step-table tr:hover td { background: #1a2030; }
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tag-blue   { background: #1e3a5f; color: #60a5fa; }
+    .tag-teal   { background: #0d2e29; color: #2dd4bf; }
+    .tag-orange { background: #3b1f0a; color: #fb923c; }
+    .tag-green  { background: #0d2e1a; color: #86efac; }
+    .tag-gray   { background: #1e2535; color: #8b92a5; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #2a3044; margin: 64px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="badge">Technical Guide</div>
+  <h1>How Prompt2Test Works</h1>
+  <p>A complete walkthrough of the platform architecture, the Plan Mode workflow, and the Automate Mode workflow — from user prompt to live browser execution.</p>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════ SECTION 1: OVERALL -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-blue">1</div>
+    <h2>Overall Platform Architecture</h2>
+  </div>
+  <p class="section-desc">
+    Prompt2Test is a fully serverless AI-powered test automation platform built on AWS.
+    Users describe a test in plain English. The AI agent plans and executes it in a real browser,
+    while the user watches live. No test code needs to be written.
+  </p>
+
+  <!-- DIAGRAM 1: Overall Architecture -->
+  <div class="diagram-wrapper">
+    <svg viewBox="0 0 1100 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#60a5fa"/></marker>
+        <marker id="a2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2dd4bf"/></marker>
+        <marker id="a3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#fb923c"/></marker>
+        <marker id="a4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#86efac"/></marker>
+        <marker id="a5" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#c084fc"/></marker>
+        <filter id="s1"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/></filter>
+      </defs>
+
+      <!-- Background -->
+      <rect width="1100" height="620" fill="#161b27"/>
+
+      <!-- ── ZONE: User ── -->
+      <rect x="20" y="20" width="160" height="580" rx="12" fill="#1a2030" stroke="#2a3044" stroke-width="1"/>
+      <text x="100" y="48" text-anchor="middle" fill="#8b92a5" font-size="10" font-weight="600" letter-spacing="1">USER</text>
+
+      <!-- Browser icon -->
+      <rect x="45" y="60" width="110" height="80" rx="8" fill="#1e2535" stroke="#60a5fa" stroke-width="1.5" filter="url(#s1)"/>
+      <rect x="45" y="60" width="110" height="20" rx="8" fill="#2a3a5a"/>
+      <rect x="45" y="72" width="110" height="8" fill="#2a3a5a"/>
+      <circle cx="57" cy="70" r="3" fill="#fb923c" opacity="0.7"/>
+      <circle cx="68" cy="70" r="3" fill="#fbbf24" opacity="0.7"/>
+      <circle cx="79" cy="70" r="3" fill="#86efac" opacity="0.7"/>
+      <text x="100" y="118" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">Browser</text>
+      <text x="100" y="132" text-anchor="middle" fill="#8b92a5" font-size="9">Amplify UI</text>
+
+      <!-- Cognito -->
+      <rect x="45" y="165" width="110" height="60" rx="8" fill="#1e2535" stroke="#60a5fa" stroke-width="1" filter="url(#s1)"/>
+      <!-- Cognito icon (shield) -->
+      <path d="M100 175 L112 180 L112 192 Q112 200 100 205 Q88 200 88 192 L88 180 Z" fill="#60a5fa" opacity="0.8"/>
+      <text x="100" y="218" text-anchor="middle" fill="#c8ccd8" font-size="10" font-weight="600">Cognito</text>
+      <text x="100" y="230" text-anchor="middle" fill="#8b92a5" font-size="9">Auth + Credentials</text>
+
+      <!-- ── ZONE: AI Agent ── -->
+      <rect x="220" y="20" width="220" height="280" rx="12" fill="#0d1f1c" stroke="#2dd4bf" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="330" y="44" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="600" letter-spacing="1">AI AGENT BACKEND</text>
+
+      <!-- AgentCore box -->
+      <rect x="240" y="55" width="180" height="90" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#s1)"/>
+      <!-- AgentCore icon -->
+      <circle cx="290" cy="90" r="18" fill="#01A88D" opacity="0.2"/>
+      <circle cx="290" cy="90" r="12" fill="#01A88D" opacity="0.5"/>
+      <circle cx="290" cy="90" r="6" fill="#01A88D"/>
+      <text x="330" y="84" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="600">AgentCore</text>
+      <text x="330" y="98" text-anchor="middle" fill="#8b92a5" font-size="9">Serverless Runtime</text>
+      <text x="330" y="112" text-anchor="middle" fill="#8b92a5" font-size="9">Python / Strands SDK</text>
+      <text x="330" y="126" text-anchor="middle" fill="#8b92a5" font-size="9">main.py + agent_runner.py</text>
+
+      <!-- Bedrock box -->
+      <rect x="240" y="165" width="180" height="90" rx="8" fill="#1e2535" stroke="#8b5cf6" stroke-width="1.5" filter="url(#s1)"/>
+      <!-- Bedrock icon -->
+      <polygon points="290,178 302,185 302,199 290,206 278,199 278,185" fill="#8b5cf6" opacity="0.3"/>
+      <polygon points="290,183 298,188 298,197 290,202 282,197 282,188" fill="#8b5cf6" opacity="0.6"/>
+      <polygon points="290,188 295,191 295,196 290,199 285,196 285,191" fill="#8b5cf6"/>
+      <text x="330" y="185" text-anchor="middle" fill="#c084fc" font-size="11" font-weight="600">Amazon Bedrock</text>
+      <text x="330" y="199" text-anchor="middle" fill="#8b92a5" font-size="9">Claude Sonnet 4.5</text>
+      <text x="330" y="213" text-anchor="middle" fill="#8b92a5" font-size="9">Cross-region inference</text>
+      <text x="330" y="227" text-anchor="middle" fill="#8b92a5" font-size="9">Plan + Automate reasoning</text>
+
+      <!-- ── ZONE: Browser Automation ── -->
+      <rect x="490" y="20" width="380" height="460" rx="12" fill="#1c1a0d" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="680" y="44" text-anchor="middle" fill="#fb923c" font-size="10" font-weight="600" letter-spacing="1">BROWSER AUTOMATION (ECS FARGATE)</text>
+
+      <!-- ALB -->
+      <rect x="510" y="60" width="340" height="70" rx="8" fill="#1e2535" stroke="#fb923c" stroke-width="1.5" filter="url(#s1)"/>
+      <!-- ALB icon -->
+      <rect x="525" y="75" width="40" height="28" rx="4" fill="#fb923c" opacity="0.2"/>
+      <rect x="529" y="79" width="32" height="20" rx="3" fill="#fb923c" opacity="0.4"/>
+      <line x1="533" y1="89" x2="557" y2="89" stroke="#fb923c" stroke-width="2"/>
+      <line x1="545" y1="83" x2="545" y2="95" stroke="#fb923c" stroke-width="2"/>
+      <text x="600" y="82" fill="#fb923c" font-size="11" font-weight="600">Application Load Balancer</text>
+      <text x="600" y="97" fill="#8b92a5" font-size="9">Port 3000 → playwright-mcp (MCP/SSE)</text>
+      <text x="600" y="111" fill="#8b92a5" font-size="9">Port 6080 → websockify (noVNC)</text>
+
+      <!-- ECS Task box -->
+      <rect x="510" y="155" width="340" height="300" rx="8" fill="#1a1f10" stroke="#86efac" stroke-width="1.5" filter="url(#s1)"/>
+      <text x="680" y="176" text-anchor="middle" fill="#86efac" font-size="10" font-weight="600" letter-spacing="1">ECS FARGATE TASK (ARM64)</text>
+
+      <!-- playwright-mcp -->
+      <rect x="525" y="185" width="150" height="70" rx="6" fill="#1e2535" stroke="#2dd4bf" stroke-width="1"/>
+      <circle cx="555" cy="215" r="12" fill="#2dd4bf" opacity="0.2"/>
+      <circle cx="555" cy="215" r="7" fill="#2dd4bf" opacity="0.6"/>
+      <circle cx="555" cy="215" r="3" fill="#2dd4bf"/>
+      <text x="600" y="210" fill="#2dd4bf" font-size="10" font-weight="600">playwright-mcp</text>
+      <text x="600" y="224" fill="#8b92a5" font-size="9">Port 3000</text>
+      <text x="600" y="238" fill="#8b92a5" font-size="9">MCP tool server</text>
+
+      <!-- Chromium -->
+      <rect x="525" y="270" width="150" height="60" rx="6" fill="#1e2535" stroke="#60a5fa" stroke-width="1"/>
+      <circle cx="555" cy="295" r="14" fill="#60a5fa" opacity="0.15"/>
+      <circle cx="555" cy="295" r="9" fill="#60a5fa" opacity="0.4"/>
+      <circle cx="555" cy="295" r="4" fill="#60a5fa"/>
+      <text x="600" y="292" fill="#60a5fa" font-size="10" font-weight="600">Chromium</text>
+      <text x="600" y="306" fill="#8b92a5" font-size="9">Headed · Xvfb :99</text>
+
+      <!-- Xvfb + x11vnc -->
+      <rect x="525" y="345" width="150" height="55" rx="6" fill="#1e2535" stroke="#fbbf24" stroke-width="1"/>
+      <rect x="540" y="358" width="30" height="22" rx="3" fill="#fbbf24" opacity="0.3"/>
+      <rect x="544" y="362" width="22" height="14" rx="2" fill="#fbbf24" opacity="0.6"/>
+      <text x="590" y="366" fill="#fbbf24" font-size="10" font-weight="600">Xvfb + x11vnc</text>
+      <text x="590" y="380" fill="#8b92a5" font-size="9">Virtual display</text>
+      <text x="590" y="393" fill="#8b92a5" font-size="9">VNC port 5900</text>
+
+      <!-- websockify -->
+      <rect x="690" y="270" width="145" height="130" rx="6" fill="#1e2535" stroke="#c084fc" stroke-width="1"/>
+      <path d="M710 315 Q720 305 730 315 Q740 325 750 315" fill="none" stroke="#c084fc" stroke-width="2"/>
+      <path d="M710 330 Q720 320 730 330 Q740 340 750 330" fill="none" stroke="#c084fc" stroke-width="2" opacity="0.6"/>
+      <text x="762" y="300" fill="#c084fc" font-size="10" font-weight="600">websockify</text>
+      <text x="762" y="314" fill="#8b92a5" font-size="9">Port 6080</text>
+      <text x="762" y="328" fill="#8b92a5" font-size="9">VNC → WebSocket</text>
+      <text x="762" y="356" fill="#c084fc" font-size="9" font-weight="600">noVNC</text>
+      <text x="762" y="370" fill="#8b92a5" font-size="9">Web UI served</text>
+      <text x="762" y="384" fill="#8b92a5" font-size="9">from /usr/share/novnc</text>
+
+      <!-- ── ZONE: CI/CD ── -->
+      <rect x="20" y="440" width="840" height="160" rx="12" fill="#1a1020" stroke="#c084fc" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="60" y="462" fill="#c084fc" font-size="10" font-weight="600" letter-spacing="1">CI / CD PIPELINE</text>
+
+      <!-- GitHub -->
+      <rect x="40" y="472" width="100" height="60" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1"/>
+      <circle cx="90" cy="495" r="14" fill="#c084fc" opacity="0.2"/>
+      <text x="90" y="500" text-anchor="middle" fill="#c084fc" font-size="18">⑂</text>
+      <text x="90" y="522" text-anchor="middle" fill="#c8ccd8" font-size="10" font-weight="600">GitHub</text>
+
+      <!-- CodePipeline -->
+      <rect x="175" y="472" width="110" height="60" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1"/>
+      <circle cx="225" cy="493" r="10" fill="#c084fc" opacity="0.3"/>
+      <circle cx="225" cy="493" r="5" fill="#c084fc" opacity="0.7"/>
+      <text x="225" y="514" text-anchor="middle" fill="#c8ccd8" font-size="10" font-weight="600">CodePipeline</text>
+      <text x="225" y="526" text-anchor="middle" fill="#8b92a5" font-size="9">2 pipelines</text>
+
+      <!-- CodeBuild -->
+      <rect x="320" y="472" width="110" height="60" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1"/>
+      <rect x="337" y="484" width="30" height="22" rx="3" fill="#c084fc" opacity="0.2"/>
+      <rect x="341" y="488" width="22" height="14" rx="2" fill="#c084fc" opacity="0.5"/>
+      <text x="375" y="514" text-anchor="middle" fill="#c8ccd8" font-size="10" font-weight="600">CodeBuild</text>
+      <text x="375" y="526" text-anchor="middle" fill="#8b92a5" font-size="9">ARM64 Docker build</text>
+
+      <!-- ECR -->
+      <rect x="465" y="472" width="100" height="60" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1"/>
+      <rect x="478" y="484" width="30" height="30" rx="4" fill="#c084fc" opacity="0.15"/>
+      <text x="483" y="502" fill="#c084fc" font-size="16">📦</text>
+      <text x="515" y="514" text-anchor="middle" fill="#c8ccd8" font-size="10" font-weight="600">ECR</text>
+      <text x="515" y="526" text-anchor="middle" fill="#8b92a5" font-size="9">Docker images</text>
+
+      <!-- CloudFront noVNC -->
+      <rect x="880" y="20" width="200" height="80" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#s1)"/>
+      <!-- CloudFront icon -->
+      <ellipse cx="910" cy="58" rx="15" ry="10" fill="#2dd4bf" opacity="0.2"/>
+      <ellipse cx="910" cy="58" rx="10" ry="6" fill="#2dd4bf" opacity="0.5"/>
+      <ellipse cx="910" cy="58" rx="5" ry="3" fill="#2dd4bf"/>
+      <text x="930" y="50" fill="#2dd4bf" font-size="11" font-weight="600">CloudFront</text>
+      <text x="930" y="64" fill="#8b92a5" font-size="9">d1c90tgy4nfi4n</text>
+      <text x="930" y="78" fill="#8b92a5" font-size="9">.cloudfront.net</text>
+      <text x="930" y="92" fill="#8b92a5" font-size="9">noVNC over HTTPS</text>
+
+      <!-- CloudWatch -->
+      <rect x="880" y="120" width="200" height="70" rx="8" fill="#1e2535" stroke="#fb923c" stroke-width="1" filter="url(#s1)"/>
+      <text x="980" y="148" text-anchor="middle" fill="#fb923c" font-size="11" font-weight="600">CloudWatch Logs</text>
+      <text x="980" y="163" text-anchor="middle" fill="#8b92a5" font-size="9">ECS · CodeBuild</text>
+      <text x="980" y="177" text-anchor="middle" fill="#8b92a5" font-size="9">Debugging + monitoring</text>
+
+      <!-- ── ARROWS ── -->
+      <!-- User → AgentCore -->
+      <line x1="180" y1="105" x2="238" y2="105" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#a1)"/>
+      <text x="209" y="98" text-anchor="middle" fill="#60a5fa" font-size="9">invoke</text>
+
+      <!-- AgentCore → Bedrock -->
+      <line x1="330" y1="145" x2="330" y2="163" stroke="#c084fc" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <!-- AgentCore → ALB:3000 -->
+      <line x1="440" y1="95" x2="508" y2="90" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="474" y="85" text-anchor="middle" fill="#2dd4bf" font-size="9">SSE/MCP</text>
+
+      <!-- ALB → playwright-mcp -->
+      <line x1="600" y1="130" x2="600" y2="183" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#a2)"/>
+
+      <!-- playwright-mcp → Chromium -->
+      <line x1="600" y1="255" x2="600" y2="268" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#a1)"/>
+
+      <!-- Chromium → x11vnc -->
+      <line x1="600" y1="330" x2="600" y2="343" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#a3)"/>
+
+      <!-- x11vnc → websockify -->
+      <line x1="675" y1="372" x2="688" y2="350" stroke="#c084fc" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <!-- ALB → websockify -->
+      <line x1="762" y1="130" x2="762" y2="268" stroke="#c084fc" stroke-width="1.5" marker-end="url(#a5)"/>
+      <text x="780" y="200" fill="#c084fc" font-size="9">:6080</text>
+
+      <!-- websockify → CloudFront -->
+      <line x1="835" y1="310" x2="878" y2="60" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a2)"/>
+
+      <!-- CloudFront → User (noVNC iframe) -->
+      <line x1="878" y1="58" x2="182" y2="100" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a2)"/>
+      <text x="520" y="42" text-anchor="middle" fill="#2dd4bf" font-size="9">live browser iframe</text>
+
+      <!-- GitHub → CodePipeline -->
+      <line x1="140" y1="502" x2="173" y2="502" stroke="#c084fc" stroke-width="1.5" marker-end="url(#a5)"/>
+      <!-- CodePipeline → CodeBuild -->
+      <line x1="285" y1="502" x2="318" y2="502" stroke="#c084fc" stroke-width="1.5" marker-end="url(#a5)"/>
+      <!-- CodeBuild → ECR -->
+      <line x1="430" y1="502" x2="463" y2="502" stroke="#c084fc" stroke-width="1.5" marker-end="url(#a5)"/>
+      <!-- ECR → ECS (up) -->
+      <line x1="515" y1="472" x2="515" y2="458" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#a5)"/>
+      <text x="530" y="468" fill="#c084fc" font-size="9">deploy</text>
+
+    </svg>
+  </div>
+
+  <div class="cards">
+    <div class="card blue">
+      <div class="card-icon">🖥️</div>
+      <h4>Frontend</h4>
+      <p>React app on AWS Amplify. Cognito handles login. Users interact via a chat-style interface.</p>
+    </div>
+    <div class="card teal">
+      <div class="card-icon">🤖</div>
+      <h4>AI Agent</h4>
+      <p>Python Strands agent on AgentCore. Uses Claude Sonnet 4.5 on Bedrock for all AI reasoning.</p>
+    </div>
+    <div class="card orange">
+      <div class="card-icon">🌐</div>
+      <h4>Browser Automation</h4>
+      <p>playwright-mcp on ECS Fargate. Runs real Chromium headed browser. Viewed live via noVNC.</p>
+    </div>
+    <div class="card green">
+      <div class="card-icon">🔄</div>
+      <h4>CI/CD</h4>
+      <p>CodePipeline + CodeBuild auto-deploy Docker images to ECR and ECS on every GitHub push.</p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- ══════════════════════════════════════════════════ SECTION 2: PLAN MODE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-teal">2</div>
+    <h2>Plan Mode Workflow</h2>
+  </div>
+  <p class="section-desc">
+    When the user types a test description and clicks <strong style="color:#2dd4bf">Plan</strong>, the system generates a structured,
+    step-by-step test plan using Claude. No browser is opened — this is pure AI reasoning.
+    The result is a human-readable plan the user can review and refine before execution.
+  </p>
+
+  <!-- DIAGRAM 2: Plan Mode -->
+  <div class="diagram-wrapper">
+    <svg viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="p1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2dd4bf"/></marker>
+        <marker id="p2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#c084fc"/></marker>
+        <filter id="ps"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/></filter>
+      </defs>
+      <rect width="1100" height="380" fill="#161b27"/>
+
+      <!-- Step labels at top -->
+      <text x="100" y="30" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="700">① USER INPUT</text>
+      <text x="310" y="30" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="700">② FRONTEND</text>
+      <text x="530" y="30" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="700">③ AGENTCORE</text>
+      <text x="760" y="30" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="700">④ BEDROCK</text>
+      <text x="980" y="30" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="700">⑤ RESPONSE</text>
+
+      <!-- Column dividers -->
+      <line x1="210" y1="40" x2="210" y2="370" stroke="#2a3044" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="420" y1="40" x2="420" y2="370" stroke="#2a3044" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="650" y1="40" x2="650" y2="370" stroke="#2a3044" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="870" y1="40" x2="870" y2="370" stroke="#2a3044" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- ① User types -->
+      <rect x="25" y="60" width="150" height="80" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#ps)"/>
+      <text x="100" y="88" text-anchor="middle" fill="#e8eaf0" font-size="12" font-weight="600">User types prompt</text>
+      <text x="100" y="106" text-anchor="middle" fill="#8b92a5" font-size="10">"Search iPhone 17</text>
+      <text x="100" y="120" text-anchor="middle" fill="#8b92a5" font-size="10">on Amazon..."</text>
+      <text x="100" y="134" text-anchor="middle" fill="#2dd4bf" font-size="10">clicks Plan ▶</text>
+
+      <!-- ② Frontend -->
+      <rect x="235" y="60" width="150" height="100" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#ps)"/>
+      <text x="310" y="85" text-anchor="middle" fill="#e8eaf0" font-size="12" font-weight="600">AgentPage.tsx</text>
+      <text x="310" y="103" text-anchor="middle" fill="#8b92a5" font-size="10">POST /run</text>
+      <text x="310" y="117" text-anchor="middle" fill="#8b92a5" font-size="10">mode: "plan"</text>
+      <text x="310" y="131" text-anchor="middle" fill="#8b92a5" font-size="10">inputText: "..."</text>
+      <text x="310" y="145" text-anchor="middle" fill="#2dd4bf" font-size="10">SigV4 signed ✓</text>
+
+      <!-- Cognito note -->
+      <rect x="235" y="180" width="150" height="55" rx="8" fill="#1a2030" stroke="#60a5fa" stroke-width="1"/>
+      <text x="310" y="202" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="600">Cognito</text>
+      <text x="310" y="218" text-anchor="middle" fill="#8b92a5" font-size="9">Provides AWS temp</text>
+      <text x="310" y="230" text-anchor="middle" fill="#8b92a5" font-size="9">credentials for signing</text>
+
+      <!-- ③ AgentCore -->
+      <rect x="445" y="60" width="180" height="100" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#ps)"/>
+      <text x="535" y="85" text-anchor="middle" fill="#e8eaf0" font-size="12" font-weight="600">AgentCore</text>
+      <text x="535" y="103" text-anchor="middle" fill="#8b92a5" font-size="10">agent_runner.py</text>
+      <text x="535" y="117" text-anchor="middle" fill="#8b92a5" font-size="10">plan() method</text>
+      <text x="535" y="131" text-anchor="middle" fill="#8b92a5" font-size="10">Formats prompt for LLM</text>
+      <text x="535" y="145" text-anchor="middle" fill="#2dd4bf" font-size="10">NO browser / MCP call</text>
+
+      <!-- ④ Bedrock -->
+      <rect x="675" y="60" width="170" height="180" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1.5" filter="url(#ps)"/>
+      <polygon points="720,82 732,89 732,103 720,110 708,103 708,89" fill="#8b5cf6" opacity="0.3"/>
+      <polygon points="720,87 728,92 728,100 720,105 712,100 712,92" fill="#8b5cf6" opacity="0.6"/>
+      <polygon points="720,92 726,96 726,101 720,104 714,101 714,96" fill="#8b5cf6"/>
+      <text x="760" y="82" fill="#c084fc" font-size="12" font-weight="600">Bedrock Claude</text>
+      <text x="760" y="98" fill="#8b92a5" font-size="10">Sonnet 4.5</text>
+      <text x="760" y="122" fill="#e8eaf0" font-size="10" font-weight="600">Generates:</text>
+      <text x="760" y="138" fill="#8b92a5" font-size="10">• Test summary</text>
+      <text x="760" y="154" fill="#8b92a5" font-size="10">• Step-by-step actions</text>
+      <text x="760" y="170" fill="#8b92a5" font-size="10">• Tool per step</text>
+      <text x="760" y="186" fill="#8b92a5" font-size="10">• Estimated MCP calls</text>
+      <text x="760" y="202" fill="#8b92a5" font-size="10">• Config needed flags</text>
+      <text x="760" y="220" fill="#2dd4bf" font-size="10">Pure reasoning — no tools</text>
+
+      <!-- ⑤ Response -->
+      <rect x="895" y="60" width="180" height="200" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#ps)"/>
+      <text x="985" y="85" text-anchor="middle" fill="#e8eaf0" font-size="12" font-weight="600">Plan displayed</text>
+      <text x="985" y="103" text-anchor="middle" fill="#8b92a5" font-size="10">in React UI</text>
+      <rect x="910" y="115" width="150" height="130" rx="6" fill="#0d1f1c" stroke="#2dd4bf" stroke-width="1"/>
+      <text x="985" y="134" text-anchor="middle" fill="#2dd4bf" font-size="9" font-weight="600">Test Plan</text>
+      <text x="985" y="150" text-anchor="middle" fill="#8b92a5" font-size="9">Summary: Navigate to...</text>
+      <text x="985" y="166" text-anchor="middle" fill="#86efac" font-size="9">Step 1: Navigate →</text>
+      <text x="985" y="180" text-anchor="middle" fill="#86efac" font-size="9">Step 2: Search →</text>
+      <text x="985" y="194" text-anchor="middle" fill="#86efac" font-size="9">Step 3: Sort →</text>
+      <text x="985" y="208" text-anchor="middle" fill="#86efac" font-size="9">Step 4: Assert →</text>
+      <text x="985" y="222" text-anchor="middle" fill="#86efac" font-size="9">Step 5: Screenshot →</text>
+      <text x="985" y="238" text-anchor="middle" fill="#fbbf24" font-size="9">10 MCP calls est.</text>
+
+      <!-- "Would you like to run?" -->
+      <rect x="895" y="275" width="180" height="50" rx="8" fill="#0d2e29" stroke="#2dd4bf" stroke-width="1"/>
+      <text x="985" y="297" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="600">"Would you like me</text>
+      <text x="985" y="313" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="600">to execute this?"</text>
+
+      <!-- ARROWS -->
+      <line x1="175" y1="100" x2="233" y2="100" stroke="#2dd4bf" stroke-width="2" marker-end="url(#p1)"/>
+      <line x1="385" y1="100" x2="443" y2="100" stroke="#2dd4bf" stroke-width="2" marker-end="url(#p1)"/>
+      <line x1="625" y1="110" x2="673" y2="110" stroke="#c084fc" stroke-width="2" marker-end="url(#p2)"/>
+      <line x1="845" y1="150" x2="893" y2="120" stroke="#2dd4bf" stroke-width="2" marker-end="url(#p1)"/>
+
+      <!-- Return arrow at bottom -->
+      <path d="M 985 260 Q 985 340 535 340 Q 310 340 310 260" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#p1)"/>
+      <text x="650" y="355" text-anchor="middle" fill="#2dd4bf" font-size="9">plan response flows back to UI</text>
+    </svg>
+  </div>
+
+  <table class="step-table">
+    <thead>
+      <tr>
+        <th>Step</th>
+        <th>Service</th>
+        <th>What happens</th>
+        <th>Browser?</th>
+        <th>MCP call?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-teal">1</span> User types prompt</td>
+        <td>Amplify Frontend</td>
+        <td>User describes the test in plain English and clicks Plan</td>
+        <td>❌</td><td>❌</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-teal">2</span> HTTP POST</td>
+        <td>AgentCore</td>
+        <td>Frontend sends <code style="color:#2dd4bf">{ mode:"plan", inputText:"..." }</code> signed with Cognito SigV4 credentials</td>
+        <td>❌</td><td>❌</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-teal">3</span> agent_runner.plan()</td>
+        <td>AgentCore Python</td>
+        <td>Python agent formats the prompt and sends it to Claude via Strands SDK</td>
+        <td>❌</td><td>❌</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-teal">4</span> Claude reasons</td>
+        <td>Amazon Bedrock</td>
+        <td>Claude Sonnet 4.5 reads the prompt and generates a structured JSON plan with steps, tools, and estimates</td>
+        <td>❌</td><td>❌</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-teal">5</span> Plan displayed</td>
+        <td>Amplify Frontend</td>
+        <td>React renders the plan as readable steps. User reviews and types <strong>"run"</strong> to execute</td>
+        <td>❌</td><td>❌</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr class="divider"/>
+
+<!-- ══════════════════════════════════════════════════ SECTION 3: AUTOMATE MODE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-orange">3</div>
+    <h2>Automate Mode Workflow</h2>
+  </div>
+  <p class="section-desc">
+    When the user types <strong style="color:#fb923c">run</strong>, the system executes the plan in a real Chromium browser.
+    Claude acts as an autonomous agent — it thinks, calls a browser tool, observes the result, and repeats until all steps are done.
+    The user watches the browser execute in real time via the noVNC live panel.
+  </p>
+
+  <!-- DIAGRAM 3: Automate Mode -->
+  <div class="diagram-wrapper">
+    <svg viewBox="0 0 1100 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="o1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#fb923c"/></marker>
+        <marker id="o2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#c084fc"/></marker>
+        <marker id="o3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2dd4bf"/></marker>
+        <marker id="o4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#86efac"/></marker>
+        <filter id="os"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/></filter>
+      </defs>
+      <rect width="1100" height="500" fill="#161b27"/>
+
+      <!-- ── TOP ROW: Main execution flow ── -->
+
+      <!-- User says run -->
+      <rect x="20" y="55" width="130" height="80" rx="8" fill="#1e2535" stroke="#fb923c" stroke-width="1.5" filter="url(#os)"/>
+      <text x="85" y="83" text-anchor="middle" fill="#e8eaf0" font-size="11" font-weight="600">User says</text>
+      <text x="85" y="99" text-anchor="middle" fill="#fb923c" font-size="22" font-weight="700">"run"</text>
+      <text x="85" y="126" text-anchor="middle" fill="#8b92a5" font-size="9">noVNC panel appears</text>
+
+      <!-- Frontend -->
+      <rect x="185" y="55" width="140" height="80" rx="8" fill="#1e2535" stroke="#fb923c" stroke-width="1.5" filter="url(#os)"/>
+      <text x="255" y="80" text-anchor="middle" fill="#e8eaf0" font-size="11" font-weight="600">Frontend</text>
+      <text x="255" y="96" text-anchor="middle" fill="#8b92a5" font-size="9">POST /run</text>
+      <text x="255" y="110" text-anchor="middle" fill="#8b92a5" font-size="9">mode: "automate"</text>
+      <text x="255" y="124" text-anchor="middle" fill="#8b92a5" font-size="9">plan: { steps:[...] }</text>
+
+      <!-- AgentCore -->
+      <rect x="360" y="55" width="150" height="80" rx="8" fill="#1e2535" stroke="#fb923c" stroke-width="1.5" filter="url(#os)"/>
+      <text x="435" y="80" text-anchor="middle" fill="#e8eaf0" font-size="11" font-weight="600">AgentCore</text>
+      <text x="435" y="96" text-anchor="middle" fill="#8b92a5" font-size="9">automate() method</text>
+      <text x="435" y="110" text-anchor="middle" fill="#8b92a5" font-size="9">Opens MCP client</text>
+      <text x="435" y="124" text-anchor="middle" fill="#2dd4bf" font-size="9">Host: localhost:3000 ✓</text>
+
+      <!-- MCP SSE connect -->
+      <rect x="545" y="55" width="140" height="80" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#os)"/>
+      <text x="615" y="78" text-anchor="middle" fill="#e8eaf0" font-size="11" font-weight="600">playwright-mcp</text>
+      <text x="615" y="94" text-anchor="middle" fill="#8b92a5" font-size="9">SSE connection on :3000</text>
+      <text x="615" y="108" text-anchor="middle" fill="#8b92a5" font-size="9">Tools registered:</text>
+      <text x="615" y="122" text-anchor="middle" fill="#2dd4bf" font-size="9">navigate · click · fill · assert</text>
+
+      <!-- Bedrock Claude -->
+      <rect x="720" y="55" width="140" height="80" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1.5" filter="url(#os)"/>
+      <text x="790" y="78" text-anchor="middle" fill="#c084fc" font-size="11" font-weight="600">Bedrock Claude</text>
+      <text x="790" y="96" text-anchor="middle" fill="#8b92a5" font-size="9">Strands agent loop</text>
+      <text x="790" y="110" text-anchor="middle" fill="#8b92a5" font-size="9">Decides next tool call</text>
+      <text x="790" y="124" text-anchor="middle" fill="#8b92a5" font-size="9">per plan step</text>
+
+      <!-- Result -->
+      <rect x="895" y="55" width="185" height="80" rx="8" fill="#1e2535" stroke="#86efac" stroke-width="1.5" filter="url(#os)"/>
+      <text x="987" y="78" text-anchor="middle" fill="#e8eaf0" font-size="11" font-weight="600">Result returned</text>
+      <text x="987" y="96" text-anchor="middle" fill="#86efac" font-size="9">passed: true / false</text>
+      <text x="987" y="110" text-anchor="middle" fill="#8b92a5" font-size="9">step-by-step details</text>
+      <text x="987" y="124" text-anchor="middle" fill="#8b92a5" font-size="9">shown in UI</text>
+
+      <!-- Top arrows -->
+      <line x1="150" y1="95" x2="183" y2="95" stroke="#fb923c" stroke-width="2" marker-end="url(#o1)"/>
+      <line x1="325" y1="95" x2="358" y2="95" stroke="#fb923c" stroke-width="2" marker-end="url(#o1)"/>
+      <line x1="510" y1="95" x2="543" y2="95" stroke="#2dd4bf" stroke-width="2" marker-end="url(#o3)"/>
+      <line x1="685" y1="95" x2="718" y2="95" stroke="#c084fc" stroke-width="2" marker-end="url(#o2)"/>
+      <line x1="860" y1="95" x2="893" y2="95" stroke="#86efac" stroke-width="2" marker-end="url(#o4)"/>
+
+      <!-- ── MIDDLE: Agent Loop ── -->
+      <rect x="20" y="175" width="1060" height="200" rx="12" fill="#1a2030" stroke="#fb923c" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="550" y="198" text-anchor="middle" fill="#fb923c" font-size="11" font-weight="700" letter-spacing="1">AGENT EXECUTION LOOP  (repeats for each plan step)</text>
+
+      <!-- Step 1: Claude decides -->
+      <rect x="40" y="210" width="160" height="145" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1.5" filter="url(#os)"/>
+      <text x="120" y="232" text-anchor="middle" fill="#c084fc" font-size="10" font-weight="600">Claude decides</text>
+      <text x="120" y="248" text-anchor="middle" fill="#8b92a5" font-size="9">Reads current plan step</text>
+      <text x="120" y="262" text-anchor="middle" fill="#8b92a5" font-size="9">Picks the right tool:</text>
+      <text x="120" y="280" text-anchor="middle" fill="#2dd4bf" font-size="9">playwright_navigate</text>
+      <text x="120" y="294" text-anchor="middle" fill="#2dd4bf" font-size="9">playwright_click</text>
+      <text x="120" y="308" text-anchor="middle" fill="#2dd4bf" font-size="9">playwright_fill</text>
+      <text x="120" y="322" text-anchor="middle" fill="#2dd4bf" font-size="9">playwright_get_text</text>
+      <text x="120" y="336" text-anchor="middle" fill="#2dd4bf" font-size="9">playwright_screenshot</text>
+
+      <!-- Step 2: MCP tool call -->
+      <rect x="230" y="210" width="160" height="145" rx="8" fill="#1e2535" stroke="#2dd4bf" stroke-width="1.5" filter="url(#os)"/>
+      <text x="310" y="232" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="600">MCP tool call</text>
+      <text x="310" y="250" text-anchor="middle" fill="#8b92a5" font-size="9">Sent via SSE to</text>
+      <text x="310" y="264" text-anchor="middle" fill="#8b92a5" font-size="9">playwright-mcp :3000</text>
+      <text x="310" y="282" text-anchor="middle" fill="#fb923c" font-size="9" font-weight="600">ALB → ECS Task</text>
+      <text x="310" y="298" text-anchor="middle" fill="#8b92a5" font-size="9">Host: localhost:3000</text>
+      <text x="310" y="312" text-anchor="middle" fill="#8b92a5" font-size="9">header bypasses</text>
+      <text x="310" y="326" text-anchor="middle" fill="#8b92a5" font-size="9">CSRF check</text>
+
+      <!-- Step 3: Chromium executes -->
+      <rect x="420" y="210" width="165" height="145" rx="8" fill="#1e2535" stroke="#60a5fa" stroke-width="1.5" filter="url(#os)"/>
+      <text x="502" y="232" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="600">Chromium executes</text>
+      <text x="502" y="250" text-anchor="middle" fill="#8b92a5" font-size="9">Real browser action</text>
+      <text x="502" y="264" text-anchor="middle" fill="#8b92a5" font-size="9">on Xvfb display :99</text>
+      <text x="502" y="282" text-anchor="middle" fill="#86efac" font-size="9">Navigate to URL</text>
+      <text x="502" y="296" text-anchor="middle" fill="#86efac" font-size="9">Click element</text>
+      <text x="502" y="310" text-anchor="middle" fill="#86efac" font-size="9">Type text</text>
+      <text x="502" y="324" text-anchor="middle" fill="#86efac" font-size="9">Read text / Assert</text>
+      <text x="502" y="338" text-anchor="middle" fill="#86efac" font-size="9">Take screenshot</text>
+
+      <!-- Step 4: Result back to Claude -->
+      <rect x="615" y="210" width="165" height="145" rx="8" fill="#1e2535" stroke="#c084fc" stroke-width="1.5" filter="url(#os)"/>
+      <text x="697" y="232" text-anchor="middle" fill="#c084fc" font-size="10" font-weight="600">Result → Claude</text>
+      <text x="697" y="250" text-anchor="middle" fill="#8b92a5" font-size="9">playwright-mcp returns</text>
+      <text x="697" y="264" text-anchor="middle" fill="#8b92a5" font-size="9">tool output to agent</text>
+      <text x="697" y="282" text-anchor="middle" fill="#8b92a5" font-size="9">Claude reads result</text>
+      <text x="697" y="298" text-anchor="middle" fill="#8b92a5" font-size="9">and decides:</text>
+      <text x="697" y="316" text-anchor="middle" fill="#86efac" font-size="9">✓ Step passed → next</text>
+      <text x="697" y="332" text-anchor="middle" fill="#fb923c" font-size="9">✗ Step failed → retry</text>
+      <text x="697" y="348" text-anchor="middle" fill="#fbbf24" font-size="9">or mark failed</text>
+
+      <!-- Loop arrow -->
+      <path d="M 780 350 Q 820 370 820 190 Q 820 175 760 175" fill="none" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#o1)"/>
+      <text x="835" y="275" fill="#fb923c" font-size="9" text-anchor="middle">loop</text>
+      <text x="835" y="287" fill="#fb923c" font-size="9" text-anchor="middle">until</text>
+      <text x="835" y="299" fill="#fb923c" font-size="9" text-anchor="middle">done</text>
+
+      <!-- Loop inner arrows -->
+      <line x1="200" y1="283" x2="228" y2="283" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#o3)"/>
+      <line x1="390" y1="283" x2="418" y2="283" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#o3)"/>
+      <line x1="585" y1="283" x2="613" y2="283" stroke="#c084fc" stroke-width="1.5" marker-end="url(#o2)"/>
+
+      <!-- ── BOTTOM: noVNC live view ── -->
+      <rect x="20" y="400" width="480" height="80" rx="12" fill="#0d1f1c" stroke="#2dd4bf" stroke-width="1.5"/>
+      <text x="260" y="425" text-anchor="middle" fill="#2dd4bf" font-size="11" font-weight="700">LIVE BROWSER VIEW (parallel)</text>
+      <text x="260" y="445" text-anchor="middle" fill="#8b92a5" font-size="10">x11vnc captures Xvfb screen → websockify converts to WebSocket → CloudFront HTTPS →</text>
+      <text x="260" y="462" text-anchor="middle" fill="#8b92a5" font-size="10">noVNC iframe in browser. User watches every click and navigation in real time.</text>
+
+      <!-- Connect loop arrow from Chromium down to noVNC -->
+      <line x1="502" y1="355" x2="502" y2="395" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#o3)"/>
+
+      <!-- Final result arrow back to frontend -->
+      <rect x="560" y="400" width="520" height="80" rx="12" fill="#0d2e1a" stroke="#86efac" stroke-width="1.5"/>
+      <text x="820" y="425" text-anchor="middle" fill="#86efac" font-size="11" font-weight="700">FINAL RESULT</text>
+      <text x="820" y="445" text-anchor="middle" fill="#8b92a5" font-size="10">{ passed: true, steps: [{stepNumber, status, detail},...], summary: "..." }</text>
+      <text x="820" y="462" text-anchor="middle" fill="#8b92a5" font-size="10">Displayed in UI with pass/fail per step. Agent session closed. Browser tab cleaned up.</text>
+    </svg>
+  </div>
+
+  <table class="step-table">
+    <thead>
+      <tr>
+        <th>Step</th>
+        <th>Service</th>
+        <th>What happens</th>
+        <th>Browser?</th>
+        <th>MCP call?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-orange">1</span> User says "run"</td>
+        <td>Amplify Frontend</td>
+        <td>noVNC panel appears. Frontend sends <code style="color:#fb923c">{ mode:"automate", plan:{...} }</code> to AgentCore</td>
+        <td>✅ opens</td><td>❌</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">2</span> MCP client connects</td>
+        <td>AgentCore → playwright-mcp</td>
+        <td>Python agent opens SSE connection to playwright-mcp via ALB:3000. Host header set to <code style="color:#2dd4bf">localhost:3000</code> to bypass CSRF check</td>
+        <td>✅</td><td>✅ connect</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">3</span> Agent loop begins</td>
+        <td>Bedrock Claude + Strands</td>
+        <td>Claude reads the plan and decides which MCP tool to call for step 1</td>
+        <td>✅</td><td>✅</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">4</span> Browser action</td>
+        <td>playwright-mcp → Chromium</td>
+        <td>playwright-mcp executes the tool (navigate, click, fill, assert, screenshot) in the real Chromium browser on Xvfb</td>
+        <td>✅ action</td><td>✅ per step</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">5</span> Live view streams</td>
+        <td>x11vnc → websockify → CloudFront → noVNC</td>
+        <td>x11vnc captures the Xvfb screen, websockify converts to WebSocket, CloudFront delivers to the noVNC iframe. User watches live.</td>
+        <td>✅ visible</td><td>❌</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">6</span> Result → Claude</td>
+        <td>Bedrock Claude</td>
+        <td>playwright-mcp returns the tool result. Claude decides: pass and move to next step, retry, or mark as failed</td>
+        <td>✅</td><td>✅</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">7</span> Loop repeats</td>
+        <td>All</td>
+        <td>Steps 3–6 repeat for every step in the plan until all steps complete or a step fails</td>
+        <td>✅</td><td>✅</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">8</span> Final result</td>
+        <td>Amplify Frontend</td>
+        <td>AgentCore returns <code style="color:#86efac">{ passed:true/false, steps:[...] }</code>. UI shows pass/fail per step. Browser tab cleaned up.</td>
+        <td>✅ closes</td><td>❌</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="cards" style="margin-top:32px">
+    <div class="card orange">
+      <div class="card-icon">🔄</div>
+      <h4>Agent Loop</h4>
+      <p>Claude + Strands SDK loop: think → call tool → observe result → repeat. One MCP call per plan step.</p>
+    </div>
+    <div class="card teal">
+      <div class="card-icon">🌐</div>
+      <h4>Real Browser</h4>
+      <p>Actual Chromium running headed on a virtual display (Xvfb). Not a simulation — real DOM, real network requests.</p>
+    </div>
+    <div class="card blue">
+      <div class="card-icon">📺</div>
+      <h4>Live View</h4>
+      <p>x11vnc → websockify → CloudFront → noVNC iframe. Every click and scroll is visible in real time.</p>
+    </div>
+    <div class="card green">
+      <div class="card-icon">✅</div>
+      <h4>Pass / Fail</h4>
+      <p>Each step is independently assessed. Claude can retry before marking a step failed. Full detail returned.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
