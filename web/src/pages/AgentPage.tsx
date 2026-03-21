@@ -142,6 +142,16 @@ export default function AgentPage() {
           setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
           const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history }, sessionId)
           const result = JSON.parse(raw)
+
+          // Surface agent-side errors immediately
+          if (result.error) {
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'agent', text: `Agent error: ${result.error}` },
+            ])
+            return
+          }
+
           const agentPlan: Plan = result.plan ?? result
 
           if (!agentPlan.steps || agentPlan.steps.length === 0) {
