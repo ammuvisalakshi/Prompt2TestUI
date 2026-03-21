@@ -146,7 +146,9 @@ export default function AgentPage() {
 
           if (!agentPlan.steps || agentPlan.steps.length === 0) {
             // Conversational response (clarifying question) — show as chat
-            const conversationalText = agentPlan.raw ?? agentPlan.summary ?? ''
+            const conversationalText = agentPlan.raw?.trim()
+              || (agentPlan.summary !== 'Plan generated' ? agentPlan.summary : '')
+              || 'What would you like to test? Describe the feature, the URL, and what the expected result should be.'
             setMessages(prev => [
               ...prev.slice(0, -1),
               { role: 'agent', text: conversationalText },
