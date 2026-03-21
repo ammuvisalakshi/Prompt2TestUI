@@ -121,17 +121,40 @@ export default function AgentPage() {
         // If a plan exists and user is confirming execution — run it
         if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
           setMode('auto')
-          setMessages(prev => [...prev, { role: 'agent', text: 'Spinning up browser session… (this takes ~30-60s)' }])
-          const raw = await callAgent(
-            { inputText: text, mode: 'automate', plan, sessionId },
+
+          // Open popup immediately within user-gesture context (before any await)
+          // so browsers don't block it as a popup.
+          const popup = window.open('about:blank', 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+
+          // ── Step 1: start browser session ────────────────────────────────
+          setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
+          const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
+          const sessionResult = JSON.parse(sessionRaw)
+          if (sessionResult.error) throw new Error(sessionResult.error as string)
+
+          const novncUrl = sessionResult.novnc_url as string
+          setNovncUrl(novncUrl)
+
+          // Navigate the already-open popup to the live browser
+          if (popup) popup.location.href = `${novncUrl}?autoconnect=true&resize=scale`
+
+          // ── Step 2: run the test against the live session ─────────────────
+          setMessages(prev => [
+            ...prev.slice(0, -1),
+            { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
+          ])
+          const raw = await callAgent({
+            inputText: text,
+            mode: 'automate',
+            plan,
             sessionId,
-            (event) => {
-              if (event.event === 'session_ready' && event.novnc_url) {
-                setNovncUrl(event.novnc_url as string)
-              }
-            }
-          )
+            task_arn: sessionResult.task_arn,
+            cluster: sessionResult.cluster,
+            mcp_endpoint: sessionResult.mcp_endpoint,
+          }, sessionId)
+
           const result = JSON.parse(raw)
+          if (result.error) throw new Error(result.error as string)
           const passed = result.result?.passed ?? result.passed
           setMessages(prev => [
             ...prev.slice(0, -1),
@@ -181,22 +204,19 @@ export default function AgentPage() {
           setMessages(prev => [...prev, { role: 'agent', text: 'Please generate a plan first in Plan mode.' }])
           return
         }
-        setMessages(prev => [...prev, { role: 'agent', text: 'Spinning up browser session… (this takes ~30-60s)' }])
-        const raw = await callAgent(
-          { inputText: text, mode: 'automate', plan, sessionId },
-          sessionId,
-          (event) => {
-            if (event.event === 'session_ready' && event.novnc_url) {
-              const url = event.novnc_url as string
-              setNovncUrl(url)
-              window.open(
-                `${url}?autoconnect=true&resize=scale`,
-                'novnc-popup',
-                'width=1280,height=820,toolbar=0,menubar=0,location=0'
-              )
-            }
-          }
-        )
+        const popup2 = window.open('about:blank', 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+        setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
+        const sessionRaw2 = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
+        const sessionResult2 = JSON.parse(sessionRaw2)
+        if (sessionResult2.error) throw new Error(sessionResult2.error as string)
+        const novncUrl2 = sessionResult2.novnc_url as string
+        setNovncUrl(novncUrl2)
+        if (popup2) popup2.location.href = `${novncUrl2}?autoconnect=true&resize=scale`
+        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
+        const raw = await callAgent({
+          inputText: text, mode: 'automate', plan, sessionId,
+          task_arn: sessionResult2.task_arn, cluster: sessionResult2.cluster, mcp_endpoint: sessionResult2.mcp_endpoint,
+        }, sessionId)
         const result = JSON.parse(raw)
         const passed = result.result?.passed ?? result.passed
         setMessages(prev => [
