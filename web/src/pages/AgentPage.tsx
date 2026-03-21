@@ -22,7 +22,6 @@ const HINTS = [
 
 const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN as string
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
-const NOVNC_URL = import.meta.env.VITE_NOVNC_URL as string | undefined
 
 async function callAgent(payload: object, sessionId: string): Promise<string> {
   const session = await fetchAuthSession()
@@ -67,7 +66,8 @@ export default function AgentPage() {
   const [mode, setMode] = useState<'plan' | 'auto'>('plan')
   const [plan, setPlan] = useState<Plan | null>(null)
   const [loading, setLoading] = useState(false)
-  const [poppedOut, setPoppedOut] = useState(false)
+  const [novncUrl, setNovncUrl] = useState<string | null>(null)
+  const [novncExpiresIn, setNovncExpiresIn] = useState<number | null>(null)
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const chatRef = useRef<HTMLDivElement>(null)
@@ -99,10 +99,19 @@ export default function AgentPage() {
         // If a plan exists and user is confirming execution — run it
         if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
           setMode('auto')
-          setMessages(prev => [...prev, { role: 'agent', text: 'Executing test plan via Playwright MCP…' }])
+          setMessages(prev => [...prev, { role: 'agent', text: 'Spinning up browser session… (this takes ~30-60s)' }])
           const raw = await callAgent({ inputText: text, mode: 'automate', plan, sessionId }, sessionId)
           const result = JSON.parse(raw)
           const passed = result.result?.passed ?? result.passed
+          if (result.novnc_url) {
+            setNovncUrl(result.novnc_url)
+            setNovncExpiresIn(result.novnc_expires_in ?? 300)
+            window.open(
+              `${result.novnc_url}?autoconnect=true&resize=scale`,
+              'novnc-popup',
+              'width=1280,height=820,toolbar=0,menubar=0,location=0'
+            )
+          }
           setMessages(prev => [
             ...prev.slice(0, -1),
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
@@ -134,10 +143,19 @@ export default function AgentPage() {
           setMessages(prev => [...prev, { role: 'agent', text: 'Please generate a plan first in Plan mode.' }])
           return
         }
-        setMessages(prev => [...prev, { role: 'agent', text: 'Executing test plan via Playwright MCP…' }])
+        setMessages(prev => [...prev, { role: 'agent', text: 'Spinning up browser session… (this takes ~30-60s)' }])
         const raw = await callAgent({ inputText: text, mode: 'automate', plan, sessionId }, sessionId)
         const result = JSON.parse(raw)
         const passed = result.result?.passed ?? result.passed
+        if (result.novnc_url) {
+          setNovncUrl(result.novnc_url)
+          setNovncExpiresIn(result.novnc_expires_in ?? 300)
+          window.open(
+            `${result.novnc_url}?autoconnect=true&resize=scale`,
+            'novnc-popup',
+            'width=1280,height=820,toolbar=0,menubar=0,location=0'
+          )
+        }
         setMessages(prev => [
           ...prev.slice(0, -1),
           { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
@@ -246,65 +264,69 @@ export default function AgentPage() {
         {/* Plan / Live Browser panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* Live browser — full panel when executing */}
-          {mode === 'auto' && loading && NOVNC_URL ? (
+          {/* Live browser panel — shown while executing or after completion if novncUrl is set */}
+          {(mode === 'auto' && loading) || novncUrl ? (
             <>
               <div className="px-4 py-2.5 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-[13px] font-semibold text-slate-700 uppercase tracking-wider">Live Browser</span>
+                  <span className={`w-2 h-2 rounded-full ${loading ? 'bg-green-400 animate-pulse' : 'bg-slate-400'}`} />
+                  <span className="text-[13px] font-semibold text-slate-700 uppercase tracking-wider">
+                    {loading ? 'Browser Session Starting…' : 'Browser Session'}
+                  </span>
+                  {!loading && novncExpiresIn && (
+                    <span className="text-[11px] text-slate-400 ml-1">· available ~{Math.round(novncExpiresIn / 60)} min</span>
+                  )}
                 </div>
-                <button
-                  onClick={() => {
-                    // Close the iframe first so websockify frees its connection,
-                    // then open popup which gets the sole WebSocket slot.
-                    setPoppedOut(true)
-                    setTimeout(() => {
+                {novncUrl && (
+                  <button
+                    onClick={() => {
                       popupRef.current = window.open(
-                        `${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&resize=scale`,
+                        `${novncUrl}?autoconnect=true&resize=scale`,
                         'novnc-popup',
                         'width=1280,height=820,toolbar=0,menubar=0,location=0'
                       )
-                      // When popup closes, restore the iframe
-                      const poll = setInterval(() => {
-                        if (popupRef.current?.closed) {
-                          clearInterval(poll)
-                          setPoppedOut(false)
-                        }
-                      }, 1000)
-                    }, 300)
-                  }}
-                  className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-[#028090] border border-slate-200 hover:border-[#028090] rounded-lg px-2.5 py-1 transition-colors cursor-pointer"
-                  title="Pop out to new window"
-                >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2">
-                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                  </svg>
-                  Pop out
-                </button>
+                    }}
+                    className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-[#028090] border border-slate-200 hover:border-[#028090] rounded-lg px-2.5 py-1 transition-colors cursor-pointer"
+                    title="Open browser view in new window"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                    </svg>
+                    Pop out
+                  </button>
+                )}
               </div>
-              <div className="flex-1 overflow-hidden">
-                {poppedOut ? (
-                  <div className="flex-1 h-full flex flex-col items-center justify-center gap-3 bg-slate-900 text-slate-400">
+              <div className="flex-1 overflow-hidden flex flex-col items-center justify-center gap-4 bg-slate-900 text-slate-400">
+                {loading ? (
+                  <>
+                    <svg className="w-8 h-8 animate-spin text-[#028090]" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    <span className="text-[13px]">Spinning up dedicated browser container…</span>
+                    <span className="text-[11px] text-slate-500">~30–60 seconds</span>
+                  </>
+                ) : novncUrl ? (
+                  <>
                     <svg viewBox="0 0 24 24" className="w-8 h-8 stroke-current fill-none stroke-1.5 opacity-40">
                       <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
                     </svg>
-                    <span className="text-[13px]">Live browser open in separate window</span>
+                    <span className="text-[13px]">Browser session ready</span>
                     <button
-                      onClick={() => { popupRef.current?.focus(); }}
-                      className="text-[12px] text-[#028090] underline cursor-pointer"
+                      onClick={() => {
+                        popupRef.current = window.open(
+                          `${novncUrl}?autoconnect=true&resize=scale`,
+                          'novnc-popup',
+                          'width=1280,height=820,toolbar=0,menubar=0,location=0'
+                        )
+                      }}
+                      className="text-[13px] px-4 py-2 bg-[#028090] hover:bg-[#01555F] text-white rounded-lg cursor-pointer transition-colors"
                     >
-                      Bring to front
+                      Open browser view
                     </button>
-                  </div>
-                ) : (
-                  <iframe
-                    src={`${NOVNC_URL}/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=2000&resize=scale`}
-                    className="w-full h-full border-0"
-                    allow="fullscreen"
-                    title="Live browser view"
-                  />
-                )}
+                    <span className="text-[11px] text-slate-500">Session expires in ~{Math.round((novncExpiresIn ?? 300) / 60)} min</span>
+                  </>
+                ) : null}
               </div>
             </>
           ) : (
