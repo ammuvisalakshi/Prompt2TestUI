@@ -92,6 +92,10 @@ export default function AgentPage() {
   const [novncUrl, setNovncUrl] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
+  const [preSession, setPreSession] = useState<{
+    novnc_url: string; task_arn: string; cluster: string; mcp_endpoint: string
+  } | null>(null)
+  const preSessionLoadingRef = useRef(false)
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -128,38 +132,53 @@ export default function AgentPage() {
         if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
           setMode('auto')
 
-          // Open popup immediately within user-gesture context (before any await)
-          // so browsers don't block it as a popup.
-          const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
-          const loadingUrl = URL.createObjectURL(loadingBlob)
-          const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+          // Snapshot pre-session before any await (state reads in closures can be stale)
+          const snap = preSession
 
-          // ── Step 1: start browser session ────────────────────────────────
-          setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
-          const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
-          const sessionResult = JSON.parse(sessionRaw)
-          if (sessionResult.error) throw new Error(sessionResult.error as string)
+          let resolvedSession: { novnc_url: string; task_arn: string; cluster: string; mcp_endpoint: string }
+          let popup: Window | null
 
-          const novncUrl = sessionResult.novnc_url as string
-          setNovncUrl(novncUrl)
+          if (snap) {
+            // ── Pre-session ready — open directly to live browser (zero wait) ──
+            setPreSession(null)
+            popup = window.open(
+              `${snap.novnc_url}?autoconnect=true&resize=scale`,
+              'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0',
+            )
+            resolvedSession = snap
+            setNovncUrl(snap.novnc_url)
+            setMessages(prev => [...prev, { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
+          } else {
+            // ── Fallback: pre-session not ready yet — show loading page ──────
+            const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+            const loadingUrl = URL.createObjectURL(loadingBlob)
+            popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
 
-          // Navigate the already-open popup to the live browser and free the blob URL
-          URL.revokeObjectURL(loadingUrl)
-          if (popup) popup.location.href = `${novncUrl}?autoconnect=true&resize=scale`
+            setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
+            const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
+            const sessionResult = JSON.parse(sessionRaw)
+            if (sessionResult.error) throw new Error(sessionResult.error as string)
+
+            resolvedSession = sessionResult
+            setNovncUrl(sessionResult.novnc_url as string)
+            URL.revokeObjectURL(loadingUrl)
+            if (popup) popup.location.href = `${sessionResult.novnc_url}?autoconnect=true&resize=scale`
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
+            ])
+          }
+          void popup // suppress unused-var lint
 
           // ── Step 2: run the test against the live session ─────────────────
-          setMessages(prev => [
-            ...prev.slice(0, -1),
-            { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
-          ])
           const raw = await callAgent({
             inputText: text,
             mode: 'automate',
             plan,
             sessionId,
-            task_arn: sessionResult.task_arn,
-            cluster: sessionResult.cluster,
-            mcp_endpoint: sessionResult.mcp_endpoint,
+            task_arn: resolvedSession.task_arn,
+            cluster: resolvedSession.cluster,
+            mcp_endpoint: resolvedSession.mcp_endpoint,
           }, sessionId)
 
           const result = JSON.parse(raw)
@@ -170,7 +189,9 @@ export default function AgentPage() {
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
           ])
         } else {
-          // Generate / refine the plan
+          // Generate / refine the plan — discard any stale pre-session
+          setPreSession(null)
+          preSessionLoadingRef.current = false
           setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
           const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history }, sessionId)
           const result = JSON.parse(raw)
@@ -199,6 +220,19 @@ export default function AgentPage() {
           }
 
           setPlan(agentPlan)
+
+          // Fire start_session in background so the browser is ready before user says "yes"
+          if (!preSession && !preSessionLoadingRef.current) {
+            preSessionLoadingRef.current = true
+            callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
+              .then(raw => {
+                const result = JSON.parse(raw)
+                if (!result.error) setPreSession(result)
+              })
+              .catch(() => { /* silent — will fall back to on-demand start_session */ })
+              .finally(() => { preSessionLoadingRef.current = false })
+          }
+
           // Show confirmationMessage (what was agreed) + plan-ready prompt as separate messages
           const confirmMsg = agentPlan.confirmationMessage
           const planReadyMsg = `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nWould you like me to execute this test? Reply **yes** to run it, or keep chatting to refine the plan.`
