@@ -261,7 +261,7 @@
           <div class="sub-box">
             <div class="sub-box-title">Runtime</div>
             ID: <b>Prompt2TestAgent-YTVbD4GrTi</b><br>
-            Version: <b>37</b> (current)<br>
+            Version: <b>39</b> (current)<br>
             Status: <div class="tag tag-green">READY</div><br>
             Network: <b>PUBLIC</b>
           </div>
@@ -365,15 +365,19 @@
         </div>
         <div class="step">
           <div class="step-num">4</div>
-          <div class="step-text">Poll DescribeTasks (~60s) → RUNNING → get <b>public IP via ENI</b></div>
+          <div class="step-text">Poll DescribeTasks (~60s) → RUNNING → public IP via ENI → <b>TCP poll port 3000</b> until ready</div>
         </div>
         <div class="step">
           <div class="step-num">5</div>
-          <div class="step-text">Popup redirects to <b>ip:6080/vnc.html</b> · Agent connects MCP at <b>ip:3000</b></div>
+          <div class="step-text"><b>Pre-warm:</b> MCP connect → <code>browser_navigate about:blank</code> → Chromium opens in noVNC</div>
         </div>
         <div class="step">
           <div class="step-num">6</div>
-          <div class="step-text">Test finishes → <b>StopTask</b> — no idle cost</div>
+          <div class="step-text">Popup redirects to <b>ip:6080/vnc.html</b> — browser already visible</div>
+        </div>
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-text">Agent connects MCP → navigates to test URL → runs steps → <b>StopTask</b></div>
         </div>
       </div>
     </div>
@@ -383,12 +387,12 @@
   <!-- Flow arrow row 2→3 -->
   <div class="flow-row">
     <div class="flow-box">Agent (start_session)</div>
-    <div class="flow-arrow teal">── SSM GetParameter ──▶</div>
-    <div class="flow-box">ECS Config</div>
-    <div class="flow-arrow teal">──▶</div>
+    <div class="flow-arrow teal">── SSM ──▶</div>
     <div class="flow-box">RunTask → ENI IP</div>
+    <div class="flow-arrow teal">── TCP poll :3000 ──▶</div>
+    <div class="flow-box">Pre-warm browser</div>
     <div class="flow-arrow teal">──▶</div>
-    <div class="flow-box">MCP: ip:3000 + noVNC: ip:6080</div>
+    <div class="flow-box">Return ip:3000 + ip:6080</div>
   </div>
 
   <div style="height:16px;"></div>
@@ -403,23 +407,25 @@
     <div class="card theme-green medium">
       <div class="card-title"><span class="icon">🔄</span> On-Demand Task Lifecycle</div>
       <div class="card-body">
-        <div class="sub-box" style="border-color:#22c55e44;">
-          <div class="sub-box-title" style="color:#22c55e;">Startup (~60s)</div>
+        <div class="sub-box" style="border-color:#bbf7d0;">
+          <div class="sub-box-title" style="color:#15803d;">Startup (~60s)</div>
           RunTask → PROVISIONING<br>
           → PENDING → RUNNING<br>
           ENI assigns <b>public IP</b><br>
-          Port 3000 (MCP) binding<br>
-          Port 6080 (noVNC) ready
+          TCP poll :3000 until ready<br>
+          <b>Pre-warm:</b> browser_navigate about:blank<br>
+          Chromium open before noVNC loads
         </div>
-        <div class="sub-box" style="margin-top:8px; border-color:#3b82f644;">
-          <div class="sub-box-title" style="color:#60a5fa;">During Test</div>
+        <div class="sub-box" style="margin-top:8px; border-color:#3b82f6aa;">
+          <div class="sub-box-title" style="color:#1d4ed8;">During Test</div>
           1 task = 1 user = 1 Xvfb display<br>
           <b>Full screen isolation</b><br>
           No cross-user interference<br>
-          Direct IP — no NLB needed
+          No <code>--isolated</code> flag — browser<br>
+          persists between MCP connections
         </div>
-        <div class="sub-box" style="margin-top:8px; border-color:#f9731644;">
-          <div class="sub-box-title" style="color:#fdba74;">Teardown</div>
+        <div class="sub-box" style="margin-top:8px; border-color:#fed7aa;">
+          <div class="sub-box-title" style="color:#c2410c;">Teardown</div>
           StopTask called on test end<br>
           Task stopped in seconds<br>
           <b>Pay only for test duration</b><br>
@@ -434,7 +440,7 @@
       <div class="card-title"><span class="icon">🎭</span> ECS Fargate — playwright-mcp Tasks</div>
       <div class="card-body">
         <div class="grid3">
-          <div class="sub-box" style="border-color:#22c55e44;">
+          <div class="sub-box" style="border-color:#bbf7d0;">
             <div class="sub-box-title" style="color:#22c55e;">User A's Task</div>
             <div class="tag tag-green">RUNNING</div><br>
             Own public IP<br>
@@ -442,7 +448,7 @@
             MCP → <b>ip-A:3000</b><br>
             noVNC → <b>ip-A:6080</b>
           </div>
-          <div class="sub-box" style="border-color:#22c55e44;">
+          <div class="sub-box" style="border-color:#bbf7d0;">
             <div class="sub-box-title" style="color:#22c55e;">User B's Task</div>
             <div class="tag tag-green">RUNNING</div><br>
             Own public IP<br>
@@ -450,7 +456,7 @@
             MCP → <b>ip-B:3000</b><br>
             noVNC → <b>ip-B:6080</b>
           </div>
-          <div class="sub-box" style="border-color:#475569;">
+          <div class="sub-box" style="border-color:#cbd5e1;">
             <div class="sub-box-title" style="color:#64748b;">No Warm Pool</div>
             <div class="tag tag-gray">0 always-on tasks</div><br>
             No NLB (removed)<br>
@@ -524,15 +530,15 @@
     <div class="card theme-orange narrow">
       <div class="card-title"><span class="icon">💰</span> Cost Estimate</div>
       <div class="card-body">
-        <div class="sub-box" style="border-color:#22c55e44;">
-          <div class="sub-box-title" style="color:#6ee7b7;">On-Demand (current)</div>
+        <div class="sub-box" style="border-color:#bbf7d0;">
+          <div class="sub-box-title" style="color:#15803d;">On-Demand (current)</div>
           Per task/hr: <b>~$0.10</b><br>
           20 users × 15 min/day:<br>
           <b>~$17/mo</b> total<br>
           <div class="tag tag-green">Pay per test only</div>
         </div>
-        <div class="sub-box" style="margin-top:8px; border-color:#f9731644;">
-          <div class="sub-box-title" style="color:#fdba74;">Old warm pool (removed)</div>
+        <div class="sub-box" style="margin-top:8px; border-color:#fed7aa;">
+          <div class="sub-box-title" style="color:#c2410c;">Old warm pool (removed)</div>
           3 tasks 24/7:<br>
           <b>~$216/mo</b><br>
           <div class="tag tag-red">Always paying, idle or not</div>
@@ -565,14 +571,13 @@
           <div class="flow-arrow purple">──▶</div>
           <div class="flow-box" style="background:#f5f3ff;">CodeBuild<br><small>ARM64 Docker Build</small></div>
           <div class="flow-arrow purple">──▶</div>
-          <div class="flow-box" style="background:#f5f3ff;">ECR<br><small>prompt2test-playwright-mcp:latest</small></div>
-          <div class="flow-arrow purple">──▶</div>
-          <div class="flow-box" style="background:#fff7ed; border-color:#f97316;">ECS Service<br><small>force-new-deployment</small></div>
+          <div class="flow-box" style="background:#f5f3ff; border-color:#7c3aed;">ECR<br><small>prompt2test-playwright-mcp:latest</small></div>
         </div>
         <div class="sub-box" style="margin-top:10px;">
           <div class="sub-box-title">Build Spec (buildspec.yml)</div>
           docker build → docker tag → docker push ECR<br>
-          ARM64 build image: <b>LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0</b>
+          ARM64 build image: <b>LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0</b><br>
+          <span style="font-size:10px; color:#64748b;">No ECS service to update — every new RunTask call pulls <b>:latest</b> from ECR automatically</span>
         </div>
         <div class="sub-box" style="margin-top:8px;">
           <div class="sub-box-title">Docker Image Contents</div>
@@ -720,25 +725,29 @@
 
     <!-- Timing row -->
     <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
-      <div class="sub-box" style="flex:1; min-width:160px;">
+      <div class="sub-box" style="flex:1; min-width:140px;">
         <div class="sub-box-title">Prompt → Plan</div>
-        LLM streaming via Strands<br>~2-5s depending on prompt
+        LLM streaming via Strands<br>~2-5s
       </div>
-      <div class="sub-box" style="flex:1; min-width:160px;">
+      <div class="sub-box" style="flex:1; min-width:140px;">
         <div class="sub-box-title">"Yes" → Popup opens</div>
-        Blob URL (progress bar HTML)<br><b>Instant</b> — within user gesture
+        Blob URL progress bar<br><b>Instant</b> — user gesture
       </div>
-      <div class="sub-box" style="flex:1; min-width:160px;">
-        <div class="sub-box-title">Popup → RunTask</div>
-        SSM reads (~80ms)<br>RunTask API call (~1s)
-      </div>
-      <div class="sub-box" style="flex:1; min-width:160px;">
+      <div class="sub-box" style="flex:1; min-width:140px;">
         <div class="sub-box-title">RunTask → RUNNING</div>
-        ECS scheduling + image pull<br>+ Chromium start: <b>~55-60s</b>
+        ECS + image pull + boot<br><b>~55-60s</b>
       </div>
-      <div class="sub-box" style="flex:1; min-width:160px;">
-        <div class="sub-box-title">Total: "Yes" → Live Browser</div>
-        Progress bar fills during wait<br><b>~60 seconds</b> cold start
+      <div class="sub-box" style="flex:1; min-width:140px;">
+        <div class="sub-box-title">Port ready → Pre-warm</div>
+        TCP poll :3000<br>browser_navigate about:blank<br><b>~2-3s</b>
+      </div>
+      <div class="sub-box" style="flex:1; min-width:140px;">
+        <div class="sub-box-title">Popup → Browser visible</div>
+        noVNC redirects — Chromium<br>already open: <b>Instant</b>
+      </div>
+      <div class="sub-box" style="flex:1; min-width:140px;">
+        <div class="sub-box-title">Total: "Yes" → Test running</div>
+        Progress bar + pre-warm<br><b>~63 seconds</b> cold start
       </div>
     </div>
   </div>
