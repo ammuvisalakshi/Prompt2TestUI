@@ -92,10 +92,6 @@ export default function AgentPage() {
   const [novncUrl, setNovncUrl] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
-  const [preSession, setPreSession] = useState<{
-    novnc_url: string; task_arn: string; cluster: string; mcp_endpoint: string
-  } | null>(null)
-  const preSessionLoadingRef = useRef(false)
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -121,10 +117,23 @@ export default function AgentPage() {
       .join('\n')
 
     const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0}
-.spinner{width:48px;height:48px;border:4px solid #2d2d3a;border-top-color:#7c3aed;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:24px}
-@keyframes spin{to{transform:rotate(360deg)}}h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b}</style></head>
-<body><div class="spinner"></div><h2>Starting browser session…</h2><p>Claiming ECS task and connecting live browser</p></body></html>`
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;gap:0}
+.icon{font-size:40px;margin-bottom:20px}h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
+.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 55s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:92%}}
+.steps{margin-top:20px;display:flex;flex-direction:column;gap:6px;width:320px}
+.step{font-size:11px;color:#475569;display:flex;align-items:center;gap:8px}
+.dot{width:6px;height:6px;border-radius:50%;background:#334155;flex-shrink:0}
+.dot.done{background:#7c3aed}.dot.active{background:#a855f7;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}</style></head>
+<body><div class="icon">🎭</div><h2>Launching browser…</h2><p>Starting a dedicated Fargate task for your session</p>
+<div class="track"><div class="bar"></div></div>
+<div class="steps">
+<div class="step"><div class="dot done"></div>ECS task scheduled</div>
+<div class="step"><div class="dot active"></div>Pulling container image &amp; starting Chromium</div>
+<div class="step"><div class="dot"></div>noVNC ready — connecting live view</div>
+</div></body></html>`
 
     try {
       if (mode === 'plan') {
@@ -132,43 +141,25 @@ export default function AgentPage() {
         if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
           setMode('auto')
 
-          // Snapshot pre-session before any await (state reads in closures can be stale)
-          const snap = preSession
+          // Open popup immediately within user gesture — shows progress bar while task boots
+          const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+          const loadingUrl = URL.createObjectURL(loadingBlob)
+          const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
 
-          let resolvedSession: { novnc_url: string; task_arn: string; cluster: string; mcp_endpoint: string }
-          let popup: Window | null
+          setMessages(prev => [...prev, { role: 'agent', text: 'Launching dedicated browser… (~60s to start Fargate task)' }])
 
-          if (snap) {
-            // ── Pre-session ready — open directly to live browser (zero wait) ──
-            setPreSession(null)
-            popup = window.open(
-              `${snap.novnc_url}?autoconnect=true&resize=scale`,
-              'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0',
-            )
-            resolvedSession = snap
-            setNovncUrl(snap.novnc_url)
-            setMessages(prev => [...prev, { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
-          } else {
-            // ── Fallback: pre-session not ready yet — show loading page ──────
-            const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
-            const loadingUrl = URL.createObjectURL(loadingBlob)
-            popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+          // ── Step 1: RunTask + wait for RUNNING (~60s) ─────────────────────
+          const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
+          const resolvedSession = JSON.parse(sessionRaw)
+          if (resolvedSession.error) throw new Error(resolvedSession.error as string)
 
-            setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
-            const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
-            const sessionResult = JSON.parse(sessionRaw)
-            if (sessionResult.error) throw new Error(sessionResult.error as string)
-
-            resolvedSession = sessionResult
-            setNovncUrl(sessionResult.novnc_url as string)
-            URL.revokeObjectURL(loadingUrl)
-            if (popup) popup.location.href = `${sessionResult.novnc_url}?autoconnect=true&resize=scale`
-            setMessages(prev => [
-              ...prev.slice(0, -1),
-              { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
-            ])
-          }
-          void popup // suppress unused-var lint
+          URL.revokeObjectURL(loadingUrl)
+          setNovncUrl(resolvedSession.novnc_url as string)
+          if (popup) popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`
+          setMessages(prev => [
+            ...prev.slice(0, -1),
+            { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
+          ])
 
           // ── Step 2: run the test against the live session ─────────────────
           const raw = await callAgent({
@@ -189,9 +180,7 @@ export default function AgentPage() {
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
           ])
         } else {
-          // Generate / refine the plan — discard any stale pre-session
-          setPreSession(null)
-          preSessionLoadingRef.current = false
+          // Generate / refine the plan
           setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
           const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history }, sessionId)
           const result = JSON.parse(raw)
@@ -220,18 +209,6 @@ export default function AgentPage() {
           }
 
           setPlan(agentPlan)
-
-          // Fire start_session in background so the browser is ready before user says "yes"
-          if (!preSession && !preSessionLoadingRef.current) {
-            preSessionLoadingRef.current = true
-            callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
-              .then(raw => {
-                const result = JSON.parse(raw)
-                if (!result.error) setPreSession(result)
-              })
-              .catch(() => { /* silent — will fall back to on-demand start_session */ })
-              .finally(() => { preSessionLoadingRef.current = false })
-          }
 
           // Show confirmationMessage (what was agreed) + plan-ready prompt as separate messages
           const confirmMsg = agentPlan.confirmationMessage
