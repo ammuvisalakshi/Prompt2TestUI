@@ -394,7 +394,7 @@
   <div style="height:16px;"></div>
 
   <!-- ══════════════════════════════════════════════════════════
-       ROW 4 — PLAYWRIGHT MCP + NLB
+       ROW 4 — PLAYWRIGHT MCP (ON-DEMAND)
   ══════════════════════════════════════════════════════════ -->
   <div class="section-label">④ Playwright MCP — ECS Fargate (On-Demand per Session)</div>
   <div class="row">
@@ -451,12 +451,12 @@
             noVNC → <b>ip-B:6080</b>
           </div>
           <div class="sub-box" style="border-color:#475569;">
-            <div class="sub-box-title" style="color:#64748b;">Warm Service</div>
-            <div class="tag tag-gray">desiredCount: 0</div><br>
-            NLB still deployed<br>
-            (CDK managed)<br>
-            Not used for routing<br>
-            <span style="font-size:10px; color:#475569;">On-demand bypasses NLB</span>
+            <div class="sub-box-title" style="color:#64748b;">No Warm Pool</div>
+            <div class="tag tag-gray">0 always-on tasks</div><br>
+            No NLB (removed)<br>
+            No warm service<br>
+            No autoscaling policy<br>
+            <span style="font-size:10px; color:#475569;">Pure on-demand only</span>
           </div>
         </div>
         <div class="sub-box" style="margin-top:10px;">
@@ -539,9 +539,9 @@
         </div>
         <div class="sub-box" style="margin-top:8px;">
           <div class="sub-box-title">Other Services</div>
-          NLB: ~$18/mo (CDK infra)<br>
           AgentCore: per-invocation<br>
-          Amplify: ~$1/mo
+          Amplify: ~$1/mo<br>
+          NLB: $0 (removed)
         </div>
       </div>
     </div>
@@ -791,7 +791,7 @@
         <div class="sub-box" style="margin-top:8px;">
           <div class="sub-box-title">Prompt2TestPlaywrightMCPStack</div>
           <div class="tag tag-green">UPDATE_COMPLETE</div><br>
-          VPC · ECS Cluster · Fargate<br>NLB · Target Groups · Autoscaling<br>SSM params · CodePipeline
+          VPC · ECS Cluster · Task Definition<br>Security Group · SSM params · CodePipeline
         </div>
       </div>
     </div>
