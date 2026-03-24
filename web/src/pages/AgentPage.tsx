@@ -179,6 +179,7 @@ export default function AgentPage() {
             ...prev.slice(0, -1),
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
           ])
+          popup?.close()
         } else {
           // Generate / refine the plan
           setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
@@ -246,6 +247,7 @@ export default function AgentPage() {
           ...prev.slice(0, -1),
           { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
         ])
+        popup2?.close()
       }
     } catch (err: unknown) {
       setMessages(prev => [
