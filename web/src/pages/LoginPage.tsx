@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signIn } from '@aws-amplify/auth'
+import { signIn, signOut } from '@aws-amplify/auth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -14,6 +14,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
+      await signOut().catch(() => {})
       await signIn({ username: email, password })
       navigate('/agent')
     } catch (err: unknown) {
