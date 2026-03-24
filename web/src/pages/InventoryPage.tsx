@@ -50,7 +50,7 @@ export default function InventoryPage() {
         <div className="grid grid-cols-4 gap-3 mb-5">
           {[
             { label: 'Total TCs', value: filtered.length, color: 'text-slate-900' },
-            { label: 'Services', value: [...new Set(filtered.map(t => t.service))].length, color: 'text-[#0C7B8E]' },
+            { label: 'Services', value: [...new Set(filtered.map(t => t.service))].length, color: 'text-[#7C3AED]' },
             { label: 'Smoke tagged', value: smoke, color: 'text-green-700' },
             { label: failures > 0 ? 'Failures' : 'All passing', value: failures > 0 ? failures : '✓', color: failures > 0 ? 'text-red-700' : 'text-green-700' },
           ].map(s => (
@@ -66,7 +66,7 @@ export default function InventoryPage() {
           <div className="flex items-center px-4 py-3 border-b border-slate-100">
             <div className="text-[15px] font-bold text-slate-900">Test Cases — {env.toUpperCase()}</div>
             {env === 'dev' && (
-              <button className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#0C7B8E] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#0A6577]">
+              <button className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
                 + Author TC
               </button>
             )}

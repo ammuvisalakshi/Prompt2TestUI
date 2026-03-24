@@ -1,5 +1,5 @@
 const MEMBERS = [
-  { initials: 'JD', name: 'Jane D', email: 'jane@company.com', role: 'Admin', access: 'All · L1 config', color: '#0C7B8E' },
+  { initials: 'JD', name: 'Jane D', email: 'jane@company.com', role: 'Admin', access: 'All · L1 config', color: '#7C3AED' },
   { initials: 'MK', name: 'Mike K', email: 'mike@company.com', role: 'QA Lead', access: 'Promote · L2+L3 config', color: '#6B21A8' },
   { initials: 'SP', name: 'Sara P', email: 'sara@company.com', role: 'QA Lead', access: 'Promote · L2+L3 config', color: '#6B21A8' },
   { initials: 'AL', name: 'Alex L', email: 'alex@company.com', role: 'QA Engineer', access: 'Author · view inventory', color: '#166534' },
@@ -10,7 +10,7 @@ const MEMBERS = [
 ]
 
 const ROLE_COLORS: Record<string, string> = {
-  Admin: 'bg-[#E0F2F7] text-[#0C7B8E] border-[#0C7B8E]/30',
+  Admin: 'bg-[#EDE9FE] text-[#7C3AED] border-[#7C3AED]/30',
   'QA Lead': 'bg-purple-50 text-purple-800 border-purple-200',
   'QA Engineer': 'bg-green-50 text-green-800 border-green-200',
   Developer: 'bg-blue-50 text-blue-800 border-blue-200',
@@ -25,7 +25,7 @@ export default function MembersPage() {
             <div className="text-[17px] font-bold text-slate-900">Team Members</div>
             <div className="text-[13px] text-slate-400 mt-0.5">{MEMBERS.length} members · Cognito SSO</div>
           </div>
-          <button className="px-3.5 py-2 bg-[#0C7B8E] text-white rounded-lg text-[14px] font-medium cursor-pointer hover:bg-[#0A6577] flex items-center gap-1.5">
+          <button className="px-3.5 py-2 bg-[#7C3AED] text-white rounded-lg text-[14px] font-medium cursor-pointer hover:bg-[#5B21B6] flex items-center gap-1.5">
             + Invite member
           </button>
         </div>

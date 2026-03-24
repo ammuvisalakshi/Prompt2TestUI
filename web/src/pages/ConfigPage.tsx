@@ -25,7 +25,7 @@ export default function ConfigPage() {
             onClick={() => setEnv(e)}
             className={`px-4 py-1.5 rounded-t-lg text-[13px] font-semibold border border-b-0 cursor-pointer transition-colors ${
               env === e
-                ? 'text-[#0C7B8E] bg-[#F0F9FC] border-[#0C7B8E]'
+                ? 'text-[#7C3AED] bg-[#F5F3FF] border-[#7C3AED]'
                 : 'text-slate-400 bg-white border-slate-200 hover:text-slate-600'
             }`}
           >
@@ -43,7 +43,7 @@ export default function ConfigPage() {
               onClick={() => setTab(t)}
               className={`px-4 py-2 text-[14px] font-medium cursor-pointer border-b-2 -mb-px transition-colors capitalize ${
                 tab === t
-                  ? 'text-[#0C7B8E] border-[#0C7B8E]'
+                  ? 'text-[#7C3AED] border-[#7C3AED]'
                   : 'text-slate-400 border-transparent hover:text-slate-600'
               }`}
             >
@@ -65,13 +65,13 @@ export default function ConfigPage() {
                 <div key={f.label}>
                   <label className="block text-[13px] font-medium text-slate-600 mb-1">{f.label}</label>
                   <input
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] text-slate-700 outline-none focus:border-[#0C7B8E] transition-colors"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] text-slate-700 outline-none focus:border-[#7C3AED] transition-colors"
                     placeholder={f.placeholder}
                   />
                 </div>
               ))}
             </div>
-            <button className="mt-5 px-4 py-2 bg-[#0C7B8E] text-white rounded-lg text-[14px] font-medium cursor-pointer hover:bg-[#0A6577]">
+            <button className="mt-5 px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-[14px] font-medium cursor-pointer hover:bg-[#5B21B6]">
               Save to SSM
             </button>
           </div>
@@ -88,11 +88,11 @@ export default function ConfigPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[12px] font-medium text-slate-500 mb-1">Service URL</label>
-                    <input className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#0C7B8E]" placeholder={`https://${svc.toLowerCase()}.${env}.company.com`} />
+                    <input className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#7C3AED]" placeholder={`https://${svc.toLowerCase()}.${env}.company.com`} />
                   </div>
                   <div>
                     <label className="block text-[12px] font-medium text-slate-500 mb-1">Swagger URL</label>
-                    <input className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#0C7B8E]" placeholder={`https://${svc.toLowerCase()}.${env}.company.com/openapi.json`} />
+                    <input className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#7C3AED]" placeholder={`https://${svc.toLowerCase()}.${env}.company.com/openapi.json`} />
                   </div>
                 </div>
               </div>
@@ -105,7 +105,7 @@ export default function ConfigPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="text-[14px] font-semibold text-slate-600">Test accounts available in {env.toUpperCase()}</div>
               {env === 'dev' && (
-                <button className="px-3 py-1.5 bg-[#0C7B8E] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#0A6577]">
+                <button className="px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
                   + Add account
                 </button>
               )}
@@ -113,7 +113,7 @@ export default function ConfigPage() {
             <div className="space-y-3">
               {ACCOUNTS.filter(a => a.envs.includes(env)).map(acc => (
                 <div key={acc.id} className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#E0F2F7] text-[#0C7B8E] flex items-center justify-center text-[13px] font-bold flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-[#EDE9FE] text-[#7C3AED] flex items-center justify-center text-[13px] font-bold flex-shrink-0">
                     {acc.name.split(' ').map(w => w[0]).join('')}
                   </div>
                   <div>

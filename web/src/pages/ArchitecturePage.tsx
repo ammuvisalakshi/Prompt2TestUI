@@ -11,7 +11,7 @@ const PLATFORM_LAYERS = [
   },
   {
     n: '2', label: 'Orchestrator', sub: 'Zero LLM · zero tokens · runs forever',
-    color: '#0C7B8E', bg: '#F0F9FC',
+    color: '#7C3AED', bg: '#F5F3FF',
     points: ['Reads frozen plan and replays exactly — no decisions', 'Resolves {{variables}} from runtime state dictionary', 'Fetches large payloads from S3 by reference', 'Refreshes OAuth tokens in code · dispatches all accounts via SQS'],
   },
   {
@@ -48,7 +48,7 @@ export default function ArchitecturePage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-3 text-[14px] font-medium cursor-pointer border-b-2 -mb-px transition-colors ${
-              tab === t ? 'text-[#0C7B8E] border-[#0C7B8E]' : 'text-slate-400 border-transparent hover:text-slate-600'
+              tab === t ? 'text-[#7C3AED] border-[#7C3AED]' : 'text-slate-400 border-transparent hover:text-slate-600'
             }`}
           >
             {t}
@@ -110,7 +110,7 @@ export default function ArchitecturePage() {
                 ['Results stored', 'DynamoDB + OpenSearch'],
               ].map(([step, system], i) => (
                 <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-slate-100 last:border-b-0">
-                  <div className="w-6 h-6 rounded-full bg-[#E0F2F7] text-[#0C7B8E] flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i + 1}</div>
+                  <div className="w-6 h-6 rounded-full bg-[#EDE9FE] text-[#7C3AED] flex items-center justify-center text-[11px] font-bold flex-shrink-0">{i + 1}</div>
                   <div className="flex-1 text-[14px] font-medium text-slate-700">{step}</div>
                   <div className="text-[12px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{system}</div>
                 </div>
@@ -121,8 +121,8 @@ export default function ArchitecturePage() {
 
         {tab === 'Cost model' && (
           <div className="max-w-xl">
-            <div className="bg-[#F0F9FC] border border-[#0C7B8E] rounded-xl p-4 mb-4">
-              <div className="text-[15px] font-bold text-[#0C7B8E] mb-1">Key metric: ~1,850 tokens per TC authoring</div>
+            <div className="bg-[#F5F3FF] border border-[#7C3AED] rounded-xl p-4 mb-4">
+              <div className="text-[15px] font-bold text-[#7C3AED] mb-1">Key metric: ~1,850 tokens per TC authoring</div>
               <div className="text-[14px] text-slate-600">6-step workflow uses ~1,770 tokens — under 1% of 200k context window. Execution is zero-token forever.</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
