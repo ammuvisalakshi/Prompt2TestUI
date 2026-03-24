@@ -17,6 +17,12 @@ const BASE_FIELDS = [
 
 const SERVICES = ['Billing', 'Payment', 'Auth', 'User', 'Notification']
 
+const ACCOUNTS = [
+  { id: 'acme',  name: 'Acme Corp', plan: 'Enterprise', user: 'admin@acme.com',  envs: ['dev', 'qa', 'uat', 'prod'] },
+  { id: 'beta',  name: 'Beta Corp', plan: 'Starter',    user: 'admin@beta.com',  envs: ['dev', 'qa'] },
+  { id: 'corp3', name: 'Corp 3',    plan: 'Pro',         user: 'admin@corp3.com', envs: ['dev', 'qa', 'uat'] },
+]
+
 async function getSSMClient() {
   const session = await fetchAuthSession()
   return new SSMClient({ region: AWS_REGION, credentials: session.credentials })
@@ -26,7 +32,6 @@ async function loadParamsForPath(path: string): Promise<Record<string, string>> 
   const client = await getSSMClient()
   const result: Record<string, string> = {}
   let nextToken: string | undefined
-
   do {
     const cmd = new GetParametersByPathCommand({ Path: path, Recursive: false, NextToken: nextToken })
     const resp = await client.send(cmd)
@@ -36,7 +41,6 @@ async function loadParamsForPath(path: string): Promise<Record<string, string>> 
     }
     nextToken = resp.NextToken
   } while (nextToken)
-
   return result
 }
 
@@ -47,27 +51,28 @@ async function saveParam(name: string, value: string) {
 
 export default function ConfigPage() {
   const [env, setEnv] = useState<Env>('dev')
-  const [tab, setTab] = useState<'base' | 'services'>('base')
+  const [tab, setTab] = useState<'base' | 'services' | 'accounts'>('base')
 
   // Base config state
   const [baseValues, setBaseValues] = useState<Record<string, string>>({})
   const [baseLoading, setBaseLoading] = useState(false)
   const [baseSaving, setBaseSaving] = useState(false)
-  const [baseStatus, setBaseStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [baseStatus, setBaseStatus] = useState<{ type: 'idle' | 'saved' | 'error'; msg?: string }>({ type: 'idle' })
 
-  // Services state — keyed by service name
+  // Services state
   const [svcValues, setSvcValues] = useState<Record<string, Record<string, string>>>({})
   const [svcSaving, setSvcSaving] = useState<Record<string, boolean>>({})
-  const [svcStatus, setSvcStatus] = useState<Record<string, 'idle' | 'saved' | 'error'>>({})
+  const [svcStatus, setSvcStatus] = useState<Record<string, { type: 'idle' | 'saved' | 'error'; msg?: string }>>({})
 
   const loadBase = useCallback(async () => {
     setBaseLoading(true)
-    setBaseStatus('idle')
+    setBaseStatus({ type: 'idle' })
     try {
       const params = await loadParamsForPath(`${SSM_PREFIX}/${env}/base`)
       setBaseValues(params)
-    } catch {
+    } catch (e) {
       setBaseValues({})
+      console.error('Load base config failed:', e)
     } finally {
       setBaseLoading(false)
     }
@@ -80,27 +85,35 @@ export default function ConfigPage() {
         newVals[svc] = await loadParamsForPath(`${SSM_PREFIX}/${env}/services/${svc.toLowerCase()}`)
       }))
       setSvcValues(newVals)
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('Load services failed:', e)
+    }
   }, [env])
 
   useEffect(() => {
     if (tab === 'base') loadBase()
-    else loadServices()
+    else if (tab === 'services') loadServices()
   }, [env, tab, loadBase, loadServices])
 
   async function saveBase() {
     setBaseSaving(true)
-    setBaseStatus('idle')
+    setBaseStatus({ type: 'idle' })
     try {
+      // Only save fields that have a value
+      const toSave = BASE_FIELDS.filter(f => (baseValues[f.key] ?? '').trim())
+      if (toSave.length === 0) {
+        setBaseStatus({ type: 'error', msg: 'Enter at least one value to save' })
+        return
+      }
       await Promise.all(
-        BASE_FIELDS.map(f =>
-          saveParam(`${SSM_PREFIX}/${env}/base/${f.key}`, baseValues[f.key] ?? '')
-        )
+        toSave.map(f => saveParam(`${SSM_PREFIX}/${env}/base/${f.key}`, baseValues[f.key].trim()))
       )
-      setBaseStatus('saved')
-      setTimeout(() => setBaseStatus('idle'), 3000)
-    } catch {
-      setBaseStatus('error')
+      setBaseStatus({ type: 'saved' })
+      setTimeout(() => setBaseStatus({ type: 'idle' }), 3000)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setBaseStatus({ type: 'error', msg })
+      console.error('Save base config failed:', e)
     } finally {
       setBaseSaving(false)
     }
@@ -108,17 +121,23 @@ export default function ConfigPage() {
 
   async function saveService(svc: string) {
     setSvcSaving(p => ({ ...p, [svc]: true }))
-    setSvcStatus(p => ({ ...p, [svc]: 'idle' }))
+    setSvcStatus(p => ({ ...p, [svc]: { type: 'idle' } }))
     try {
       const vals = svcValues[svc] ?? {}
-      await Promise.all([
-        saveParam(`${SSM_PREFIX}/${env}/services/${svc.toLowerCase()}/URL`, vals['URL'] ?? ''),
-        saveParam(`${SSM_PREFIX}/${env}/services/${svc.toLowerCase()}/SWAGGER_URL`, vals['SWAGGER_URL'] ?? ''),
-      ])
-      setSvcStatus(p => ({ ...p, [svc]: 'saved' }))
-      setTimeout(() => setSvcStatus(p => ({ ...p, [svc]: 'idle' })), 3000)
-    } catch {
-      setSvcStatus(p => ({ ...p, [svc]: 'error' }))
+      const toSave: [string, string][] = []
+      if ((vals['URL'] ?? '').trim())         toSave.push([`${SSM_PREFIX}/${env}/services/${svc.toLowerCase()}/URL`, vals['URL'].trim()])
+      if ((vals['SWAGGER_URL'] ?? '').trim()) toSave.push([`${SSM_PREFIX}/${env}/services/${svc.toLowerCase()}/SWAGGER_URL`, vals['SWAGGER_URL'].trim()])
+      if (toSave.length === 0) {
+        setSvcStatus(p => ({ ...p, [svc]: { type: 'error', msg: 'Enter at least one value' } }))
+        return
+      }
+      await Promise.all(toSave.map(([name, val]) => saveParam(name, val)))
+      setSvcStatus(p => ({ ...p, [svc]: { type: 'saved' } }))
+      setTimeout(() => setSvcStatus(p => ({ ...p, [svc]: { type: 'idle' } })), 3000)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setSvcStatus(p => ({ ...p, [svc]: { type: 'error', msg } }))
+      console.error(`Save ${svc} failed:`, e)
     } finally {
       setSvcSaving(p => ({ ...p, [svc]: false }))
     }
@@ -146,7 +165,7 @@ export default function ConfigPage() {
       <div className="flex-1 overflow-y-auto p-5">
         {/* Sub tabs */}
         <div className="flex gap-1 mb-5 border-b border-slate-200">
-          {(['base', 'services'] as const).map(t => (
+          {(['base', 'services', 'accounts'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -156,11 +175,12 @@ export default function ConfigPage() {
                   : 'text-slate-400 border-transparent hover:text-slate-600'
               }`}
             >
-              {t === 'base' ? 'Base Config' : 'Services'}
+              {t === 'base' ? 'Base Config' : t === 'services' ? 'Services' : 'Test Accounts'}
             </button>
           ))}
         </div>
 
+        {/* ── Base Config ─────────────────────────────────────────────────── */}
         {tab === 'base' && (
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
             <div className="text-[16px] font-bold text-slate-900 mb-1">Base Config — {env.toUpperCase()}</div>
@@ -192,19 +212,20 @@ export default function ConfigPage() {
               >
                 {baseSaving ? 'Saving…' : 'Save to SSM'}
               </button>
-              {baseStatus === 'saved' && <span className="text-[13px] text-green-600 font-medium">✓ Saved</span>}
-              {baseStatus === 'error' && <span className="text-[13px] text-red-500 font-medium">✗ Save failed</span>}
+              {baseStatus.type === 'saved' && <span className="text-[13px] text-green-600 font-medium">✓ Saved</span>}
+              {baseStatus.type === 'error' && <span className="text-[13px] text-red-500 font-medium">✗ {baseStatus.msg}</span>}
             </div>
           </div>
         )}
 
+        {/* ── Services ────────────────────────────────────────────────────── */}
         {tab === 'services' && (
           <div className="space-y-3">
             {SERVICES.map(svc => (
               <div key={svc} className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-[15px] font-bold text-slate-900">{svc}</div>
-                  <span className="text-[11px] text-slate-400 font-mono">/prompt2test/config/{env}/services/{svc.toLowerCase()}/*</span>
+                  <span className="text-[11px] text-slate-400 font-mono">/…/services/{svc.toLowerCase()}/*</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
@@ -234,11 +255,39 @@ export default function ConfigPage() {
                   >
                     {svcSaving[svc] ? 'Saving…' : 'Save'}
                   </button>
-                  {svcStatus[svc] === 'saved' && <span className="text-[12px] text-green-600 font-medium">✓ Saved</span>}
-                  {svcStatus[svc] === 'error' && <span className="text-[12px] text-red-500 font-medium">✗ Save failed</span>}
+                  {svcStatus[svc]?.type === 'saved' && <span className="text-[12px] text-green-600 font-medium">✓ Saved</span>}
+                  {svcStatus[svc]?.type === 'error' && <span className="text-[12px] text-red-500 font-medium">✗ {svcStatus[svc].msg}</span>}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Test Accounts ────────────────────────────────────────────────── */}
+        {tab === 'accounts' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[14px] font-semibold text-slate-600">Test accounts available in {env.toUpperCase()}</div>
+              {env === 'dev' && (
+                <button className="px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
+                  + Add account
+                </button>
+              )}
+            </div>
+            <div className="space-y-3">
+              {ACCOUNTS.filter(a => a.envs.includes(env)).map(acc => (
+                <div key={acc.id} className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex items-center gap-4">
+                  <div className="w-9 h-9 rounded-lg bg-[#EDE9FE] text-[#7C3AED] flex items-center justify-center text-[13px] font-bold flex-shrink-0">
+                    {acc.name.split(' ').map(w => w[0]).join('')}
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-semibold text-slate-900">{acc.name}</div>
+                    <div className="text-[13px] text-slate-400">{acc.user}</div>
+                  </div>
+                  <span className="ml-auto text-[12px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-medium">{acc.plan}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
