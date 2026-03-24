@@ -116,6 +116,12 @@ export default function AgentPage() {
       .map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`)
       .join('\n')
 
+    const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0}
+.spinner{width:48px;height:48px;border:4px solid #2d2d3a;border-top-color:#7c3aed;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:24px}
+@keyframes spin{to{transform:rotate(360deg)}}h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b}</style></head>
+<body><div class="spinner"></div><h2>Starting browser session…</h2><p>Claiming ECS task and connecting live browser</p></body></html>`
+
     try {
       if (mode === 'plan') {
         // If a plan exists and user is confirming execution — run it
@@ -124,7 +130,9 @@ export default function AgentPage() {
 
           // Open popup immediately within user-gesture context (before any await)
           // so browsers don't block it as a popup.
-          const popup = window.open('about:blank', 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+          const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+          const loadingUrl = URL.createObjectURL(loadingBlob)
+          const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
 
           // ── Step 1: start browser session ────────────────────────────────
           setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
@@ -135,7 +143,8 @@ export default function AgentPage() {
           const novncUrl = sessionResult.novnc_url as string
           setNovncUrl(novncUrl)
 
-          // Navigate the already-open popup to the live browser
+          // Navigate the already-open popup to the live browser and free the blob URL
+          URL.revokeObjectURL(loadingUrl)
           if (popup) popup.location.href = `${novncUrl}?autoconnect=true&resize=scale`
 
           // ── Step 2: run the test against the live session ─────────────────
@@ -204,13 +213,16 @@ export default function AgentPage() {
           setMessages(prev => [...prev, { role: 'agent', text: 'Please generate a plan first in Plan mode.' }])
           return
         }
-        const popup2 = window.open('about:blank', 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+        const loadingBlob2 = new Blob([loadingHtml], { type: 'text/html' })
+        const loadingUrl2 = URL.createObjectURL(loadingBlob2)
+        const popup2 = window.open(loadingUrl2, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
         setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
         const sessionRaw2 = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
         const sessionResult2 = JSON.parse(sessionRaw2)
         if (sessionResult2.error) throw new Error(sessionResult2.error as string)
         const novncUrl2 = sessionResult2.novnc_url as string
         setNovncUrl(novncUrl2)
+        URL.revokeObjectURL(loadingUrl2)
         if (popup2) popup2.location.href = `${novncUrl2}?autoconnect=true&resize=scale`
         setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
         const raw = await callAgent({
