@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { fetchAuthSession, signOut } from '@aws-amplify/auth'
+import { fetchAuthSession, fetchUserAttributes, signOut } from '@aws-amplify/auth'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
 import { useNavigate } from 'react-router-dom'
 
@@ -92,11 +92,21 @@ export default function AgentPage() {
   const [novncUrl, setNovncUrl] = useState<string | null>(null)
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
+  const [userName, setUserName] = useState('')
+  const [userInitials, setUserInitials] = useState('?')
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
   }, [messages])
+
+  useEffect(() => {
+    fetchUserAttributes().then(attrs => {
+      const name = attrs.name || attrs.email?.split('@')[0] || ''
+      setUserName(name)
+      setUserInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
+    }).catch(() => {})
+  }, [])
 
   async function handleSignOut() {
     await signOut()
@@ -293,8 +303,8 @@ export default function AgentPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-[13px] text-slate-500">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white">JD</div>
-          <span>Jane D</span>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white">{userInitials}</div>
+          <span>{userName}</span>
           <span className="px-2 py-0.5 bg-green-50 border border-green-200 rounded-full text-green-700 text-[12px]">DEV</span>
           <button onClick={handleSignOut} className="text-[12px] text-slate-400 hover:text-slate-700 cursor-pointer ml-1">Sign out</button>
         </div>
@@ -308,7 +318,7 @@ export default function AgentPage() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div className="text-[12px] text-slate-400 mb-1">
-                  {msg.role === 'user' ? 'Jane D' : 'Prompt2Test'}
+                  {msg.role === 'user' ? (userName || 'You') : 'Prompt2Test'}
                 </div>
                 <div className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-[14px] leading-relaxed whitespace-pre-line ${
                   msg.role === 'user'
