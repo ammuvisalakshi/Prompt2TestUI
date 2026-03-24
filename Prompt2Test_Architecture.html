@@ -1,411 +1,806 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Prompt2Test – Architecture</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #f1f5f9;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      padding: 36px 24px 48px;
-    }
-    h1 { color: #1e293b; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-    p  { color: #94a3b8; font-size: 12px; margin-bottom: 24px; }
-    .card {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      overflow: hidden;
-    }
-    svg { display: block; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestPilot AI — Architecture Diagram</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f1117; color: #e2e8f0; }
+
+  .page { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+  h1 { font-size: 22px; font-weight: 700; color: #f0f4ff; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #64748b; margin-bottom: 32px; }
+
+  /* ── Section labels ── */
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 10px;
+  }
+
+  /* ── Row layout ── */
+  .row { display: flex; gap: 16px; margin-bottom: 16px; align-items: stretch; }
+
+  /* ── Cards ── */
+  .card {
+    border-radius: 10px; padding: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+  }
+  .card-title { font-size: 12px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+  .card-title .icon { font-size: 16px; }
+  .card-body { font-size: 11px; color: #94a3b8; line-height: 1.7; }
+  .card-body b { color: #cbd5e1; }
+
+  /* ── Color themes ── */
+  .theme-blue   { background: #0d1f3c; border-color: #1e40af44; }
+  .theme-purple { background: #160d30; border-color: #6d28d944; }
+  .theme-green  { background: #0a1f0a; border-color: #16a34a44; }
+  .theme-orange { background: #1f150a; border-color: #ea580c44; }
+  .theme-teal   { background: #031f1f; border-color: #0d948844; }
+  .theme-pink   { background: #1f0d1a; border-color: #db277744; }
+  .theme-gray   { background: #111827; border-color: #374151; }
+  .theme-dark   { background: #0c0f18; border-color: #1e293b; }
+
+  /* ── Tags / badges ── */
+  .tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 4px; margin: 2px 2px 2px 0;
+  }
+  .tag-blue   { background: #1e3a8a; color: #93c5fd; }
+  .tag-green  { background: #14532d; color: #86efac; }
+  .tag-orange { background: #7c2d12; color: #fdba74; }
+  .tag-purple { background: #3b0764; color: #d8b4fe; }
+  .tag-teal   { background: #134e4a; color: #5eead4; }
+  .tag-red    { background: #7f1d1d; color: #fca5a5; }
+  .tag-gray   { background: #1e293b; color: #94a3b8; }
+  .tag-yellow { background: #78350f; color: #fcd34d; }
+
+  /* ── Flow arrows ── */
+  .flow-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; margin: 8px 0;
+  }
+  .flow-box {
+    background: #1e293b; border: 1px solid #334155;
+    border-radius: 6px; padding: 6px 12px;
+    font-size: 11px; color: #cbd5e1; font-weight: 600;
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    font-size: 18px; color: #475569; padding: 0 4px; flex-shrink: 0;
+  }
+  .flow-arrow.blue   { color: #3b82f6; }
+  .flow-arrow.green  { color: #22c55e; }
+  .flow-arrow.orange { color: #f97316; }
+  .flow-arrow.purple { color: #a855f7; }
+  .flow-arrow.teal   { color: #14b8a6; }
+
+  /* ── Wide card ── */
+  .card.wide { flex: 1; }
+  .card.narrow { flex: 0 0 200px; }
+  .card.medium { flex: 0 0 280px; }
+
+  /* ── Pill list ── */
+  .pill-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: #1e293b; margin: 20px 0; }
+
+  /* ── Sub-box ── */
+  .sub-box {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 7px; padding: 10px 12px; margin-top: 8px;
+  }
+  .sub-box-title { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+
+  /* ── Scale badge ── */
+  .scale-badge {
+    position: absolute; top: 12px; right: 12px;
+    background: #065f46; color: #6ee7b7;
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    border: 1px solid #059669;
+  }
+
+  /* ── Grid 3 ── */
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+
+  /* ── Metric ── */
+  .metric { text-align: center; }
+  .metric .val { font-size: 20px; font-weight: 800; color: #f0f4ff; }
+  .metric .lbl { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+  /* ── Step list ── */
+  .step { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+  .step-num {
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+    background: #1e3a8a; color: #93c5fd;
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: 11px; color: #94a3b8; line-height: 1.5; padding-top: 1px; }
+  .step-text b { color: #cbd5e1; }
+
+  /* ── Warning box ── */
+  .warn-box {
+    background: #1c1208; border: 1px solid #92400e44;
+    border-radius: 7px; padding: 8px 12px; margin-top: 8px;
+    font-size: 11px; color: #fbbf24;
+  }
+
+  /* ── Cicd flow ── */
+  .cicd-step {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #94a3b8; padding: 4px 0;
+  }
+  .cicd-step .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Right-side legend ── */
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; margin-bottom: 5px; }
+  .legend-line { width: 28px; height: 2px; border-radius: 1px; }
+
+  .footer { text-align: center; font-size: 11px; color: #334155; margin-top: 32px; padding-top: 16px; border-top: 1px solid #1e293b; }
+</style>
 </head>
 <body>
-  <h1>Prompt2Test — AWS Architecture</h1>
-  <p>Amplify · Cognito · Bedrock AgentCore · Claude · ECS Warm Pool · Playwright MCP · noVNC</p>
-  <div class="card">
-  <svg viewBox="0 0 1440 740" width="1440" height="740" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <marker id="arr"   markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#94a3b8"/></marker>
-      <marker id="arr-p" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#7C3AED"/></marker>
-      <marker id="arr-o" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ea580c"/></marker>
-      <marker id="arr-g" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#16a34a"/></marker>
-      <marker id="arr-r" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#dc2626"/></marker>
-      <filter id="s"><feDropShadow dx="0" dy="1" stdDeviation="3" flood-color="#000" flood-opacity="0.07"/></filter>
-    </defs>
+<div class="page">
 
-    <rect width="1440" height="740" fill="#fff"/>
+  <h1>🧪 TestPilot AI — Complete Architecture</h1>
+  <p class="subtitle">UI Deployment · Agent Backend · Playwright MCP · Scaling · CI/CD</p>
 
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!-- CI / CD STRIP                                         -->
-    <!-- ══════════════════════════════════════════════════════ -->
-    <rect x="12" y="12" width="1416" height="82" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-    <text x="28" y="30" fill="#94a3b8" font-size="9" font-weight="700" letter-spacing="1.2" font-family="monospace">CI / CD</text>
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 1 — USERS + UI
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">① Users &amp; Frontend</div>
+  <div class="row">
 
-    <!-- ── Pipeline 1: Agent image ── -->
-    <text x="130" y="26" text-anchor="middle" fill="#64748b" font-size="8.5" font-style="italic">Agent pipeline</text>
-
-    <!-- GitHub -->
-    <rect x="28" y="32" width="60" height="48" rx="7" fill="#24292e" filter="url(#s)"/>
-    <text x="58" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">GitHub</text>
-    <text x="58" y="64" text-anchor="middle" fill="#94a3b8" font-size="8">repo push</text>
-
-    <line x1="88" y1="56" x2="106" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
-
-    <!-- CodePipeline Agent -->
-    <rect x="108" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
-    <text x="152" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">CodePipeline</text>
-    <text x="152" y="64" text-anchor="middle" fill="#fecaca" font-size="8">build · test · push</text>
-
-    <line x1="196" y1="56" x2="214" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
-
-    <!-- ECR Agent -->
-    <rect x="216" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
-    <text x="260" y="48" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">ECR</text>
-    <text x="260" y="60" text-anchor="middle" fill="#fecaca" font-size="8">prompt2test-agent</text>
-    <text x="260" y="72" text-anchor="middle" fill="#fecaa0" font-size="7.5">:latest</text>
-
-    <!-- ── Pipeline 2: MCP image ── -->
-    <line x1="316" y1="56" x2="340" y2="56" stroke="#e2e8f0" stroke-width="1.5"/>
-
-    <text x="500" y="26" text-anchor="middle" fill="#64748b" font-size="8.5" font-style="italic">playwright-mcp pipeline</text>
-
-    <!-- GitHub 2 -->
-    <rect x="348" y="32" width="60" height="48" rx="7" fill="#24292e" filter="url(#s)"/>
-    <text x="378" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">GitHub</text>
-    <text x="378" y="64" text-anchor="middle" fill="#94a3b8" font-size="8">repo push</text>
-
-    <line x1="408" y1="56" x2="426" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
-
-    <!-- CodePipeline MCP -->
-    <rect x="428" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
-    <text x="472" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">CodePipeline</text>
-    <text x="472" y="64" text-anchor="middle" fill="#fecaca" font-size="8">build · test · push</text>
-
-    <line x1="516" y1="56" x2="534" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
-
-    <!-- ECR MCP -->
-    <rect x="536" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
-    <text x="580" y="48" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">ECR</text>
-    <text x="580" y="60" text-anchor="middle" fill="#fecaca" font-size="8">playwright-mcp</text>
-    <text x="580" y="72" text-anchor="middle" fill="#fecaa0" font-size="7.5">:latest</text>
-
-    <!-- Amplify CI/CD -->
-    <line x1="636" y1="56" x2="658" y2="56" stroke="#e2e8f0" stroke-width="1.5"/>
-    <text x="810" y="26" text-anchor="middle" fill="#64748b" font-size="8.5" font-style="italic">Frontend pipeline</text>
-    <rect x="664" y="32" width="60" height="48" rx="7" fill="#24292e" filter="url(#s)"/>
-    <text x="694" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">GitHub</text>
-    <text x="694" y="64" text-anchor="middle" fill="#94a3b8" font-size="8">repo push</text>
-    <line x1="724" y1="56" x2="742" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
-    <rect x="744" y="32" width="132" height="48" rx="7" fill="#ea580c" filter="url(#s)"/>
-    <text x="810" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Amplify CI/CD</text>
-    <text x="810" y="64" text-anchor="middle" fill="#fff3e0" font-size="8">build · deploy · CDN invalidate</text>
-
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!-- AWS CLOUD BOUNDARY                                    -->
-    <!-- ══════════════════════════════════════════════════════ -->
-    <rect x="12" y="102" width="1416" height="624" rx="12" fill="#fafbff" stroke="#ddd6fe" stroke-width="1.2" stroke-dasharray="7,5"/>
-    <text x="30" y="120" fill="#a78bfa" font-size="9" font-weight="700" letter-spacing="1" font-family="monospace">AWS  us-east-1</text>
-
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!-- RUNTIME BOXES                                         -->
-    <!-- ══════════════════════════════════════════════════════ -->
-
-    <!-- User -->
-    <g filter="url(#s)">
-      <rect x="28" y="232" width="118" height="110" rx="10" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
-      <rect x="28" y="232" width="118" height="24" rx="10" fill="#334155"/>
-      <rect x="28" y="244" width="118" height="12" fill="#334155"/>
-      <text x="87" y="249" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">User Browser</text>
-      <text x="87" y="276" text-anchor="middle" font-size="22">👤</text>
-      <text x="87" y="300" text-anchor="middle" fill="#64748b" font-size="9">Chrome / Safari</text>
-      <text x="87" y="314" text-anchor="middle" fill="#94a3b8" font-size="8">Prompt2Test React SPA</text>
-      <text x="87" y="328" text-anchor="middle" fill="#94a3b8" font-size="8">Plan + Automate + Popup</text>
-    </g>
+    <!-- Users -->
+    <div class="card theme-gray narrow">
+      <div class="card-title"><span class="icon">👥</span> Users</div>
+      <div class="card-body">
+        <div class="sub-box">
+          <div class="sub-box-title">5 Teams</div>
+          4 members each<br>
+          <b>~20 concurrent users</b>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="tag tag-blue">QA Engineers</div>
+          <div class="tag tag-gray">Testers</div>
+        </div>
+        <div style="margin-top:8px; font-size:10px; color:#475569;">
+          Browser → HTTPS
+        </div>
+      </div>
+    </div>
 
     <!-- Amplify -->
-    <g filter="url(#s)">
-      <rect x="200" y="160" width="172" height="118" rx="10" fill="#fff" stroke="#fed7aa" stroke-width="1.5"/>
-      <rect x="200" y="160" width="172" height="24" rx="10" fill="#ea580c"/>
-      <rect x="200" y="172" width="172" height="12" fill="#ea580c"/>
-      <text x="286" y="177" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Amplify Hosting</text>
-      <text x="286" y="204" text-anchor="middle" fill="#1e293b" font-size="10" font-weight="600">React SPA</text>
-      <text x="286" y="218" text-anchor="middle" fill="#64748b" font-size="9">React 18 · TypeScript · Vite</text>
-      <text x="286" y="232" text-anchor="middle" fill="#64748b" font-size="9">Tailwind CSS · Amplify Auth</text>
-      <text x="286" y="248" text-anchor="middle" fill="#94a3b8" font-size="8">CloudFront + S3 (managed)</text>
-      <text x="286" y="262" text-anchor="middle" fill="#94a3b8" font-size="7.5">d1c90tgy4nfi4n.cloudfront.net</text>
-    </g>
+    <div class="card theme-blue wide">
+      <div class="card-title"><span class="icon">🌐</span> AWS Amplify — React UI</div>
+      <div class="card-body">
+        <div class="grid2">
+          <div class="sub-box">
+            <div class="sub-box-title">Hosting</div>
+            <div class="tag tag-blue">Amplify Gen 1</div><br>
+            Global CDN (CloudFront)<br>
+            Auto HTTPS / SSL<br>
+            Branch: <b>master</b><br>
+            URL: <b>dzjt4ryqd68ry.amplifyapp.com</b>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">CI/CD</div>
+            <div class="tag tag-green">Auto-deploy</div><br>
+            GitHub push → Amplify Job<br>
+            Build: <b>npm run build</b><br>
+            ~2 min deploy time
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">Key Pages</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div class="tag tag-gray">LoginPage</div>
+            <div class="tag tag-gray">AgentPage</div>
+            <div class="tag tag-gray">noVNC Popup</div>
+          </div>
+          <div style="margin-top:6px; font-size:10px; color:#64748b;">
+            AgentPage: submits prompt → receives plan → user confirms → opens noVNC popup → streams test output
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <!-- Cognito chip -->
-    <g filter="url(#s)">
-      <rect x="200" y="320" width="172" height="62" rx="8" fill="#fff" stroke="#fecaca" stroke-width="1.5"/>
-      <rect x="200" y="320" width="172" height="22" rx="8" fill="#dc2626"/>
-      <rect x="200" y="332" width="172" height="10" fill="#dc2626"/>
-      <text x="286" y="337" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Amazon Cognito</text>
-      <text x="286" y="357" text-anchor="middle" fill="#1e293b" font-size="9">User Pool · OAuth2 · JWT</text>
-      <text x="286" y="371" text-anchor="middle" fill="#94a3b8" font-size="8">Amplify Auth SDK  ·  signIn / signOut</text>
-    </g>
+    <!-- Cognito -->
+    <div class="card theme-purple medium">
+      <div class="card-title"><span class="icon">🔐</span> Amazon Cognito</div>
+      <div class="card-body">
+        <div class="sub-box">
+          <div class="sub-box-title">User Pool</div>
+          <div class="tag tag-purple">us-east-1_BI4xQ9MQb</div><br>
+          Email/password auth<br>
+          JWT access tokens
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Identity Pool</div>
+          Federated identities<br>
+          Grants temp AWS creds<br>
+          <b>Calls AgentCore API</b>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Client</div>
+          <div class="tag tag-gray">1bvrafv6vd7vtue66cmk6f3ouk</div>
+        </div>
+      </div>
+    </div>
 
-    <!-- AgentCore -->
-    <g filter="url(#s)">
-      <rect x="432" y="128" width="232" height="176" rx="10" fill="#fff" stroke="#ddd6fe" stroke-width="2"/>
-      <rect x="432" y="128" width="232" height="26" rx="10" fill="#5B21B6"/>
-      <rect x="432" y="142" width="232" height="12" fill="#5B21B6"/>
-      <text x="548" y="147" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Bedrock AgentCore Runtime</text>
-      <text x="548" y="178" text-anchor="middle" fill="#1e293b" font-size="10" font-weight="600">Prompt2Test Agent</text>
-      <text x="548" y="193" text-anchor="middle" fill="#64748b" font-size="9">Python 3.12 · AWS Strands SDK</text>
-      <rect x="448" y="202" width="200" height="46" rx="6" fill="#f5f3ff"/>
-      <text x="548" y="218" text-anchor="middle" fill="#5B21B6" font-size="8.5" font-weight="600">plan( )  ·  start_session( )  ·  automate( )</text>
-      <text x="548" y="232" text-anchor="middle" fill="#7C3AED" font-size="8">POST /invocations  ·  port 8080</text>
-      <text x="548" y="246" text-anchor="middle" fill="#94a3b8" font-size="8">ECS: RunTask · ListTasks · StopTask</text>
-      <text x="548" y="260" text-anchor="middle" fill="#94a3b8" font-size="8">Prompt2TestAgent-YTVbD4GrTi</text>
-      <text x="548" y="275" text-anchor="middle" fill="#94a3b8" font-size="7.5">prompt2test-agent:latest  (pulled from ECR)</text>
-      <text x="548" y="290" text-anchor="middle" fill="#94a3b8" font-size="7.5">image refreshed on each deploy</text>
-    </g>
-
-    <!-- Bedrock -->
-    <g filter="url(#s)">
-      <rect x="730" y="148" width="198" height="142" rx="10" fill="#fff" stroke="#ddd6fe" stroke-width="1.5"/>
-      <rect x="730" y="148" width="198" height="26" rx="10" fill="#7C3AED"/>
-      <rect x="730" y="162" width="198" height="12" fill="#7C3AED"/>
-      <text x="829" y="167" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Amazon Bedrock</text>
-      <text x="829" y="196" text-anchor="middle" fill="#1e293b" font-size="10" font-weight="600">Claude Sonnet 4.5</text>
-      <text x="829" y="211" text-anchor="middle" fill="#64748b" font-size="9">Converse / ConverseStream API</text>
-      <rect x="746" y="220" width="166" height="28" rx="5" fill="#f5f3ff"/>
-      <text x="829" y="233" text-anchor="middle" fill="#5B21B6" font-size="8.5">us.anthropic.claude-sonnet-4-5</text>
-      <text x="829" y="244" text-anchor="middle" fill="#7C3AED" font-size="8">cross-region inference profile</text>
-      <text x="829" y="263" text-anchor="middle" fill="#64748b" font-size="9">plan: JSON test plan generation</text>
-      <text x="829" y="277" text-anchor="middle" fill="#64748b" font-size="9">automate: drives MCP tool loop</text>
-    </g>
-
-    <!-- SSM chip -->
-    <g filter="url(#s)">
-      <rect x="432" y="328" width="232" height="60" rx="8" fill="#fff" stroke="#fecaca" stroke-width="1.5"/>
-      <rect x="432" y="328" width="232" height="22" rx="8" fill="#dc2626"/>
-      <rect x="432" y="340" width="232" height="10" fill="#dc2626"/>
-      <text x="548" y="345" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">SSM Parameter Store</text>
-      <text x="548" y="364" text-anchor="middle" fill="#64748b" font-size="8.5">cluster-name · task-definition · subnet-ids · security-group-id</text>
-      <text x="548" y="378" text-anchor="middle" fill="#94a3b8" font-size="8">read by agent at runtime via GetParameter API</text>
-    </g>
-
-    <!-- ── ECS WARM POOL GROUP ── -->
-    <rect x="200" y="412" width="830" height="218" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" stroke-dasharray="6,4"/>
-    <rect x="218" y="422" width="344" height="20" rx="5" fill="#16a34a"/>
-    <text x="390" y="436" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">ECS FARGATE SERVICE  ·  desiredCount=1  (warm pool — always-on)</text>
-    <text x="730" y="436" fill="#64748b" font-size="8.5" font-style="italic">ARM64 · 2 vCPU / 4 GB · assignPublicIp=ENABLED · BROWSER_MODE=headed</text>
-
-    <!-- playwright-mcp box -->
-    <g filter="url(#s)">
-      <rect x="218" y="446" width="200" height="172" rx="10" fill="#fff" stroke="#fed7aa" stroke-width="1.5"/>
-      <rect x="218" y="446" width="200" height="24" rx="10" fill="#ea580c"/>
-      <rect x="218" y="458" width="200" height="12" fill="#ea580c"/>
-      <text x="318" y="463" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">playwright-mcp</text>
-      <text x="318" y="491" text-anchor="middle" fill="#1e293b" font-size="9" font-weight="600">MCP Server over SSE</text>
-      <text x="318" y="506" text-anchor="middle" fill="#64748b" font-size="8.5">port 3000  ·  0.0.0.0</text>
-      <text x="318" y="520" text-anchor="middle" fill="#64748b" font-size="8.5">--allowed-origins "*"</text>
-      <text x="318" y="534" text-anchor="middle" fill="#94a3b8" font-size="8">navigate · click · fill · assert</text>
-      <text x="318" y="547" text-anchor="middle" fill="#94a3b8" font-size="8">screenshot · get_text · snapshot</text>
-      <text x="318" y="562" text-anchor="middle" fill="#94a3b8" font-size="8">controls Chromium on Xvfb :99</text>
-      <text x="318" y="577" text-anchor="middle" fill="#94a3b8" font-size="7.5">playwright-mcp:latest  (pulled from ECR)</text>
-      <text x="318" y="590" text-anchor="middle" fill="#94a3b8" font-size="7.5">image refreshed on each deploy</text>
-    </g>
-
-    <!-- noVNC box -->
-    <g filter="url(#s)">
-      <rect x="438" y="446" width="200" height="172" rx="10" fill="#fff" stroke="#fed7aa" stroke-width="1.5"/>
-      <rect x="438" y="446" width="200" height="24" rx="10" fill="#ea580c"/>
-      <rect x="438" y="458" width="200" height="12" fill="#ea580c"/>
-      <text x="538" y="463" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Chromium + x11vnc + noVNC</text>
-      <text x="538" y="491" text-anchor="middle" fill="#1e293b" font-size="9" font-weight="600">Headed Browser + Live Stream</text>
-      <text x="538" y="506" text-anchor="middle" fill="#64748b" font-size="8.5">Xvfb :99  ·  DISPLAY=:99</text>
-      <text x="538" y="520" text-anchor="middle" fill="#64748b" font-size="8.5">x11vnc captures display</text>
-      <text x="538" y="534" text-anchor="middle" fill="#64748b" font-size="8.5">noVNC / websockify  port 6080</text>
-      <text x="538" y="548" text-anchor="middle" fill="#94a3b8" font-size="8">streams browser over WebSocket</text>
-      <text x="538" y="562" text-anchor="middle" fill="#94a3b8" font-size="8">user sees live test in popup</text>
-    </g>
-
-    <!-- ECS lifecycle note -->
-    <text x="700" y="632" text-anchor="middle" fill="#16a34a" font-size="8.5">Lifecycle: start_session claims warm task via ListTasks → automate connects MCP → test done → StopTask → ECS Service auto-replaces</text>
-
-    <!-- User Popup -->
-    <g filter="url(#s)">
-      <rect x="678" y="450" width="148" height="88" rx="10" fill="#fff" stroke="#ddd6fe" stroke-width="1.5"/>
-      <rect x="678" y="450" width="148" height="24" rx="10" fill="#5B21B6"/>
-      <rect x="678" y="462" width="148" height="12" fill="#5B21B6"/>
-      <text x="752" y="467" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">noVNC Popup</text>
-      <text x="752" y="492" text-anchor="middle" fill="#1e293b" font-size="9" font-weight="600">Live Browser View</text>
-      <text x="752" y="506" text-anchor="middle" fill="#64748b" font-size="8.5">direct  IP:6080</text>
-      <text x="752" y="520" text-anchor="middle" fill="#94a3b8" font-size="8">autoconnect · resize=scale</text>
-    </g>
-
-    <!-- CloudWatch chip -->
-    <g filter="url(#s)">
-      <rect x="678" y="554" width="148" height="52" rx="8" fill="#fff" stroke="#fbcfe8" stroke-width="1.5"/>
-      <rect x="678" y="554" width="148" height="20" rx="8" fill="#be185d"/>
-      <rect x="678" y="564" width="148" height="10" fill="#be185d"/>
-      <text x="752" y="569" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">CloudWatch Logs</text>
-      <text x="752" y="585" text-anchor="middle" fill="#64748b" font-size="8.5">ECS task logs · AgentCore logs</text>
-      <text x="752" y="597" text-anchor="middle" fill="#94a3b8" font-size="8">/aws/ecs/prompt2test-*</text>
-    </g>
-
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!-- DEPLOY ARROWS (ECR → runtime targets)                 -->
-    <!-- ══════════════════════════════════════════════════════ -->
-
-    <!-- ECR Agent → AgentCore (deploy) -->
-    <path d="M 304 80 Q 304 106 548 126" fill="none" stroke="#475569" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#arr)"/>
-    <text x="390" y="100" fill="#475569" font-size="8" font-style="italic">deploys container</text>
-
-    <!-- ECR MCP → ECS playwright-mcp (deploy) -->
-    <path d="M 580 80 Q 580 106 378 410" fill="none" stroke="#475569" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#arr)"/>
-    <text x="520" y="105" fill="#475569" font-size="8" font-style="italic">deploys container</text>
-
-    <!-- Amplify CI/CD → Amplify Hosting (deploy) -->
-    <path d="M 810 80 Q 810 106 360 158" fill="none" stroke="#475569" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#arr)"/>
-    <text x="620" y="108" fill="#475569" font-size="8" font-style="italic">deploys React build</text>
-
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!-- RUNTIME FLOW ARROWS                                   -->
-    <!-- ══════════════════════════════════════════════════════ -->
-
-    <!-- ① User → Amplify -->
-    <path d="M 146 262 L 198 230" fill="none" stroke="#ea580c" stroke-width="1.8" marker-end="url(#arr-o)"/>
-    <text x="148" y="242" fill="#ea580c" font-size="9" font-weight="700">① HTTPS</text>
-
-    <!-- ② Amplify → User (serves app, dashed back) -->
-    <path d="M 198 248 L 146 272" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arr)"/>
-
-    <!-- ③ User → Cognito -->
-    <path d="M 146 310 L 198 350" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr-r)"/>
-    <text x="128" y="335" fill="#dc2626" font-size="9" font-weight="700">③ auth</text>
-
-    <!-- Amplify ↔ Cognito -->
-    <line x1="286" y1="278" x2="286" y2="318" stroke="#e2e8f0" stroke-width="1.2" marker-end="url(#arr)"/>
-    <text x="294" y="302" fill="#94a3b8" font-size="7.5">Amplify Auth</text>
-
-    <!-- ④ Amplify → AgentCore -->
-    <path d="M 372 220 L 430 210" fill="none" stroke="#7C3AED" stroke-width="2" marker-end="url(#arr-p)"/>
-    <text x="385" y="208" fill="#7C3AED" font-size="9" font-weight="700">④ InvokeAgentRuntime</text>
-
-    <!-- ⑤ AgentCore ↔ Bedrock -->
-    <line x1="664" y1="228" x2="728" y2="228" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arr-p)"/>
-    <text x="696" y="220" text-anchor="middle" fill="#7C3AED" font-size="9" font-weight="700">⑤ LLM API</text>
-    <line x1="728" y1="244" x2="664" y2="244" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr)"/>
-
-    <!-- ⑥ AgentCore → SSM -->
-    <line x1="548" y1="304" x2="548" y2="326" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr-r)"/>
-    <text x="556" y="320" fill="#dc2626" font-size="8.5">⑥ GetParameter</text>
-
-    <!-- ⑦ AgentCore → ECS start_session -->
-    <path d="M 498 304 L 346 410" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#arr-g)"/>
-    <text x="390" y="358" fill="#16a34a" font-size="9" font-weight="700">⑦ start_session</text>
-    <text x="382" y="370" fill="#16a34a" font-size="8">ListTasks → public IP</text>
-
-    <!-- ⑧ AgentCore → playwright-mcp automate -->
-    <path d="M 548 304 L 400 444" fill="none" stroke="#ea580c" stroke-width="1.8" marker-end="url(#arr-o)"/>
-    <text x="506" y="380" fill="#ea580c" font-size="9" font-weight="700">⑧ automate  IP:3000/sse</text>
-
-    <!-- playwright-mcp → noVNC (internal) -->
-    <line x1="418" y1="534" x2="436" y2="534" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr)"/>
-    <text x="427" y="527" text-anchor="middle" fill="#94a3b8" font-size="7.5">VNC</text>
-
-    <!-- ⑨ noVNC → Popup -->
-    <line x1="638" y1="490" x2="676" y2="490" stroke="#5B21B6" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr-p)"/>
-    <text x="657" y="483" text-anchor="middle" fill="#5B21B6" font-size="8.5" font-weight="700">⑨ live  IP:6080</text>
-
-    <!-- ⑩ AgentCore → StopTask (dashed) -->
-    <path d="M 630 255 Q 750 255 738 448" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
-    <text x="720" y="252" fill="#94a3b8" font-size="8">⑩ StopTask</text>
-
-    <!-- ECS → CloudWatch -->
-    <line x1="752" y1="540" x2="752" y2="552" stroke="#be185d" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr)"/>
-
-    <!-- ══════════════════════════════════════════════════════ -->
-    <!-- LEGEND                                                -->
-    <!-- ══════════════════════════════════════════════════════ -->
-    <rect x="1014" y="112" width="412" height="590" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-    <text x="1220" y="135" text-anchor="middle" fill="#1e293b" font-size="12" font-weight="700">Request Flow</text>
-
-    <!-- Deploy section -->
-    <rect x="1028" y="146" width="384" height="76" rx="7" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
-    <text x="1044" y="161" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.5">DEPLOY  (triggered on GitHub push)</text>
-    <line x1="1044" y1="174" x2="1064" y2="174" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,2"/>
-    <text x="1072" y="178" fill="#475569" font-size="9">ECR agent image → AgentCore container</text>
-    <line x1="1044" y1="191" x2="1064" y2="191" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,2"/>
-    <text x="1072" y="195" fill="#475569" font-size="9">ECR mcp image → ECS rolling deploy</text>
-    <line x1="1044" y1="208" x2="1064" y2="208" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="4,2"/>
-    <text x="1072" y="212" fill="#475569" font-size="9">React build → Amplify CDN deploy</text>
-
-    <!-- Runtime section -->
-    <text x="1044" y="242" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.5">RUNTIME FLOW</text>
-
-    <line x1="1044" y1="262" x2="1064" y2="262" stroke="#ea580c" stroke-width="2"/>
-    <circle cx="1034" cy="262" r="8" fill="#ea580c"/>
-    <text x="1034" y="266" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">①</text>
-    <text x="1072" y="258" fill="#1e293b" font-size="9" font-weight="600">HTTPS → Amplify Hosting</text>
-    <text x="1072" y="270" fill="#64748b" font-size="8">load React app via CloudFront</text>
-
-    <circle cx="1034" cy="292" r="8" fill="#dc2626"/>
-    <text x="1034" y="296" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">③</text>
-    <text x="1072" y="288" fill="#1e293b" font-size="9" font-weight="600">OAuth2 login → Cognito</text>
-    <text x="1072" y="300" fill="#64748b" font-size="8">get JWT · Amplify Auth SDK</text>
-
-    <circle cx="1034" cy="322" r="8" fill="#7C3AED"/>
-    <text x="1034" y="326" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">④</text>
-    <text x="1072" y="318" fill="#1e293b" font-size="9" font-weight="600">InvokeAgentRuntime → AgentCore</text>
-    <text x="1072" y="330" fill="#64748b" font-size="8">mode: plan / start_session / automate</text>
-
-    <circle cx="1034" cy="352" r="8" fill="#7C3AED"/>
-    <text x="1034" y="356" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑤</text>
-    <text x="1072" y="348" fill="#1e293b" font-size="9" font-weight="600">LLM calls → Bedrock Claude</text>
-    <text x="1072" y="360" fill="#64748b" font-size="8">generate plan or drive MCP tool loop</text>
-
-    <circle cx="1034" cy="382" r="8" fill="#dc2626"/>
-    <text x="1034" y="386" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑥</text>
-    <text x="1072" y="378" fill="#1e293b" font-size="9" font-weight="600">GetParameter → SSM</text>
-    <text x="1072" y="390" fill="#64748b" font-size="8">read cluster / subnet / security-group</text>
-
-    <circle cx="1034" cy="412" r="8" fill="#16a34a"/>
-    <text x="1034" y="416" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑦</text>
-    <text x="1072" y="408" fill="#1e293b" font-size="9" font-weight="600">start_session → claim warm ECS task</text>
-    <text x="1072" y="420" fill="#64748b" font-size="8">ListTasks → get public IP → return noVNC URL</text>
-
-    <circle cx="1034" cy="442" r="8" fill="#ea580c"/>
-    <text x="1034" y="446" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑧</text>
-    <text x="1072" y="438" fill="#1e293b" font-size="9" font-weight="600">automate → playwright-mcp SSE</text>
-    <text x="1072" y="450" fill="#64748b" font-size="8">connect IP:3000/sse · execute test steps</text>
-
-    <circle cx="1034" cy="472" r="8" fill="#5B21B6"/>
-    <text x="1034" y="476" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑨</text>
-    <text x="1072" y="468" fill="#1e293b" font-size="9" font-weight="600">noVNC live stream → popup</text>
-    <text x="1072" y="480" fill="#64748b" font-size="8">direct IP:6080 · watch test run live</text>
-
-    <circle cx="1034" cy="502" r="8" fill="#94a3b8"/>
-    <text x="1034" y="506" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑩</text>
-    <text x="1072" y="498" fill="#1e293b" font-size="9" font-weight="600">StopTask → test done</text>
-    <text x="1072" y="510" fill="#64748b" font-size="8">ECS Service auto-replaces warm task</text>
-
-    <!-- Service colors key -->
-    <rect x="1028" y="526" width="384" height="156" rx="7" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
-    <text x="1044" y="542" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.5">SERVICE COLORS</text>
-    <rect x="1044" y="550" width="12" height="12" rx="2" fill="#24292e"/><text x="1062" y="561" fill="#475569" font-size="8.5">GitHub — source control</text>
-    <rect x="1044" y="568" width="12" height="12" rx="2" fill="#C7131F"/><text x="1062" y="579" fill="#475569" font-size="8.5">CodePipeline / ECR — CI/CD &amp; registry</text>
-    <rect x="1044" y="586" width="12" height="12" rx="2" fill="#ea580c"/><text x="1062" y="597" fill="#475569" font-size="8.5">Amplify / ECS — hosting &amp; compute</text>
-    <rect x="1044" y="604" width="12" height="12" rx="2" fill="#5B21B6"/><text x="1062" y="615" fill="#475569" font-size="8.5">AgentCore — AI runtime</text>
-    <rect x="1044" y="622" width="12" height="12" rx="2" fill="#7C3AED"/><text x="1062" y="633" fill="#475569" font-size="8.5">Bedrock — LLM API</text>
-    <rect x="1044" y="640" width="12" height="12" rx="2" fill="#dc2626"/><text x="1062" y="651" fill="#475569" font-size="8.5">Cognito / SSM — auth &amp; config</text>
-    <rect x="1044" y="658" width="12" height="12" rx="2" fill="#be185d"/><text x="1062" y="669" fill="#475569" font-size="8.5">CloudWatch — observability</text>
-
-    <!-- Footer -->
-    <text x="600" y="728" text-anchor="middle" fill="#cbd5e1" font-size="9" font-family="monospace">AWS us-east-1  ·  account 590183962483  ·  d1c90tgy4nfi4n.cloudfront.net</text>
-  </svg>
   </div>
+
+  <!-- Flow arrow row 1→2 -->
+  <div class="flow-row">
+    <div class="flow-box">React (Amplify)</div>
+    <div class="flow-arrow blue">──── HTTPS / Bedrock AgentCore SDK ────▶</div>
+    <div class="flow-box">Bedrock AgentCore Endpoint</div>
+    <div class="flow-arrow blue">────▶</div>
+    <div class="flow-box">Agent Container</div>
+  </div>
+
+  <div style="height:16px;"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 2 — AGENT BACKEND
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">② Agent Backend (Bedrock AgentCore)</div>
+  <div class="row">
+
+    <!-- AgentCore Runtime -->
+    <div class="card theme-orange wide">
+      <div class="scale-badge">Managed Scale</div>
+      <div class="card-title"><span class="icon">🤖</span> AWS Bedrock AgentCore</div>
+      <div class="card-body">
+        <div class="grid3">
+          <div class="sub-box">
+            <div class="sub-box-title">Runtime</div>
+            ID: <b>Prompt2TestAgent-YTVbD4GrTi</b><br>
+            Version: <b>37</b> (current)<br>
+            Status: <div class="tag tag-green">READY</div><br>
+            Network: <b>PUBLIC</b>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Container</div>
+            ECR: <b>prompt2test-agent</b><br>
+            Base: <b>Python 3.12</b><br>
+            Framework: <b>Strands Agents</b><br>
+            Port: 8080 (internal)
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">LLM</div>
+            <div class="tag tag-purple">Claude Sonnet 4.5</div><br>
+            <b>us.anthropic.claude-sonnet-</b><br>
+            <b>4-5-20250929-v1:0</b><br>
+            Cross-region inference
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">Agent Modes (main.py)</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div class="tag tag-orange">plan — generate test plan from prompt</div>
+            <div class="tag tag-blue">start_session — RunTask → poll RUNNING → get public IP via ENI</div>
+            <div class="tag tag-teal">automate — run Playwright test via MCP tools → StopTask</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IAM -->
+    <div class="card theme-gray narrow">
+      <div class="card-title"><span class="icon">🔑</span> IAM Role</div>
+      <div class="card-body">
+        <b>prompt2test-agentcore-role</b>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Permissions</div>
+          <div class="tag tag-orange">bedrock:InvokeModel</div>
+          <div class="tag tag-orange">bedrock:ConverseStream</div>
+          <div class="tag tag-blue">ssm:GetParameter</div>
+          <div class="tag tag-green">ecs:RunTask · DescribeTasks · StopTask</div>
+          <div class="tag tag-green">ec2:DescribeNetworkInterfaces</div>
+          <div class="tag tag-green">iam:PassRole (task execution role)</div>
+          <div class="tag tag-gray">ecr:GetAuthToken</div>
+          <div class="tag tag-gray">logs:*</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 3 — SSM + FLOW
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">③ Session Resolution (SSM Parameter Store)</div>
+  <div class="row">
+
+    <div class="card theme-teal wide">
+      <div class="card-title"><span class="icon">🗄️</span> AWS Systems Manager — Parameter Store</div>
+      <div class="card-body">
+        <div class="grid3">
+          <div class="sub-box">
+            <div class="sub-box-title">ECS Config <span class="tag tag-green">KEY</span></div>
+            <code style="font-size:10px; color:#5eead4;">/prompt2test/playwright/cluster-name</code><br>
+            <code style="font-size:10px; color:#5eead4;">/prompt2test/playwright/task-definition-family</code><br>
+            <code style="font-size:10px; color:#5eead4;">/prompt2test/playwright/subnet-ids</code><br>
+            <code style="font-size:10px; color:#5eead4;">/prompt2test/playwright/security-group-id</code><br>
+            <span style="color:#94a3b8; font-size:10px;">Read once at session start to RunTask</span>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Parallel Fetch</div>
+            All 4 params fetched in<br>parallel via <b>ThreadPoolExecutor</b><br>
+            First call: <b>~80ms</b><br>
+            Cached in <b>_SSM_CACHE dict</b><br>
+            Subsequent: <b>~0ms</b>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">After RunTask</div>
+            No SSM needed — agent<br>has direct <b>task public IP</b><br>from ENI attachment.<br>
+            MCP: <b>ip:3000</b><br>
+            noVNC: <b>ip:6080</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- On-demand session flow -->
+    <div class="card theme-blue medium">
+      <div class="card-title"><span class="icon">⚡</span> On-Demand Session Flow</div>
+      <div class="card-body">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">User submits prompt → Agent generates <b>plan</b></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">User reviews plan, says <b>"yes"</b> → popup opens with <b>progress bar</b></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text"><b>start_session:</b> reads SSM config → <b>RunTask</b> (dedicated Fargate task)</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text">Poll DescribeTasks (~60s) → RUNNING → get <b>public IP via ENI</b></div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-text">Popup redirects to <b>ip:6080/vnc.html</b> · Agent connects MCP at <b>ip:3000</b></div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-text">Test finishes → <b>StopTask</b> — no idle cost</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Flow arrow row 2→3 -->
+  <div class="flow-row">
+    <div class="flow-box">Agent (start_session)</div>
+    <div class="flow-arrow teal">── SSM GetParameter ──▶</div>
+    <div class="flow-box">ECS Config</div>
+    <div class="flow-arrow teal">──▶</div>
+    <div class="flow-box">RunTask → ENI IP</div>
+    <div class="flow-arrow teal">──▶</div>
+    <div class="flow-box">MCP: ip:3000 + noVNC: ip:6080</div>
+  </div>
+
+  <div style="height:16px;"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 4 — PLAYWRIGHT MCP + NLB
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">④ Playwright MCP — ECS Fargate (On-Demand per Session)</div>
+  <div class="row">
+
+    <!-- On-demand task lifecycle -->
+    <div class="card theme-green medium">
+      <div class="card-title"><span class="icon">🔄</span> On-Demand Task Lifecycle</div>
+      <div class="card-body">
+        <div class="sub-box" style="border-color:#22c55e44;">
+          <div class="sub-box-title" style="color:#22c55e;">Startup (~60s)</div>
+          RunTask → PROVISIONING<br>
+          → PENDING → RUNNING<br>
+          ENI assigns <b>public IP</b><br>
+          Port 3000 (MCP) binding<br>
+          Port 6080 (noVNC) ready
+        </div>
+        <div class="sub-box" style="margin-top:8px; border-color:#3b82f644;">
+          <div class="sub-box-title" style="color:#60a5fa;">During Test</div>
+          1 task = 1 user = 1 Xvfb display<br>
+          <b>Full screen isolation</b><br>
+          No cross-user interference<br>
+          Direct IP — no NLB needed
+        </div>
+        <div class="sub-box" style="margin-top:8px; border-color:#f9731644;">
+          <div class="sub-box-title" style="color:#fdba74;">Teardown</div>
+          StopTask called on test end<br>
+          Task stopped in seconds<br>
+          <b>Pay only for test duration</b><br>
+          ~10-15 min avg per session
+        </div>
+      </div>
+    </div>
+
+    <!-- ECS Fargate Tasks -->
+    <div class="card theme-teal wide">
+      <div class="scale-badge">Per-user isolation</div>
+      <div class="card-title"><span class="icon">🎭</span> ECS Fargate — playwright-mcp Tasks</div>
+      <div class="card-body">
+        <div class="grid3">
+          <div class="sub-box" style="border-color:#22c55e44;">
+            <div class="sub-box-title" style="color:#22c55e;">User A's Task</div>
+            <div class="tag tag-green">RUNNING</div><br>
+            Own public IP<br>
+            Own Xvfb :99 display<br>
+            MCP → <b>ip-A:3000</b><br>
+            noVNC → <b>ip-A:6080</b>
+          </div>
+          <div class="sub-box" style="border-color:#22c55e44;">
+            <div class="sub-box-title" style="color:#22c55e;">User B's Task</div>
+            <div class="tag tag-green">RUNNING</div><br>
+            Own public IP<br>
+            Own Xvfb :99 display<br>
+            MCP → <b>ip-B:3000</b><br>
+            noVNC → <b>ip-B:6080</b>
+          </div>
+          <div class="sub-box" style="border-color:#475569;">
+            <div class="sub-box-title" style="color:#64748b;">Warm Service</div>
+            <div class="tag tag-gray">desiredCount: 0</div><br>
+            NLB still deployed<br>
+            (CDK managed)<br>
+            Not used for routing<br>
+            <span style="font-size:10px; color:#475569;">On-demand bypasses NLB</span>
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">Task Spec</div>
+          <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <span><b>CPU:</b> 2 vCPU (ARM64 / Graviton)</span>
+            <span><b>Memory:</b> 4 GB</span>
+            <span><b>Image:</b> ECR prompt2test-playwright-mcp:latest</span>
+            <span><b>Mode:</b> BROWSER_MODE=headed (Xvfb + x11vnc + noVNC)</span>
+            <span><b>Ports:</b> 3000 (MCP) · 6080 (noVNC) · 8080 (health)</span>
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Cluster: prompt2test-playwright-cluster · VPC: prompt2test-playwright-vpc · Public subnets (2 AZs) · assignPublicIp: ENABLED</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 5 — AUTOSCALING
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">⑤ Scaling Model &amp; Cost</div>
+  <div class="row">
+
+    <div class="card theme-green wide">
+      <div class="card-title"><span class="icon">📈</span> On-Demand Scaling — 1 Task per User Session</div>
+      <div class="card-body">
+        <div class="grid3">
+          <div class="sub-box metric">
+            <div class="val">0</div>
+            <div class="lbl">Always-on tasks (no warm pool)</div>
+          </div>
+          <div class="sub-box metric">
+            <div class="val">1</div>
+            <div class="lbl">Tasks per active test session</div>
+          </div>
+          <div class="sub-box metric">
+            <div class="val">20+</div>
+            <div class="lbl">Concurrent users (Fargate limit)</div>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:8px;">
+          <div class="sub-box">
+            <div class="sub-box-title">Scale-Out</div>
+            Automatic — each <b>start_session</b><br>RunTask call = new task<br>
+            No shared state, no contention<br>
+            <div class="tag tag-green">Unlimited concurrent users</div>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Scale-In</div>
+            Automatic — <b>StopTask</b> called<br>when test completes or errors<br>
+            Task goes STOPPED within seconds<br>
+            <div class="tag tag-blue">Zero idle waste</div>
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Isolation Model</div>
+          Each user gets their own Fargate task with its own Xvfb display :99 — <b>no cross-user screen sharing</b>. Users always see their own browser, never another user's test.
+        </div>
+      </div>
+    </div>
+
+    <div class="card theme-orange narrow">
+      <div class="card-title"><span class="icon">💰</span> Cost Estimate</div>
+      <div class="card-body">
+        <div class="sub-box" style="border-color:#22c55e44;">
+          <div class="sub-box-title" style="color:#6ee7b7;">On-Demand (current)</div>
+          Per task/hr: <b>~$0.10</b><br>
+          20 users × 15 min/day:<br>
+          <b>~$17/mo</b> total<br>
+          <div class="tag tag-green">Pay per test only</div>
+        </div>
+        <div class="sub-box" style="margin-top:8px; border-color:#f9731644;">
+          <div class="sub-box-title" style="color:#fdba74;">Old warm pool (removed)</div>
+          3 tasks 24/7:<br>
+          <b>~$216/mo</b><br>
+          <div class="tag tag-red">Always paying, idle or not</div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Other Services</div>
+          NLB: ~$18/mo (CDK infra)<br>
+          AgentCore: per-invocation<br>
+          Amplify: ~$1/mo
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 6 — CI/CD
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">⑥ CI/CD Pipelines</div>
+  <div class="row">
+
+    <!-- Playwright MCP Pipeline -->
+    <div class="card theme-purple wide">
+      <div class="card-title"><span class="icon">🔧</span> Playwright MCP Pipeline</div>
+      <div class="card-body">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <div class="flow-box" style="background:#1e1035;">GitHub<br><small>Prompt2TestPlaywrightMCP</small></div>
+          <div class="flow-arrow purple">──▶</div>
+          <div class="flow-box" style="background:#1e1035;">CodePipeline<br><small>Source</small></div>
+          <div class="flow-arrow purple">──▶</div>
+          <div class="flow-box" style="background:#1e1035;">CodeBuild<br><small>ARM64 Docker Build</small></div>
+          <div class="flow-arrow purple">──▶</div>
+          <div class="flow-box" style="background:#1e1035;">ECR<br><small>prompt2test-playwright-mcp:latest</small></div>
+          <div class="flow-arrow purple">──▶</div>
+          <div class="flow-box" style="background:#1e1035; border-color:#f97316;">ECS Service<br><small>force-new-deployment</small></div>
+        </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">Build Spec (buildspec.yml)</div>
+          docker build → docker tag → docker push ECR<br>
+          ARM64 build image: <b>LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0</b>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Docker Image Contents</div>
+          <div class="tag tag-gray">node:20-slim (ARM64)</div>
+          <div class="tag tag-gray">Chromium</div>
+          <div class="tag tag-gray">Xvfb + x11vnc + noVNC</div>
+          <div class="tag tag-purple">@playwright/mcp</div>
+          <div class="tag tag-gray">websockify</div>
+          <div class="tag tag-gray">entrypoint.sh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Pipeline -->
+    <div class="card theme-orange medium">
+      <div class="card-title"><span class="icon">🤖</span> Agent Pipeline</div>
+      <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div class="cicd-step">
+            <div class="dot" style="background:#a855f7;"></div>
+            GitHub: <b>Prompt2TestAgent</b>
+          </div>
+          <div class="cicd-step" style="padding-left:16px; color:#64748b;">▼</div>
+          <div class="cicd-step">
+            <div class="dot" style="background:#f97316;"></div>
+            CodePipeline: Source + Build
+          </div>
+          <div class="cicd-step" style="padding-left:16px; color:#64748b;">▼</div>
+          <div class="cicd-step">
+            <div class="dot" style="background:#22c55e;"></div>
+            ECR: <b>prompt2test-agent:latest</b>
+          </div>
+          <div class="cicd-step" style="padding-left:16px; color:#64748b;">▼</div>
+          <div class="cicd-step">
+            <div class="dot" style="background:#f97316;"></div>
+            Manual: <b>update-agent-runtime</b>
+          </div>
+        </div>
+        <div class="warn-box" style="margin-top:8px;">
+          ⚠️ No auto-deploy stage yet.<br>After ECR push, run:<br>
+          <code style="font-size:10px;">aws bedrock-agentcore-control update-agent-runtime</code>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Agent Image Contents</div>
+          <div class="tag tag-orange">Python 3.12</div>
+          <div class="tag tag-orange">Strands Agents</div>
+          <div class="tag tag-orange">agent_runner.py</div>
+          <div class="tag tag-orange">ecs_session.py</div>
+          <div class="tag tag-orange">main.py</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- UI Pipeline -->
+  <div class="row">
+    <div class="card theme-blue wide">
+      <div class="card-title"><span class="icon">🌐</span> UI Pipeline — Amplify Auto-Deploy</div>
+      <div class="card-body">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <div class="flow-box">GitHub push<br><small>Prompt2TestUI / master</small></div>
+          <div class="flow-arrow blue">──▶</div>
+          <div class="flow-box">Amplify Webhook<br><small>Auto-triggered</small></div>
+          <div class="flow-arrow blue">──▶</div>
+          <div class="flow-box">npm install + build<br><small>React + TypeScript</small></div>
+          <div class="flow-arrow blue">──▶</div>
+          <div class="flow-box">CloudFront CDN<br><small>Global distribution</small></div>
+          <div class="flow-arrow blue">──▶</div>
+          <div class="flow-box" style="border-color:#22c55e44; color:#86efac;">Live at Amplify URL<br><small>~2 min total</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 7 — FULL FLOW SUMMARY
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">⑦ End-to-End Request Flow</div>
+  <div class="card theme-dark" style="padding: 20px;">
+    <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; justify-content:center;">
+
+      <div style="text-align:center; min-width:90px;">
+        <div style="font-size:24px;">👤</div>
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">User</div>
+        <div style="font-size:10px; color:#475569;">Types prompt</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
+        <div style="font-size:12px; color:#3b82f6;">HTTPS</div>
+        <div style="font-size:18px; color:#3b82f6;">────▶</div>
+      </div>
+
+      <div style="text-align:center; min-width:90px;">
+        <div style="font-size:24px;">🌐</div>
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">Amplify UI</div>
+        <div style="font-size:10px; color:#475569;">React + Cognito</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
+        <div style="font-size:12px; color:#f97316;">AgentCore SDK</div>
+        <div style="font-size:18px; color:#f97316;">────▶</div>
+      </div>
+
+      <div style="text-align:center; min-width:90px;">
+        <div style="font-size:24px;">🤖</div>
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">AgentCore</div>
+        <div style="font-size:10px; color:#475569;">Strands + Claude</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
+        <div style="font-size:12px; color:#14b8a6;">AgentCore SDK</div>
+        <div style="font-size:18px; color:#14b8a6;">────▶</div>
+      </div>
+
+      <div style="text-align:center; min-width:90px;">
+        <div style="font-size:24px;">🔄</div>
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">RunTask</div>
+        <div style="font-size:10px; color:#475569;">~60s startup</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
+        <div style="font-size:12px; color:#22c55e;">Direct IP</div>
+        <div style="font-size:18px; color:#22c55e;">────▶</div>
+      </div>
+
+      <div style="text-align:center; min-width:90px;">
+        <div style="font-size:24px;">🎭</div>
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">playwright-mcp</div>
+        <div style="font-size:10px; color:#475569;">ip:3000 (MCP)</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
+        <div style="font-size:12px; color:#a855f7;">ip:6080</div>
+        <div style="font-size:18px; color:#a855f7;">────▶</div>
+      </div>
+
+      <div style="text-align:center; min-width:90px;">
+        <div style="font-size:24px;">🖥️</div>
+        <div style="font-size:11px; color:#64748b; margin-top:4px;">Browser Popup</div>
+        <div style="font-size:10px; color:#475569;">Live test view</div>
+      </div>
+
+    </div>
+
+    <!-- Timing row -->
+    <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+      <div class="sub-box" style="flex:1; min-width:160px;">
+        <div class="sub-box-title">Prompt → Plan</div>
+        LLM streaming via Strands<br>~2-5s depending on prompt
+      </div>
+      <div class="sub-box" style="flex:1; min-width:160px;">
+        <div class="sub-box-title">"Yes" → Popup opens</div>
+        Blob URL (progress bar HTML)<br><b>Instant</b> — within user gesture
+      </div>
+      <div class="sub-box" style="flex:1; min-width:160px;">
+        <div class="sub-box-title">Popup → RunTask</div>
+        SSM reads (~80ms)<br>RunTask API call (~1s)
+      </div>
+      <div class="sub-box" style="flex:1; min-width:160px;">
+        <div class="sub-box-title">RunTask → RUNNING</div>
+        ECS scheduling + image pull<br>+ Chromium start: <b>~55-60s</b>
+      </div>
+      <div class="sub-box" style="flex:1; min-width:160px;">
+        <div class="sub-box-title">Total: "Yes" → Live Browser</div>
+        Progress bar fills during wait<br><b>~60 seconds</b> cold start
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       REPOS + STACKS SUMMARY
+  ══════════════════════════════════════════════════════════ -->
+  <div style="height:16px;"></div>
+  <div class="section-label">⑧ Repositories &amp; CloudFormation Stacks</div>
+  <div class="row">
+    <div class="card theme-gray wide">
+      <div class="card-title"><span class="icon">📦</span> GitHub Repositories</div>
+      <div class="card-body">
+        <div class="grid3">
+          <div class="sub-box">
+            <div class="sub-box-title">Prompt2TestUI</div>
+            React + TypeScript<br>
+            Amplify auto-deploy<br>
+            <div class="tag tag-blue">AgentPage.tsx</div>
+            <div class="tag tag-blue">progress bar popup</div>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Prompt2TestAgent</div>
+            Python + Strands<br>
+            CodePipeline → ECR → AgentCore<br>
+            <div class="tag tag-orange">agent_runner.py</div>
+            <div class="tag tag-orange">ecs_session.py</div>
+            <div class="tag tag-orange">main.py</div>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Prompt2TestPlaywrightMCP</div>
+            Docker + CDK infra<br>
+            CodePipeline → ECR → ECS<br>
+            <div class="tag tag-teal">Dockerfile</div>
+            <div class="tag tag-teal">entrypoint.sh</div>
+            <div class="tag tag-teal">playwright-mcp-stack.ts</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card theme-gray medium">
+      <div class="card-title"><span class="icon">☁️</span> CloudFormation Stacks</div>
+      <div class="card-body">
+        <div class="sub-box">
+          <div class="sub-box-title">Prompt2TestAgentStack</div>
+          <div class="tag tag-green">UPDATE_COMPLETE</div><br>
+          ECR · CodePipeline · Cognito<br>IAM roles · SSM outputs
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Prompt2TestPlaywrightMCPStack</div>
+          <div class="tag tag-green">UPDATE_COMPLETE</div><br>
+          VPC · ECS Cluster · Fargate<br>NLB · Target Groups · Autoscaling<br>SSM params · CodePipeline
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    TestPilot AI Architecture · AWS us-east-1 · Generated 2026-03-24
+  </div>
+
+</div>
 </body>
 </html>
