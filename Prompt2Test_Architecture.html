@@ -1,488 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Prompt2Test – Architecture Diagram</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prompt2Test – Architecture</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #0f1117;
+      background: #f1f5f9;
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      padding: 24px 16px 40px;
+      padding: 36px 24px 48px;
     }
-    h1 {
-      color: #e8eaf0;
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-    }
-    .subtitle {
-      color: #8b92a5;
-      font-size: 13px;
-      margin-bottom: 24px;
-      letter-spacing: 0.3px;
-    }
-    .diagram-wrapper {
-      background: #161b27;
-      border: 1px solid #2a3044;
-      border-radius: 12px;
-      padding: 0;
+    h1 { color: #1e293b; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    p  { color: #94a3b8; font-size: 12px; margin-bottom: 24px; }
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
       overflow: hidden;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-      max-width: 100%;
     }
-    svg {
-      display: block;
-    }
+    svg { display: block; }
   </style>
 </head>
 <body>
   <h1>Prompt2Test — AWS Architecture</h1>
-  <p class="subtitle">End-to-end platform: React UI · AgentCore · Bedrock Claude · Playwright MCP · noVNC</p>
+  <p>Amplify · Cognito · Bedrock AgentCore · Claude · ECS Warm Pool · Playwright MCP · noVNC</p>
+  <div class="card">
+  <svg viewBox="0 0 1440 740" width="1440" height="740" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr"   markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#94a3b8"/></marker>
+      <marker id="arr-p" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#7C3AED"/></marker>
+      <marker id="arr-o" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ea580c"/></marker>
+      <marker id="arr-g" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#16a34a"/></marker>
+      <marker id="arr-r" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#dc2626"/></marker>
+      <filter id="s"><feDropShadow dx="0" dy="1" stdDeviation="3" flood-color="#000" flood-opacity="0.07"/></filter>
+    </defs>
 
-  <div class="diagram-wrapper">
-    <svg viewBox="0 0 1800 1150" width="1800" height="1150" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <!-- Arrow markers -->
-        <marker id="arrow-solid" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
-        </marker>
-        <marker id="arrow-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
-        </marker>
-        <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#60a5fa" />
-        </marker>
-        <marker id="arrow-teal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#2dd4bf" />
-        </marker>
-        <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
-        </marker>
-        <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#86efac" />
-        </marker>
-        <!-- Drop shadow filter -->
-        <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.4"/>
-        </filter>
-        <filter id="glow-teal" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#01A88D" flood-opacity="0.4"/>
-        </filter>
-      </defs>
+    <rect width="1440" height="740" fill="#fff"/>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- BACKGROUND -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect width="1800" height="1150" fill="#161b27"/>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- CI / CD STRIP                                         -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <rect x="12" y="12" width="1416" height="82" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="28" y="30" fill="#94a3b8" font-size="9" font-weight="700" letter-spacing="1.2" font-family="monospace">CI / CD</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- GROUP: CI/CD STRIP (top) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="20" y="20" width="1760" height="160" rx="10" fill="none" stroke="#3d2b2b" stroke-width="1.5" stroke-dasharray="6,3"/>
-      <text x="36" y="40" fill="#a16666" font-size="12" font-weight="600" letter-spacing="1" font-family="monospace">CI / CD</text>
+    <!-- ── Pipeline 1: Agent image ── -->
+    <text x="130" y="26" text-anchor="middle" fill="#64748b" font-size="8.5" font-style="italic">Agent pipeline</text>
 
-      <!-- GitHub box -->
-      <g transform="translate(60, 55)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#24292e"/>
-        <text x="40" y="32" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">GitHub</text>
-        <!-- GitHub Octocat simplified icon -->
-        <circle cx="40" cy="50" r="18" fill="#ffffff" opacity="0.15"/>
-        <text x="40" y="56" text-anchor="middle" fill="#ffffff" font-size="22">⌥</text>
-      </g>
-      <text x="100" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">GitHub</text>
+    <!-- GitHub -->
+    <rect x="28" y="32" width="60" height="48" rx="7" fill="#24292e" filter="url(#s)"/>
+    <text x="58" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">GitHub</text>
+    <text x="58" y="64" text-anchor="middle" fill="#94a3b8" font-size="8">repo push</text>
 
-      <!-- Arrow GitHub → CodePipeline Agent -->
-      <line x1="140" y1="95" x2="205" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-solid)"/>
-      <text x="172" y="89" text-anchor="middle" fill="#64748b" font-size="10">push</text>
+    <line x1="88" y1="56" x2="106" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
 
-      <!-- CodePipeline Agent -->
-      <g transform="translate(208, 55)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#C7131F"/>
-        <text x="40" y="28" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Code</text>
-        <text x="40" y="40" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Pipeline</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="18">⚙</text>
-      </g>
-      <text x="248" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">Pipeline</text>
-      <text x="248" y="160" text-anchor="middle" fill="#64748b" font-size="10">(agent)</text>
+    <!-- CodePipeline Agent -->
+    <rect x="108" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
+    <text x="152" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">CodePipeline</text>
+    <text x="152" y="64" text-anchor="middle" fill="#fecaca" font-size="8">build · test · push</text>
 
-      <!-- Arrow CodePipeline → ECR Agent -->
-      <line x1="288" y1="95" x2="358" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-solid)"/>
-      <text x="323" y="89" text-anchor="middle" fill="#64748b" font-size="10">build+push</text>
+    <line x1="196" y1="56" x2="214" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
 
-      <!-- ECR Agent -->
-      <g transform="translate(360, 55)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#C7131F"/>
-        <text x="40" y="28" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">ECR</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="22">📦</text>
-      </g>
-      <text x="400" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">ECR</text>
-      <text x="400" y="160" text-anchor="middle" fill="#64748b" font-size="10">(agent)</text>
+    <!-- ECR Agent -->
+    <rect x="216" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
+    <text x="260" y="48" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">ECR</text>
+    <text x="260" y="60" text-anchor="middle" fill="#fecaca" font-size="8">prompt2test-agent</text>
+    <text x="260" y="72" text-anchor="middle" fill="#fecaa0" font-size="7.5">:latest</text>
 
-      <!-- Separator -->
-      <line x1="480" y1="35" x2="480" y2="165" stroke="#3d2b2b" stroke-width="1" stroke-dasharray="4,3"/>
+    <!-- ── Pipeline 2: MCP image ── -->
+    <line x1="316" y1="56" x2="340" y2="56" stroke="#e2e8f0" stroke-width="1.5"/>
 
-      <!-- Arrow GitHub2 → CodePipeline MCP (fork from GitHub, offset) -->
-      <!-- Second pipeline: separate branch -->
-      <text x="560" y="43" text-anchor="middle" fill="#a16666" font-size="11" font-style="italic">playwright-mcp pipeline</text>
+    <text x="500" y="26" text-anchor="middle" fill="#64748b" font-size="8.5" font-style="italic">playwright-mcp pipeline</text>
 
-      <g transform="translate(510, 55)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#C7131F"/>
-        <text x="40" y="28" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Code</text>
-        <text x="40" y="40" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Pipeline</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="18">⚙</text>
-      </g>
-      <text x="550" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">Pipeline</text>
-      <text x="550" y="160" text-anchor="middle" fill="#64748b" font-size="10">(mcp)</text>
+    <!-- GitHub 2 -->
+    <rect x="348" y="32" width="60" height="48" rx="7" fill="#24292e" filter="url(#s)"/>
+    <text x="378" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">GitHub</text>
+    <text x="378" y="64" text-anchor="middle" fill="#94a3b8" font-size="8">repo push</text>
 
-      <line x1="590" y1="95" x2="658" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-solid)"/>
-      <text x="624" y="89" text-anchor="middle" fill="#64748b" font-size="10">build+push</text>
+    <line x1="408" y1="56" x2="426" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
 
-      <!-- ECR MCP -->
-      <g transform="translate(660, 55)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#C7131F"/>
-        <text x="40" y="28" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">ECR</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="22">📦</text>
-      </g>
-      <text x="700" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">ECR</text>
-      <text x="700" y="160" text-anchor="middle" fill="#64748b" font-size="10">(mcp)</text>
+    <!-- CodePipeline MCP -->
+    <rect x="428" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
+    <text x="472" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">CodePipeline</text>
+    <text x="472" y="64" text-anchor="middle" fill="#fecaca" font-size="8">build · test · push</text>
 
-      <!-- GitHub → Pipeline MCP arrow (from GitHub box) -->
-      <path d="M 100 135 L 100 170 L 550 170 L 550 135" fill="none" stroke="#3d2b2b" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-dashed)"/>
+    <line x1="516" y1="56" x2="534" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
 
-      <!-- Pipeline MCP → ECS deploy arrow (goes down later) - placeholder label -->
-      <text x="760" y="100" fill="#475569" font-size="11" font-style="italic">→ ECS rolling deploy (see VPC section below)</text>
+    <!-- ECR MCP -->
+    <rect x="536" y="32" width="88" height="48" rx="7" fill="#C7131F" filter="url(#s)"/>
+    <text x="580" y="48" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">ECR</text>
+    <text x="580" y="60" text-anchor="middle" fill="#fecaca" font-size="8">playwright-mcp</text>
+    <text x="580" y="72" text-anchor="middle" fill="#fecaa0" font-size="7.5">:latest</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- GROUP: AWS Cloud boundary -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="20" y="200" width="1760" height="910" rx="10" fill="none" stroke="#1e3a5f" stroke-width="1.5" stroke-dasharray="8,4"/>
-      <text x="36" y="222" fill="#3b82f6" font-size="12" font-weight="600" letter-spacing="1" font-family="monospace">AWS CLOUD  us-east-1</text>
+    <!-- Amplify CI/CD -->
+    <line x1="636" y1="56" x2="658" y2="56" stroke="#e2e8f0" stroke-width="1.5"/>
+    <text x="810" y="26" text-anchor="middle" fill="#64748b" font-size="8.5" font-style="italic">Frontend pipeline</text>
+    <rect x="664" y="32" width="60" height="48" rx="7" fill="#24292e" filter="url(#s)"/>
+    <text x="694" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">GitHub</text>
+    <text x="694" y="64" text-anchor="middle" fill="#94a3b8" font-size="8">repo push</text>
+    <line x1="724" y1="56" x2="742" y2="56" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="744" y="32" width="132" height="48" rx="7" fill="#ea580c" filter="url(#s)"/>
+    <text x="810" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Amplify CI/CD</text>
+    <text x="810" y="64" text-anchor="middle" fill="#fff3e0" font-size="8">build · deploy · CDN invalidate</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- GROUP: EDGE LAYER (left column) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="40" y="240" width="280" height="520" rx="8" fill="none" stroke="#3b3b60" stroke-width="1.2" stroke-dasharray="5,3"/>
-      <text x="56" y="260" fill="#8080b0" font-size="11" font-weight="600" letter-spacing="0.8" font-family="monospace">EDGE LAYER</text>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- AWS CLOUD BOUNDARY                                    -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <rect x="12" y="102" width="1416" height="624" rx="12" fill="#fafbff" stroke="#ddd6fe" stroke-width="1.2" stroke-dasharray="7,5"/>
+    <text x="30" y="120" fill="#a78bfa" font-size="9" font-weight="700" letter-spacing="1" font-family="monospace">AWS  us-east-1</text>
 
-      <!-- CloudFront -->
-      <g transform="translate(100, 275)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#8C4FFF"/>
-        <text x="40" y="27" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="700">Cloud</text>
-        <text x="40" y="39" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="700">Front</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="22">🌐</text>
-      </g>
-      <text x="140" y="368" text-anchor="middle" fill="#94a3b8" font-size="11">CloudFront</text>
-      <text x="140" y="381" text-anchor="middle" fill="#64748b" font-size="10">CDN / HTTPS</text>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- RUNTIME BOXES                                         -->
+    <!-- ══════════════════════════════════════════════════════ -->
 
-      <!-- S3 -->
-      <g transform="translate(100, 410)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#7AA116"/>
-        <text x="40" y="33" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">S3</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="22">🗄</text>
-      </g>
-      <text x="140" y="503" text-anchor="middle" fill="#94a3b8" font-size="11">S3 Bucket</text>
-      <text x="140" y="516" text-anchor="middle" fill="#64748b" font-size="10">React static assets</text>
+    <!-- User -->
+    <g filter="url(#s)">
+      <rect x="28" y="232" width="118" height="110" rx="10" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="28" y="232" width="118" height="24" rx="10" fill="#334155"/>
+      <rect x="28" y="244" width="118" height="12" fill="#334155"/>
+      <text x="87" y="249" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">User Browser</text>
+      <text x="87" y="276" text-anchor="middle" font-size="22">👤</text>
+      <text x="87" y="300" text-anchor="middle" fill="#64748b" font-size="9">Chrome / Safari</text>
+      <text x="87" y="314" text-anchor="middle" fill="#94a3b8" font-size="8">Prompt2Test React SPA</text>
+      <text x="87" y="328" text-anchor="middle" fill="#94a3b8" font-size="8">Plan + Automate + Popup</text>
+    </g>
 
-      <!-- Cognito -->
-      <g transform="translate(100, 555)" filter="url(#shadow)">
-        <rect width="80" height="80" rx="10" fill="#DD344C"/>
-        <text x="40" y="33" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">Cognito</text>
-        <text x="40" y="62" text-anchor="middle" fill="#ffffff" font-size="22">🔐</text>
-      </g>
-      <text x="140" y="648" text-anchor="middle" fill="#94a3b8" font-size="11">Cognito</text>
-      <text x="140" y="661" text-anchor="middle" fill="#64748b" font-size="10">User Pool / OAuth2</text>
+    <!-- Amplify -->
+    <g filter="url(#s)">
+      <rect x="200" y="160" width="172" height="118" rx="10" fill="#fff" stroke="#fed7aa" stroke-width="1.5"/>
+      <rect x="200" y="160" width="172" height="24" rx="10" fill="#ea580c"/>
+      <rect x="200" y="172" width="172" height="12" fill="#ea580c"/>
+      <text x="286" y="177" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Amplify Hosting</text>
+      <text x="286" y="204" text-anchor="middle" fill="#1e293b" font-size="10" font-weight="600">React SPA</text>
+      <text x="286" y="218" text-anchor="middle" fill="#64748b" font-size="9">React 18 · TypeScript · Vite</text>
+      <text x="286" y="232" text-anchor="middle" fill="#64748b" font-size="9">Tailwind CSS · Amplify Auth</text>
+      <text x="286" y="248" text-anchor="middle" fill="#94a3b8" font-size="8">CloudFront + S3 (managed)</text>
+      <text x="286" y="262" text-anchor="middle" fill="#94a3b8" font-size="7.5">d1c90tgy4nfi4n.cloudfront.net</text>
+    </g>
 
-      <!-- CloudFront ↔ S3 arrow (vertical) -->
-      <line x1="140" y1="355" x2="140" y2="408" stroke="#7AA116" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-      <text x="152" y="386" fill="#7AA116" font-size="10">OAC</text>
+    <!-- Cognito chip -->
+    <g filter="url(#s)">
+      <rect x="200" y="320" width="172" height="62" rx="8" fill="#fff" stroke="#fecaca" stroke-width="1.5"/>
+      <rect x="200" y="320" width="172" height="22" rx="8" fill="#dc2626"/>
+      <rect x="200" y="332" width="172" height="10" fill="#dc2626"/>
+      <text x="286" y="337" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Amazon Cognito</text>
+      <text x="286" y="357" text-anchor="middle" fill="#1e293b" font-size="9">User Pool · OAuth2 · JWT</text>
+      <text x="286" y="371" text-anchor="middle" fill="#94a3b8" font-size="8">Amplify Auth SDK  ·  signIn / signOut</text>
+    </g>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- USER BROWSER (far left, center vertically) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- User Browser box -->
-      <g transform="translate(1680, 390)" filter="url(#shadow)">
-        <rect width="88" height="80" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-        <text x="44" y="26" text-anchor="middle" fill="#cbd5e1" font-size="9" font-weight="700">User</text>
-        <text x="44" y="38" text-anchor="middle" fill="#cbd5e1" font-size="9" font-weight="700">Browser</text>
-        <text x="44" y="62" text-anchor="middle" fill="#60a5fa" font-size="26">👤</text>
-      </g>
-      <text x="1724" y="484" text-anchor="middle" fill="#94a3b8" font-size="11">End User</text>
+    <!-- AgentCore -->
+    <g filter="url(#s)">
+      <rect x="432" y="128" width="232" height="176" rx="10" fill="#fff" stroke="#ddd6fe" stroke-width="2"/>
+      <rect x="432" y="128" width="232" height="26" rx="10" fill="#5B21B6"/>
+      <rect x="432" y="142" width="232" height="12" fill="#5B21B6"/>
+      <text x="548" y="147" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Bedrock AgentCore Runtime</text>
+      <text x="548" y="178" text-anchor="middle" fill="#1e293b" font-size="10" font-weight="600">Prompt2Test Agent</text>
+      <text x="548" y="193" text-anchor="middle" fill="#64748b" font-size="9">Python 3.12 · AWS Strands SDK</text>
+      <rect x="448" y="202" width="200" height="46" rx="6" fill="#f5f3ff"/>
+      <text x="548" y="218" text-anchor="middle" fill="#5B21B6" font-size="8.5" font-weight="600">plan( )  ·  start_session( )  ·  automate( )</text>
+      <text x="548" y="232" text-anchor="middle" fill="#7C3AED" font-size="8">POST /invocations  ·  port 8080</text>
+      <text x="548" y="246" text-anchor="middle" fill="#94a3b8" font-size="8">ECS: RunTask · ListTasks · StopTask</text>
+      <text x="548" y="260" text-anchor="middle" fill="#94a3b8" font-size="8">Prompt2TestAgent-YTVbD4GrTi</text>
+      <text x="548" y="275" text-anchor="middle" fill="#94a3b8" font-size="7.5">prompt2test-agent:latest  (pulled from ECR)</text>
+      <text x="548" y="290" text-anchor="middle" fill="#94a3b8" font-size="7.5">image refreshed on each deploy</text>
+    </g>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: User → CloudFront HTTPS -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- User to CloudFront: right to left long arrow -->
-      <path d="M 1680 430 L 228 430" fill="none" stroke="#60a5fa" stroke-width="1.8" marker-end="url(#arrow-blue)"/>
-      <text x="900" y="423" text-anchor="middle" fill="#60a5fa" font-size="11">① HTTPS request (React app)</text>
+    <!-- Bedrock -->
+    <g filter="url(#s)">
+      <rect x="730" y="148" width="198" height="142" rx="10" fill="#fff" stroke="#ddd6fe" stroke-width="1.5"/>
+      <rect x="730" y="148" width="198" height="26" rx="10" fill="#7C3AED"/>
+      <rect x="730" y="162" width="198" height="12" fill="#7C3AED"/>
+      <text x="829" y="167" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">Amazon Bedrock</text>
+      <text x="829" y="196" text-anchor="middle" fill="#1e293b" font-size="10" font-weight="600">Claude Sonnet 4.5</text>
+      <text x="829" y="211" text-anchor="middle" fill="#64748b" font-size="9">Converse / ConverseStream API</text>
+      <rect x="746" y="220" width="166" height="28" rx="5" fill="#f5f3ff"/>
+      <text x="829" y="233" text-anchor="middle" fill="#5B21B6" font-size="8.5">us.anthropic.claude-sonnet-4-5</text>
+      <text x="829" y="244" text-anchor="middle" fill="#7C3AED" font-size="8">cross-region inference profile</text>
+      <text x="829" y="263" text-anchor="middle" fill="#64748b" font-size="9">plan: JSON test plan generation</text>
+      <text x="829" y="277" text-anchor="middle" fill="#64748b" font-size="9">automate: drives MCP tool loop</text>
+    </g>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: User → Cognito (login) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 1680 455 L 1660 455 L 1660 595 L 228 595" fill="none" stroke="#DD344C" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow-solid)"/>
-      <text x="900" y="589" text-anchor="middle" fill="#DD344C" font-size="11">③ OAuth2 login / JWT token</text>
+    <!-- SSM chip -->
+    <g filter="url(#s)">
+      <rect x="432" y="328" width="232" height="60" rx="8" fill="#fff" stroke="#fecaca" stroke-width="1.5"/>
+      <rect x="432" y="328" width="232" height="22" rx="8" fill="#dc2626"/>
+      <rect x="432" y="340" width="232" height="10" fill="#dc2626"/>
+      <text x="548" y="345" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">SSM Parameter Store</text>
+      <text x="548" y="364" text-anchor="middle" fill="#64748b" font-size="8.5">cluster-name · task-definition · subnet-ids · security-group-id</text>
+      <text x="548" y="378" text-anchor="middle" fill="#94a3b8" font-size="8">read by agent at runtime via GetParameter API</text>
+    </g>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- GROUP: AgentCore + Bedrock (center) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="540" y="240" width="560" height="380" rx="8" fill="none" stroke="#0d4a3f" stroke-width="1.5" stroke-dasharray="5,3"/>
-      <text x="556" y="260" fill="#2dd4bf" font-size="11" font-weight="600" letter-spacing="0.8" font-family="monospace">AI / ML SERVICES</text>
+    <!-- ── ECS WARM POOL GROUP ── -->
+    <rect x="200" y="412" width="830" height="218" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" stroke-dasharray="6,4"/>
+    <rect x="218" y="422" width="344" height="20" rx="5" fill="#16a34a"/>
+    <text x="390" y="436" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">ECS FARGATE SERVICE  ·  desiredCount=1  (warm pool — always-on)</text>
+    <text x="730" y="436" fill="#64748b" font-size="8.5" font-style="italic">ARM64 · 2 vCPU / 4 GB · assignPublicIp=ENABLED · BROWSER_MODE=headed</text>
 
-      <!-- AgentCore box -->
-      <g transform="translate(575, 280)" filter="url(#glow-teal)">
-        <rect width="200" height="100" rx="10" fill="#01A88D"/>
-        <text x="100" y="28" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">Bedrock</text>
-        <text x="100" y="42" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">AgentCore</text>
-        <rect x="10" y="52" width="180" height="36" rx="6" fill="rgba(0,0,0,0.25)"/>
-        <text x="100" y="67" text-anchor="middle" fill="#e0fdf4" font-size="9">prompt2test-agent:latest</text>
-        <text x="100" y="80" text-anchor="middle" fill="#e0fdf4" font-size="9">Python 3.12 · AWS Strands SDK</text>
-      </g>
-      <text x="675" y="395" text-anchor="middle" fill="#94a3b8" font-size="11">AgentCore Runtime</text>
-      <text x="675" y="408" text-anchor="middle" fill="#64748b" font-size="10">Prompt2TestAgent-YTVbD4GrTi</text>
+    <!-- playwright-mcp box -->
+    <g filter="url(#s)">
+      <rect x="218" y="446" width="200" height="172" rx="10" fill="#fff" stroke="#fed7aa" stroke-width="1.5"/>
+      <rect x="218" y="446" width="200" height="24" rx="10" fill="#ea580c"/>
+      <rect x="218" y="458" width="200" height="12" fill="#ea580c"/>
+      <text x="318" y="463" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">playwright-mcp</text>
+      <text x="318" y="491" text-anchor="middle" fill="#1e293b" font-size="9" font-weight="600">MCP Server over SSE</text>
+      <text x="318" y="506" text-anchor="middle" fill="#64748b" font-size="8.5">port 3000  ·  0.0.0.0</text>
+      <text x="318" y="520" text-anchor="middle" fill="#64748b" font-size="8.5">--allowed-origins "*"</text>
+      <text x="318" y="534" text-anchor="middle" fill="#94a3b8" font-size="8">navigate · click · fill · assert</text>
+      <text x="318" y="547" text-anchor="middle" fill="#94a3b8" font-size="8">screenshot · get_text · snapshot</text>
+      <text x="318" y="562" text-anchor="middle" fill="#94a3b8" font-size="8">controls Chromium on Xvfb :99</text>
+      <text x="318" y="577" text-anchor="middle" fill="#94a3b8" font-size="7.5">playwright-mcp:latest  (pulled from ECR)</text>
+      <text x="318" y="590" text-anchor="middle" fill="#94a3b8" font-size="7.5">image refreshed on each deploy</text>
+    </g>
 
-      <!-- Bedrock / Claude -->
-      <g transform="translate(820, 280)" filter="url(#shadow)">
-        <rect width="220" height="100" rx="10" fill="#01A88D"/>
-        <text x="110" y="28" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">Amazon Bedrock</text>
-        <text x="110" y="42" text-anchor="middle" fill="#ffffff" font-size="9">Claude claude-sonnet-4-5</text>
-        <rect x="10" y="52" width="200" height="36" rx="6" fill="rgba(0,0,0,0.25)"/>
-        <text x="110" y="67" text-anchor="middle" fill="#e0fdf4" font-size="9">us.anthropic.claude-sonnet-4-5</text>
-        <text x="110" y="80" text-anchor="middle" fill="#e0fdf4" font-size="9">-20250929-v1:0</text>
-      </g>
-      <text x="930" y="395" text-anchor="middle" fill="#94a3b8" font-size="11">Amazon Bedrock</text>
-      <text x="930" y="408" text-anchor="middle" fill="#64748b" font-size="10">Claude LLM API</text>
+    <!-- noVNC box -->
+    <g filter="url(#s)">
+      <rect x="438" y="446" width="200" height="172" rx="10" fill="#fff" stroke="#fed7aa" stroke-width="1.5"/>
+      <rect x="438" y="446" width="200" height="24" rx="10" fill="#ea580c"/>
+      <rect x="438" y="458" width="200" height="12" fill="#ea580c"/>
+      <text x="538" y="463" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Chromium + x11vnc + noVNC</text>
+      <text x="538" y="491" text-anchor="middle" fill="#1e293b" font-size="9" font-weight="600">Headed Browser + Live Stream</text>
+      <text x="538" y="506" text-anchor="middle" fill="#64748b" font-size="8.5">Xvfb :99  ·  DISPLAY=:99</text>
+      <text x="538" y="520" text-anchor="middle" fill="#64748b" font-size="8.5">x11vnc captures display</text>
+      <text x="538" y="534" text-anchor="middle" fill="#64748b" font-size="8.5">noVNC / websockify  port 6080</text>
+      <text x="538" y="548" text-anchor="middle" fill="#94a3b8" font-size="8">streams browser over WebSocket</text>
+      <text x="538" y="562" text-anchor="middle" fill="#94a3b8" font-size="8">user sees live test in popup</text>
+    </g>
 
-      <!-- AgentCore modes label -->
-      <rect x="555" y="430" width="525" height="56" rx="6" fill="#0a2a24" stroke="#0d4a3f" stroke-width="1"/>
-      <text x="570" y="450" fill="#2dd4bf" font-size="11" font-weight="600">Plan mode:</text>
-      <text x="660" y="450" fill="#94a3b8" font-size="11">prompt → Bedrock → structured JSON test plan</text>
-      <text x="570" y="470" fill="#fb923c" font-size="11" font-weight="600">Automate mode:</text>
-      <text x="676" y="470" fill="#94a3b8" font-size="11">JSON plan → ALB:3000/sse (Host: localhost:3000) → playwright-mcp</text>
+    <!-- ECS lifecycle note -->
+    <text x="700" y="632" text-anchor="middle" fill="#16a34a" font-size="8.5">Lifecycle: start_session claims warm task via ListTasks → automate connects MCP → test done → StopTask → ECS Service auto-replaces</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: React → AgentCore InvokeAgentRuntime -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 320 315 L 573 315" fill="none" stroke="#2dd4bf" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
-      <text x="446" y="308" text-anchor="middle" fill="#2dd4bf" font-size="10">④ InvokeAgentRuntime SDK</text>
+    <!-- User Popup -->
+    <g filter="url(#s)">
+      <rect x="678" y="450" width="148" height="88" rx="10" fill="#fff" stroke="#ddd6fe" stroke-width="1.5"/>
+      <rect x="678" y="450" width="148" height="24" rx="10" fill="#5B21B6"/>
+      <rect x="678" y="462" width="148" height="12" fill="#5B21B6"/>
+      <text x="752" y="467" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">noVNC Popup</text>
+      <text x="752" y="492" text-anchor="middle" fill="#1e293b" font-size="9" font-weight="600">Live Browser View</text>
+      <text x="752" y="506" text-anchor="middle" fill="#64748b" font-size="8.5">direct  IP:6080</text>
+      <text x="752" y="520" text-anchor="middle" fill="#94a3b8" font-size="8">autoconnect · resize=scale</text>
+    </g>
 
-      <!-- Arrow: AgentCore → Bedrock (LLM call) -->
-      <path d="M 775 330 L 818 330" fill="none" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#arrow-teal)"/>
-      <text x="796" y="323" text-anchor="middle" fill="#2dd4bf" font-size="10">⑤ LLM API</text>
+    <!-- CloudWatch chip -->
+    <g filter="url(#s)">
+      <rect x="678" y="554" width="148" height="52" rx="8" fill="#fff" stroke="#fbcfe8" stroke-width="1.5"/>
+      <rect x="678" y="554" width="148" height="20" rx="8" fill="#be185d"/>
+      <rect x="678" y="564" width="148" height="10" fill="#be185d"/>
+      <text x="752" y="569" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">CloudWatch Logs</text>
+      <text x="752" y="585" text-anchor="middle" fill="#64748b" font-size="8.5">ECS task logs · AgentCore logs</text>
+      <text x="752" y="597" text-anchor="middle" fill="#94a3b8" font-size="8">/aws/ecs/prompt2test-*</text>
+    </g>
 
-      <!-- Bedrock back to AgentCore (response) -->
-      <path d="M 818 350 L 775 350" fill="none" stroke="#2dd4bf" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arrow-teal)"/>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- DEPLOY ARROWS (ECR → runtime targets)                 -->
+    <!-- ══════════════════════════════════════════════════════ -->
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- ECR Agent → AgentCore (dashed, image pull) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 400 135 L 400 215 L 650 215 L 650 278" fill="none" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arrow-dashed)"/>
-      <text x="520" y="210" fill="#475569" font-size="10">⑪ pulls :latest on session start</text>
+    <!-- ECR Agent → AgentCore (deploy) -->
+    <path d="M 304 80 Q 304 106 548 126" fill="none" stroke="#475569" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+    <text x="390" y="100" fill="#475569" font-size="8" font-style="italic">deploys container</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- GROUP: VPC (bottom) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="40" y="660" width="1500" height="410" rx="10" fill="none" stroke="#1a3a1a" stroke-width="1.5" stroke-dasharray="6,3"/>
-      <text x="56" y="680" fill="#4ade80" font-size="12" font-weight="600" letter-spacing="1" font-family="monospace">VPC  (2 AZs)</text>
+    <!-- ECR MCP → ECS playwright-mcp (deploy) -->
+    <path d="M 580 80 Q 580 106 378 410" fill="none" stroke="#475569" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+    <text x="520" y="105" fill="#475569" font-size="8" font-style="italic">deploys container</text>
 
-      <!-- ALB box -->
-      <g transform="translate(100, 700)" filter="url(#shadow)">
-        <rect width="120" height="90" rx="10" fill="#8C4FFF"/>
-        <text x="60" y="25" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Application</text>
-        <text x="60" y="37" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Load Balancer</text>
-        <text x="60" y="60" text-anchor="middle" fill="#ffffff" font-size="22">⚖</text>
-        <rect x="8" y="70" width="104" height="16" rx="4" fill="rgba(0,0,0,0.3)"/>
-        <text x="60" y="82" text-anchor="middle" fill="#e9d5ff" font-size="9">:3000 :6080 :8080</text>
-      </g>
-      <text x="160" y="804" text-anchor="middle" fill="#94a3b8" font-size="11">ALB</text>
-      <text x="160" y="817" text-anchor="middle" fill="#64748b" font-size="10">prompt2test-playwright-mcp</text>
-      <text x="160" y="829" text-anchor="middle" fill="#64748b" font-size="10">-1435391408.us-east-1.elb</text>
+    <!-- Amplify CI/CD → Amplify Hosting (deploy) -->
+    <path d="M 810 80 Q 810 106 360 158" fill="none" stroke="#475569" stroke-width="1.4" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+    <text x="620" y="108" fill="#475569" font-size="8" font-style="italic">deploys React build</text>
 
-      <!-- ECS Fargate Task group -->
-      <rect x="310" y="690" width="860" height="350" rx="8" fill="#141f14" stroke="#2d4a2d" stroke-width="1.2" stroke-dasharray="4,3"/>
-      <text x="326" y="710" fill="#4ade80" font-size="11" font-weight="600" font-family="monospace">ECS Fargate Task  (ARM64 · 2vCPU / 4GB · BROWSER_MODE=headed)</text>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- RUNTIME FLOW ARROWS                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
 
-      <!-- Process 1: playwright-mcp -->
-      <g transform="translate(340, 725)" filter="url(#shadow)">
-        <rect width="180" height="90" rx="10" fill="#FF9900"/>
-        <text x="90" y="22" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">playwright-mcp</text>
-        <text x="90" y="36" text-anchor="middle" fill="#ffffff" font-size="9">MCP over SSE</text>
-        <rect x="8" y="46" width="164" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="90" y="57" text-anchor="middle" fill="#fff7ed" font-size="9">port 3000 · 0.0.0.0</text>
-        <rect x="8" y="64" width="164" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="90" y="75" text-anchor="middle" fill="#fff7ed" font-size="9">--allowed-origins "*"</text>
-      </g>
-      <text x="430" y="830" text-anchor="middle" fill="#94a3b8" font-size="11">Playwright MCP Server</text>
-      <text x="430" y="843" text-anchor="middle" fill="#64748b" font-size="10">browser control tools</text>
+    <!-- ① User → Amplify -->
+    <path d="M 146 262 L 198 230" fill="none" stroke="#ea580c" stroke-width="1.8" marker-end="url(#arr-o)"/>
+    <text x="148" y="242" fill="#ea580c" font-size="9" font-weight="700">① HTTPS</text>
 
-      <!-- Process 2: Chromium + Xvfb -->
-      <g transform="translate(560, 725)" filter="url(#shadow)">
-        <rect width="180" height="90" rx="10" fill="#FF9900"/>
-        <text x="90" y="22" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Chromium</text>
-        <text x="90" y="36" text-anchor="middle" fill="#ffffff" font-size="9">headed browser</text>
-        <rect x="8" y="46" width="164" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="90" y="57" text-anchor="middle" fill="#fff7ed" font-size="9">Xvfb virtual display</text>
-        <rect x="8" y="64" width="164" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="90" y="75" text-anchor="middle" fill="#fff7ed" font-size="9">DISPLAY=:99</text>
-      </g>
-      <text x="650" y="830" text-anchor="middle" fill="#94a3b8" font-size="11">Chromium Browser</text>
-      <text x="650" y="843" text-anchor="middle" fill="#64748b" font-size="10">Xvfb :99 virtual display</text>
+    <!-- ② Amplify → User (serves app, dashed back) -->
+    <path d="M 198 248 L 146 272" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arr)"/>
 
-      <!-- Process 3: noVNC -->
-      <g transform="translate(780, 725)" filter="url(#shadow)">
-        <rect width="180" height="90" rx="10" fill="#FF9900"/>
-        <text x="90" y="22" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">x11vnc + noVNC</text>
-        <text x="90" y="36" text-anchor="middle" fill="#ffffff" font-size="9">websockify</text>
-        <rect x="8" y="46" width="164" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="90" y="57" text-anchor="middle" fill="#fff7ed" font-size="9">port 6080</text>
-        <rect x="8" y="64" width="164" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="90" y="75" text-anchor="middle" fill="#fff7ed" font-size="9">live browser stream</text>
-      </g>
-      <text x="870" y="830" text-anchor="middle" fill="#94a3b8" font-size="11">noVNC / websockify</text>
-      <text x="870" y="843" text-anchor="middle" fill="#64748b" font-size="10">x11vnc captures display</text>
+    <!-- ③ User → Cognito -->
+    <path d="M 146 310 L 198 350" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr-r)"/>
+    <text x="128" y="335" fill="#dc2626" font-size="9" font-weight="700">③ auth</text>
 
-      <!-- Process 4: Health server -->
-      <g transform="translate(1000, 725)" filter="url(#shadow)">
-        <rect width="130" height="90" rx="10" fill="#FF9900"/>
-        <text x="65" y="22" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Health</text>
-        <text x="65" y="36" text-anchor="middle" fill="#ffffff" font-size="9">Check Server</text>
-        <rect x="8" y="46" width="114" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="65" y="57" text-anchor="middle" fill="#fff7ed" font-size="9">port 8080</text>
-        <rect x="8" y="64" width="114" height="14" rx="4" fill="rgba(0,0,0,0.25)"/>
-        <text x="65" y="75" text-anchor="middle" fill="#fff7ed" font-size="9">ALB target check</text>
-      </g>
-      <text x="1065" y="830" text-anchor="middle" fill="#94a3b8" font-size="11">Health Server</text>
-      <text x="1065" y="843" text-anchor="middle" fill="#64748b" font-size="10">port 8080</text>
+    <!-- Amplify ↔ Cognito -->
+    <line x1="286" y1="278" x2="286" y2="318" stroke="#e2e8f0" stroke-width="1.2" marker-end="url(#arr)"/>
+    <text x="294" y="302" fill="#94a3b8" font-size="7.5">Amplify Auth</text>
 
-      <!-- entrypoint.sh label -->
-      <text x="730" y="1040" text-anchor="middle" fill="#4ade80" font-size="11" font-family="monospace">entrypoint.sh — orchestrates all 3 processes</text>
+    <!-- ④ Amplify → AgentCore -->
+    <path d="M 372 220 L 430 210" fill="none" stroke="#7C3AED" stroke-width="2" marker-end="url(#arr-p)"/>
+    <text x="385" y="208" fill="#7C3AED" font-size="9" font-weight="700">④ InvokeAgentRuntime</text>
 
-      <!-- playwright-mcp ↔ Chromium arrow -->
-      <line x1="520" y1="770" x2="558" y2="770" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
-      <text x="539" y="764" text-anchor="middle" fill="#fb923c" font-size="10">⑧ ctrl</text>
+    <!-- ⑤ AgentCore ↔ Bedrock -->
+    <line x1="664" y1="228" x2="728" y2="228" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arr-p)"/>
+    <text x="696" y="220" text-anchor="middle" fill="#7C3AED" font-size="9" font-weight="700">⑤ LLM API</text>
+    <line x1="728" y1="244" x2="664" y2="244" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr)"/>
 
-      <!-- Chromium → Xvfb capture (internal) -->
-      <line x1="740" y1="770" x2="778" y2="770" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
-      <text x="759" y="764" text-anchor="middle" fill="#fb923c" font-size="10">VNC</text>
+    <!-- ⑥ AgentCore → SSM -->
+    <line x1="548" y1="304" x2="548" y2="326" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr-r)"/>
+    <text x="556" y="320" fill="#dc2626" font-size="8.5">⑥ GetParameter</text>
 
-      <!-- ALB → playwright-mcp arrow -->
-      <path d="M 220 745 L 338 770" fill="none" stroke="#8C4FFF" stroke-width="1.5" marker-end="url(#arrow-solid)"/>
-      <text x="270" y="752" fill="#a78bfa" font-size="10">⑦ :3000</text>
+    <!-- ⑦ AgentCore → ECS start_session -->
+    <path d="M 498 304 L 346 410" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#arr-g)"/>
+    <text x="390" y="358" fill="#16a34a" font-size="9" font-weight="700">⑦ start_session</text>
+    <text x="382" y="370" fill="#16a34a" font-size="8">ListTasks → public IP</text>
 
-      <!-- ALB → noVNC arrow -->
-      <path d="M 220 768 L 778 793" fill="none" stroke="#8C4FFF" stroke-width="1.5" marker-end="url(#arrow-solid)"/>
-      <text x="490" y="800" fill="#a78bfa" font-size="10">:6080</text>
+    <!-- ⑧ AgentCore → playwright-mcp automate -->
+    <path d="M 548 304 L 400 444" fill="none" stroke="#ea580c" stroke-width="1.8" marker-end="url(#arr-o)"/>
+    <text x="506" y="380" fill="#ea580c" font-size="9" font-weight="700">⑧ automate  IP:3000/sse</text>
 
-      <!-- ALB ← health check (from port 8080) -->
-      <path d="M 1000 770 L 242 768" fill="none" stroke="#475569" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-dashed)"/>
-      <text x="620" y="858" fill="#475569" font-size="10">ALB health check :8080</text>
+    <!-- playwright-mcp → noVNC (internal) -->
+    <line x1="418" y1="534" x2="436" y2="534" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr)"/>
+    <text x="427" y="527" text-anchor="middle" fill="#94a3b8" font-size="7.5">VNC</text>
 
-      <!-- CloudWatch box -->
-      <g transform="translate(1340, 730)" filter="url(#shadow)">
-        <rect width="120" height="80" rx="10" fill="#E7157B"/>
-        <text x="60" y="26" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Cloud</text>
-        <text x="60" y="38" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">Watch</text>
-        <text x="60" y="62" text-anchor="middle" fill="#ffffff" font-size="22">📊</text>
-      </g>
-      <text x="1400" y="824" text-anchor="middle" fill="#94a3b8" font-size="11">CloudWatch</text>
-      <text x="1400" y="837" text-anchor="middle" fill="#64748b" font-size="10">ECS task logs</text>
+    <!-- ⑨ noVNC → Popup -->
+    <line x1="638" y1="490" x2="676" y2="490" stroke="#5B21B6" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr-p)"/>
+    <text x="657" y="483" text-anchor="middle" fill="#5B21B6" font-size="8.5" font-weight="700">⑨ live  IP:6080</text>
 
-      <!-- ECS → CloudWatch arrow -->
-      <path d="M 1130 770 L 1338 770" fill="none" stroke="#E7157B" stroke-width="1.5" marker-end="url(#arrow-solid)"/>
-      <text x="1234" y="763" text-anchor="middle" fill="#E7157B" font-size="10">⑬ logs</text>
+    <!-- ⑩ AgentCore → StopTask (dashed) -->
+    <path d="M 630 255 Q 750 255 738 448" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+    <text x="720" y="252" fill="#94a3b8" font-size="8">⑩ StopTask</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: AgentCore → ALB:3000 (automate mode) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 650 490 L 650 640 L 160 640 L 160 698" fill="none" stroke="#fb923c" stroke-width="2" marker-end="url(#arrow-orange)"/>
-      <text x="400" y="635" text-anchor="middle" fill="#fb923c" font-size="11">⑥ ALB:3000/sse  Host: localhost:3000  (automate mode)</text>
+    <!-- ECS → CloudWatch -->
+    <line x1="752" y1="540" x2="752" y2="552" stroke="#be185d" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr)"/>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: noVNC → ALB:6080 (stream out) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 870 725 L 870 680 L 160 680 L 160 698" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrow-solid)"/>
-      <text x="515" y="672" text-anchor="middle" fill="#a78bfa" font-size="10">⑨ stream → ALB:6080</text>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- LEGEND                                                -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <rect x="1014" y="112" width="412" height="590" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="1220" y="135" text-anchor="middle" fill="#1e293b" font-size="12" font-weight="700">Request Flow</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: ALB:6080 → User (noVNC iframe) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 220 760 L 1670 530 L 1680 480" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrow-solid)"/>
-      <text x="950" y="620" text-anchor="middle" fill="#a78bfa" font-size="11">⑩ noVNC iframe  (live browser stream  ALB:6080)</text>
+    <!-- Deploy section -->
+    <rect x="1028" y="146" width="384" height="76" rx="7" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="1044" y="161" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.5">DEPLOY  (triggered on GitHub push)</text>
+    <line x1="1044" y1="174" x2="1064" y2="174" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="1072" y="178" fill="#475569" font-size="9">ECR agent image → AgentCore container</text>
+    <line x1="1044" y1="191" x2="1064" y2="191" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="1072" y="195" fill="#475569" font-size="9">ECR mcp image → ECS rolling deploy</text>
+    <line x1="1044" y1="208" x2="1064" y2="208" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="1072" y="212" fill="#475569" font-size="9">React build → Amplify CDN deploy</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Arrow: ECR MCP → ECS deploy (dashed) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <path d="M 700 135 L 700 230 L 730 230 L 730 690" fill="none" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arrow-dashed)"/>
-      <text x="750" y="226" fill="#475569" font-size="10">⑫ rolling deploy</text>
+    <!-- Runtime section -->
+    <text x="1044" y="242" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.5">RUNTIME FLOW</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- React App label (floating near CloudFront area) -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="55" y="850" width="260" height="60" rx="6" fill="#0f172a" stroke="#1e3a5f" stroke-width="1"/>
-      <text x="185" y="870" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">React App (served from S3)</text>
-      <text x="185" y="886" text-anchor="middle" fill="#64748b" font-size="10">React 18 + TypeScript + Vite</text>
-      <text x="185" y="898" text-anchor="middle" fill="#64748b" font-size="10">Tailwind CSS · Plan tab · Automate tab</text>
+    <line x1="1044" y1="262" x2="1064" y2="262" stroke="#ea580c" stroke-width="2"/>
+    <circle cx="1034" cy="262" r="8" fill="#ea580c"/>
+    <text x="1034" y="266" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">①</text>
+    <text x="1072" y="258" fill="#1e293b" font-size="9" font-weight="600">HTTPS → Amplify Hosting</text>
+    <text x="1072" y="270" fill="#64748b" font-size="8">load React app via CloudFront</text>
 
-      <!-- CloudFront ↔ React app label -->
-      <line x1="140" y1="490" x2="185" y2="850" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,3"/>
+    <circle cx="1034" cy="292" r="8" fill="#dc2626"/>
+    <text x="1034" y="296" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">③</text>
+    <text x="1072" y="288" fill="#1e293b" font-size="9" font-weight="600">OAuth2 login → Cognito</text>
+    <text x="1072" y="300" fill="#64748b" font-size="8">get JWT · Amplify Auth SDK</text>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- LEGEND -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <rect x="1520" y="660" width="250" height="390" rx="8" fill="#0f1520" stroke="#2a3044" stroke-width="1"/>
-      <text x="1645" y="682" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="600">Service Category Colors</text>
+    <circle cx="1034" cy="322" r="8" fill="#7C3AED"/>
+    <text x="1034" y="326" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">④</text>
+    <text x="1072" y="318" fill="#1e293b" font-size="9" font-weight="600">InvokeAgentRuntime → AgentCore</text>
+    <text x="1072" y="330" fill="#64748b" font-size="8">mode: plan / start_session / automate</text>
 
-      <!-- Legend items -->
-      <rect x="1540" y="695" width="18" height="18" rx="3" fill="#8C4FFF"/>
-      <text x="1566" y="708" fill="#94a3b8" font-size="11">Networking / CDN</text>
-      <text x="1566" y="720" fill="#64748b" font-size="10">CloudFront, ALB</text>
+    <circle cx="1034" cy="352" r="8" fill="#7C3AED"/>
+    <text x="1034" y="356" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑤</text>
+    <text x="1072" y="348" fill="#1e293b" font-size="9" font-weight="600">LLM calls → Bedrock Claude</text>
+    <text x="1072" y="360" fill="#64748b" font-size="8">generate plan or drive MCP tool loop</text>
 
-      <rect x="1540" y="733" width="18" height="18" rx="3" fill="#7AA116"/>
-      <text x="1566" y="746" fill="#94a3b8" font-size="11">Storage</text>
-      <text x="1566" y="758" fill="#64748b" font-size="10">S3</text>
+    <circle cx="1034" cy="382" r="8" fill="#dc2626"/>
+    <text x="1034" y="386" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑥</text>
+    <text x="1072" y="378" fill="#1e293b" font-size="9" font-weight="600">GetParameter → SSM</text>
+    <text x="1072" y="390" fill="#64748b" font-size="8">read cluster / subnet / security-group</text>
 
-      <rect x="1540" y="771" width="18" height="18" rx="3" fill="#DD344C"/>
-      <text x="1566" y="784" fill="#94a3b8" font-size="11">Security / Identity</text>
-      <text x="1566" y="796" fill="#64748b" font-size="10">Cognito</text>
+    <circle cx="1034" cy="412" r="8" fill="#16a34a"/>
+    <text x="1034" y="416" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑦</text>
+    <text x="1072" y="408" fill="#1e293b" font-size="9" font-weight="600">start_session → claim warm ECS task</text>
+    <text x="1072" y="420" fill="#64748b" font-size="8">ListTasks → get public IP → return noVNC URL</text>
 
-      <rect x="1540" y="809" width="18" height="18" rx="3" fill="#01A88D"/>
-      <text x="1566" y="822" fill="#94a3b8" font-size="11">AI / ML</text>
-      <text x="1566" y="834" fill="#64748b" font-size="10">Bedrock, AgentCore</text>
+    <circle cx="1034" cy="442" r="8" fill="#ea580c"/>
+    <text x="1034" y="446" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑧</text>
+    <text x="1072" y="438" fill="#1e293b" font-size="9" font-weight="600">automate → playwright-mcp SSE</text>
+    <text x="1072" y="450" fill="#64748b" font-size="8">connect IP:3000/sse · execute test steps</text>
 
-      <rect x="1540" y="847" width="18" height="18" rx="3" fill="#FF9900"/>
-      <text x="1566" y="860" fill="#94a3b8" font-size="11">Compute / Containers</text>
-      <text x="1566" y="872" fill="#64748b" font-size="10">ECS Fargate</text>
+    <circle cx="1034" cy="472" r="8" fill="#5B21B6"/>
+    <text x="1034" y="476" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑨</text>
+    <text x="1072" y="468" fill="#1e293b" font-size="9" font-weight="600">noVNC live stream → popup</text>
+    <text x="1072" y="480" fill="#64748b" font-size="8">direct IP:6080 · watch test run live</text>
 
-      <rect x="1540" y="885" width="18" height="18" rx="3" fill="#C7131F"/>
-      <text x="1566" y="898" fill="#94a3b8" font-size="11">Developer Tools</text>
-      <text x="1566" y="910" fill="#64748b" font-size="10">CodePipeline, ECR</text>
+    <circle cx="1034" cy="502" r="8" fill="#94a3b8"/>
+    <text x="1034" y="506" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">⑩</text>
+    <text x="1072" y="498" fill="#1e293b" font-size="9" font-weight="600">StopTask → test done</text>
+    <text x="1072" y="510" fill="#64748b" font-size="8">ECS Service auto-replaces warm task</text>
 
-      <rect x="1540" y="923" width="18" height="18" rx="3" fill="#E7157B"/>
-      <text x="1566" y="936" fill="#94a3b8" font-size="11">Management</text>
-      <text x="1566" y="948" fill="#64748b" font-size="10">CloudWatch</text>
+    <!-- Service colors key -->
+    <rect x="1028" y="526" width="384" height="156" rx="7" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="1044" y="542" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.5">SERVICE COLORS</text>
+    <rect x="1044" y="550" width="12" height="12" rx="2" fill="#24292e"/><text x="1062" y="561" fill="#475569" font-size="8.5">GitHub — source control</text>
+    <rect x="1044" y="568" width="12" height="12" rx="2" fill="#C7131F"/><text x="1062" y="579" fill="#475569" font-size="8.5">CodePipeline / ECR — CI/CD &amp; registry</text>
+    <rect x="1044" y="586" width="12" height="12" rx="2" fill="#ea580c"/><text x="1062" y="597" fill="#475569" font-size="8.5">Amplify / ECS — hosting &amp; compute</text>
+    <rect x="1044" y="604" width="12" height="12" rx="2" fill="#5B21B6"/><text x="1062" y="615" fill="#475569" font-size="8.5">AgentCore — AI runtime</text>
+    <rect x="1044" y="622" width="12" height="12" rx="2" fill="#7C3AED"/><text x="1062" y="633" fill="#475569" font-size="8.5">Bedrock — LLM API</text>
+    <rect x="1044" y="640" width="12" height="12" rx="2" fill="#dc2626"/><text x="1062" y="651" fill="#475569" font-size="8.5">Cognito / SSM — auth &amp; config</text>
+    <rect x="1044" y="658" width="12" height="12" rx="2" fill="#be185d"/><text x="1062" y="669" fill="#475569" font-size="8.5">CloudWatch — observability</text>
 
-      <!-- Legend: arrow types -->
-      <line x1="1540" y1="971" x2="1570" y2="971" stroke="#60a5fa" stroke-width="2"/>
-      <text x="1578" y="975" fill="#94a3b8" font-size="10">Request / data flow</text>
-      <line x1="1540" y1="987" x2="1570" y2="987" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,2"/>
-      <text x="1578" y="991" fill="#94a3b8" font-size="10">Image pull / deploy</text>
-      <line x1="1540" y1="1003" x2="1570" y2="1003" stroke="#fb923c" stroke-width="2"/>
-      <text x="1578" y="1007" fill="#94a3b8" font-size="10">Automate / browser control</text>
-      <line x1="1540" y1="1019" x2="1570" y2="1019" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2"/>
-      <text x="1578" y="1023" fill="#94a3b8" font-size="10">Live video stream</text>
-
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!-- Footer note -->
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <text x="900" y="1130" text-anchor="middle" fill="#374151" font-size="11" font-family="monospace">
-        Prompt2Test  ·  AWS us-east-1  ·  account 590183962483  ·  CloudFront: d1c90tgy4nfi4n.cloudfront.net
-      </text>
-    </svg>
+    <!-- Footer -->
+    <text x="600" y="728" text-anchor="middle" fill="#cbd5e1" font-size="9" font-family="monospace">AWS us-east-1  ·  account 590183962483  ·  d1c90tgy4nfi4n.cloudfront.net</text>
+  </svg>
   </div>
 </body>
 </html>

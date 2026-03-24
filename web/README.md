@@ -1,73 +1,95 @@
-# React + TypeScript + Vite
+# Prompt2Test — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React SPA for the Prompt2Test AI-powered test authoring and automation platform.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Layer | Technology |
+|---|---|
+| Framework | React 18 + TypeScript |
+| Build | Vite |
+| Styling | Tailwind CSS |
+| Auth | AWS Amplify Auth (Cognito) |
+| Agent API | `@aws-sdk/client-bedrock-agent-runtime` — InvokeAgentRuntime |
+| Hosting | AWS Amplify Hosting (CloudFront + S3, managed) |
 
-## React Compiler
+## Pages
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Route | Page | Description |
+|---|---|---|
+| `/login` | LoginPage | Cognito sign-in |
+| `/agent` | AgentPage | Main chat UI — Plan + Automate |
+| `/inventory` | InventoryPage | Saved test cases |
+| `/config` | ConfigPage | Config & accounts |
+| `/members` | MembersPage | Team members |
+| `/architecture` | ArchitecturePage | Live architecture diagram |
+| `/concepts` | ConceptsPage | Core concepts guide |
 
-## Expanding the ESLint configuration
+## Agent Flow
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The `AgentPage` drives the full test authoring + execution flow:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Plan mode** — user describes a test → agent clarifies → returns JSON plan
+2. **start_session** — opens a live browser popup, claims a warm ECS task, returns noVNC URL
+3. **automate** — agent connects to playwright-mcp via SSE, executes the plan, stops the task
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+User types → callAgent({ mode: 'plan' })     → plan JSON displayed
+User clicks Run → window.open('about:blank') → callAgent({ mode: 'start_session' })
+                                             → popup.location.href = novnc_url
+                                             → callAgent({ mode: 'automate' })
+                                             → result displayed
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Local Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+cd web
+npm install
+npm run dev       # http://localhost:5173
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Requires `web/src/amplifyconfiguration.json` with your Cognito + AgentCore config.
+
+## Build & Deploy
+
+Amplify CI/CD auto-deploys on push to `main`:
+```bash
+npm run build     # outputs to dist/
+```
+
+Manually:
+```bash
+aws amplify start-job --app-id <id> --branch-name main --job-type RELEASE
+```
+
+## Environment
+
+The app reads AgentCore ARN and region from `amplifyconfiguration.json`:
+```json
+{
+  "agentRuntimeArn": "arn:aws:bedrock-agentcore:us-east-1:...",
+  "region": "us-east-1"
+}
+```
+
+## Project Structure
+
+```
+web/
+├── src/
+│   ├── pages/
+│   │   ├── AgentPage.tsx          # Main UI — plan + automate
+│   │   ├── LoginPage.tsx
+│   │   ├── InventoryPage.tsx
+│   │   ├── ConfigPage.tsx
+│   │   ├── MembersPage.tsx
+│   │   ├── ArchitecturePage.tsx
+│   │   └── ConceptsPage.tsx
+│   ├── layouts/
+│   │   └── PlatformLayout.tsx     # Top nav with tabs
+│   └── main.tsx                   # Amplify.configure + router
+├── public/
+│   └── favicon.svg                # Robot head with Playwright eyes
+└── vite.config.ts
 ```
