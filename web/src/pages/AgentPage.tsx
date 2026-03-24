@@ -155,7 +155,12 @@ export default function AgentPage() {
 
           URL.revokeObjectURL(loadingUrl)
           setNovncUrl(resolvedSession.novnc_url as string)
-          if (popup) popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`
+          if (popup) {
+            const novncSrc = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`
+            const wrapperHtml = `<!DOCTYPE html><html><head><style>*{margin:0;padding:0}iframe{width:100vw;height:100vh;border:none;display:block}</style></head><body><iframe src="${novncSrc}"></iframe><script>window.addEventListener('message',function(e){if(e.data==='close-popup')window.close()});<\/script></body></html>`
+            const wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' })
+            popup.location.href = URL.createObjectURL(wrapperBlob)
+          }
           setMessages(prev => [
             ...prev.slice(0, -1),
             { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
@@ -179,7 +184,7 @@ export default function AgentPage() {
             ...prev.slice(0, -1),
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
           ])
-          popup?.close()
+          popup?.postMessage('close-popup', '*')
         } else {
           // Generate / refine the plan
           setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
@@ -235,7 +240,12 @@ export default function AgentPage() {
         const novncUrl2 = sessionResult2.novnc_url as string
         setNovncUrl(novncUrl2)
         URL.revokeObjectURL(loadingUrl2)
-        if (popup2) popup2.location.href = `${novncUrl2}?autoconnect=true&resize=scale`
+        if (popup2) {
+          const novncSrc2 = `${novncUrl2}?autoconnect=true&resize=scale`
+          const wrapperHtml2 = `<!DOCTYPE html><html><head><style>*{margin:0;padding:0}iframe{width:100vw;height:100vh;border:none;display:block}</style></head><body><iframe src="${novncSrc2}"></iframe><script>window.addEventListener('message',function(e){if(e.data==='close-popup')window.close()});<\/script></body></html>`
+          const wrapperBlob2 = new Blob([wrapperHtml2], { type: 'text/html' })
+          popup2.location.href = URL.createObjectURL(wrapperBlob2)
+        }
         setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
         const raw = await callAgent({
           inputText: text, mode: 'automate', plan, sessionId,
@@ -247,7 +257,7 @@ export default function AgentPage() {
           ...prev.slice(0, -1),
           { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
         ])
-        popup2?.close()
+        popup2?.postMessage('close-popup', '*')
       }
     } catch (err: unknown) {
       setMessages(prev => [
