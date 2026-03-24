@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { fetchUserAttributes, signOut } from '@aws-amplify/auth'
 
 const tabs = [
   {
@@ -59,6 +61,22 @@ const tabs = [
 
 export default function PlatformLayout() {
   const navigate = useNavigate()
+  const [initials, setInitials] = useState('?')
+  const [displayName, setDisplayName] = useState('')
+
+  useEffect(() => {
+    fetchUserAttributes().then(attrs => {
+      const name = attrs.name || attrs.email || ''
+      const parts = name.split(/[\s@]/)
+      setInitials(parts.filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
+      setDisplayName(attrs.name || attrs.email?.split('@')[0] || '')
+    }).catch(() => {})
+  }, [])
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login')
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -93,12 +111,15 @@ export default function PlatformLayout() {
         </nav>
 
         {/* Avatar */}
-        <div
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white ml-auto cursor-pointer flex-shrink-0"
-          onClick={() => navigate('/login')}
-          title="Sign out"
-        >
-          JD
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+          {displayName && <span className="text-[13px] text-slate-500">{displayName}</span>}
+          <div
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white cursor-pointer"
+            onClick={handleSignOut}
+            title="Sign out"
+          >
+            {initials}
+          </div>
         </div>
       </div>
 
