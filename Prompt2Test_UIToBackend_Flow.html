@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt2Test – UI to Backend Flow</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #1e293b;
+      padding: 40px 24px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── Cover ── */
+    .cover {
+      text-align: center;
+      padding: 60px 0 80px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 64px;
+    }
+    .cover .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #7C3AED22, #60a5fa22);
+      border: 1px solid #7C3AED55;
+      color: #7C3AED;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .cover h1 {
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1e293b 0%, #7C3AED 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+    .cover p {
+      font-size: 18px;
+      color: #64748b;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Section ── */
+    .section { margin-bottom: 72px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .section-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .num-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+    .num-purple { background: #ede9fe; color: #7c3aed; border: 1px solid #c4b5fd; }
+    .num-orange { background: #ffedd5; color: #ea580c; border: 1px solid #fdba74; }
+    .num-green  { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .section h2 { font-size: 26px; font-weight: 600; color: #1e293b; }
+    .section-desc {
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 28px;
+      max-width: 860px;
+    }
+
+    /* ── Flow steps ── */
+    .flow { display: flex; flex-direction: column; gap: 0; }
+    .flow-step {
+      display: flex;
+      gap: 20px;
+      position: relative;
+    }
+    .flow-step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 44px;
+      bottom: -4px;
+      width: 2px;
+      background: #e2e8f0;
+    }
+    .flow-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .icon-blue   { background: #dbeafe; color: #1d4ed8; border: 2px solid #93c5fd; }
+    .icon-purple { background: #ede9fe; color: #7c3aed; border: 2px solid #c4b5fd; }
+    .icon-orange { background: #ffedd5; color: #ea580c; border: 2px solid #fdba74; }
+    .icon-green  { background: #dcfce7; color: #15803d; border: 2px solid #86efac; }
+    .icon-teal   { background: #f0fdfa; color: #0d9488; border: 2px solid #99f6e4; }
+    .icon-gray   { background: #f1f5f9; color: #64748b; border: 2px solid #cbd5e1; }
+    .flow-body {
+      flex: 1;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 8px;
+    }
+    .flow-body h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .flow-body p {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+    .flow-body .file-ref {
+      display: inline-block;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+    .flow-body code {
+      background: #f1f5f9;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: #7c3aed;
+    }
+    .flow-body .snippet {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .flow-body .snippet .k  { color: #c084fc; }   /* keyword */
+    .flow-body .snippet .s  { color: #86efac; }   /* string */
+    .flow-body .snippet .c  { color: #64748b; }   /* comment */
+    .flow-body .snippet .v  { color: #60a5fa; }   /* var/func */
+    .flow-body .snippet .n  { color: #fde68a; }   /* number/const */
+    .flow-body .snippet .t  { color: #e2e8f0; }   /* text */
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #e2e8f0; margin: 64px 0; }
+
+    /* ── Summary diagram ── */
+    .diagram-wrapper {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      margin-bottom: 40px;
+    }
+    svg { display: block; width: 100%; height: auto; }
+
+    /* ── Cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-icon { font-size: 22px; margin-bottom: 10px; }
+    .card h4 { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .card p  { font-size: 13px; color: #475569; line-height: 1.5; }
+    .card.blue   { border-color: #93c5fd66; }
+    .card.purple { border-color: #c4b5fd66; }
+    .card.orange { border-color: #fdba7466; }
+    .card.green  { border-color: #86efac66; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════ COVER -->
+<div class="cover">
+  <div class="badge">Developer Reference</div>
+  <h1>UI to Backend — Code Flow</h1>
+  <p>A code-level walkthrough of every call from the React frontend to AgentCore, ECS, and back — tracing each file, function, and payload through the system.</p>
+</div>
+
+
+<!-- ══════════════════════════ SECTION 1: PLAN MODE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-purple">1</div>
+    <h2>Plan Mode Flow</h2>
+  </div>
+  <p class="section-desc">
+    User describes a test → React sends a signed request to AgentCore → Claude reasons and returns a structured JSON plan → UI renders it as numbered steps.
+    No browser is started and no MCP calls happen here.
+  </p>
+
+  <div class="flow">
+
+    <!-- Step 1 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-blue">1</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx — send()</span>
+        <h4>User types a prompt and submits</h4>
+        <p>
+          The message is appended to the chat. <code>send()</code> builds <code>conversationHistory</code>
+          from all prior messages so the agent has memory across turns,
+          then calls <code>callAgent()</code> with <code>mode: "plan"</code>.
+        </p>
+        <div class="snippet">
+<span class="k">const</span> <span class="v">history</span> = <span class="v">messages</span>
+  .<span class="v">map</span>(<span class="v">m</span> => <span class="s">`<span class="v">${m.role === 'user' ? 'User' : 'Agent'}</span>: <span class="v">${m.text}</span>`</span>)
+  .<span class="v">join</span>(<span class="s">'\n'</span>)
+
+<span class="v">callAgent</span>({ <span class="v">inputText</span>: <span class="v">text</span>, <span class="v">mode</span>: <span class="s">'plan'</span>, <span class="v">sessionId</span>, <span class="v">conversationHistory</span>: <span class="v">history</span> }, <span class="v">sessionId</span>)
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-purple">2</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx — callAgent()</span>
+        <h4>Cognito credentials fetched → request signed → sent to AgentCore</h4>
+        <p>
+          <code>fetchAuthSession()</code> retrieves temporary AWS credentials from Cognito.
+          A <code>BedrockAgentCoreClient</code> is constructed with those credentials,
+          then <code>InvokeAgentRuntimeCommand</code> is sent — the SDK automatically SigV4-signs it.
+          The payload is JSON-encoded as <code>Uint8Array</code>.
+        </p>
+        <div class="snippet">
+<span class="k">const</span> <span class="v">session</span> = <span class="k">await</span> <span class="v">fetchAuthSession</span>()          <span class="c">// Cognito temp creds</span>
+<span class="k">const</span> <span class="v">client</span> = <span class="k">new</span> <span class="v">BedrockAgentCoreClient</span>({ <span class="v">region</span>, <span class="v">credentials</span>: <span class="v">session.credentials</span> })
+<span class="k">const</span> <span class="v">cmd</span> = <span class="k">new</span> <span class="v">InvokeAgentRuntimeCommand</span>({
+  <span class="v">agentRuntimeArn</span>: <span class="n">AGENT_RUNTIME_ARN</span>,
+  <span class="v">runtimeSessionId</span>: <span class="v">sessionId</span>,
+  <span class="v">payload</span>: <span class="k">new</span> <span class="v">TextEncoder</span>().<span class="v">encode</span>(<span class="v">JSON</span>.<span class="v">stringify</span>(<span class="v">payload</span>)),
+})
+<span class="k">const</span> <span class="v">response</span> = <span class="k">await</span> <span class="v">client</span>.<span class="v">send</span>(<span class="v">cmd</span>)
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-purple">3</div>
+      <div class="flow-body">
+        <span class="file-ref">main.py — POST /invocations</span>
+        <h4>AgentCore receives the request</h4>
+        <p>
+          FastAPI reads the body, extracts <code>sessionId</code>, <code>mode</code>, and <code>inputText</code>.
+          Seeing <code>mode: "plan"</code>, it calls <code>runner.plan()</code>.
+        </p>
+        <div class="snippet">
+<span class="v">mode</span> = <span class="v">body</span>.<span class="v">get</span>(<span class="s">"mode"</span>, <span class="s">"plan"</span>)
+<span class="k">if</span> <span class="v">mode</span> == <span class="s">"plan"</span>:
+    <span class="v">result</span> = <span class="v">runner</span>.<span class="v">plan</span>(
+        <span class="v">prompt</span>=<span class="v">body</span>.<span class="v">get</span>(<span class="s">"inputText"</span>),
+        <span class="v">session_id</span>=<span class="v">session_id</span>,
+        <span class="v">conversation_history</span>=<span class="v">body</span>.<span class="v">get</span>(<span class="s">"conversationHistory"</span>, <span class="s">""</span>),
+    )
+    <span class="k">return</span> <span class="v">JSONResponse</span>({ <span class="s">"sessionId"</span>: ..., <span class="s">"mode"</span>: <span class="s">"plan"</span>, <span class="s">"plan"</span>: <span class="v">result</span>[<span class="s">"plan"</span>] })
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-purple">4</div>
+      <div class="flow-body">
+        <span class="file-ref">agent_runner.py — AgentRunner.plan()</span>
+        <h4>Strands Agent invokes Claude on Bedrock</h4>
+        <p>
+          A Strands <code>Agent</code> is built with <code>SYSTEM_PROMPT</code> and two lightweight tools:
+          <code>resolve_config</code> (returns <code>{{KEY}}</code> placeholder) and
+          <code>resolve_secret</code> (returns <code>***name***</code>).
+          Conversation history is prepended to the prompt so Claude remembers prior turns.
+          Claude returns a JSON plan — or a clarifying question if it needs more info.
+        </p>
+        <div class="snippet">
+<span class="v">agent</span> = <span class="v">Agent</span>(
+    <span class="v">model</span>=<span class="v">_build_model</span>(),              <span class="c"># claude-sonnet-4-5 via Bedrock</span>
+    <span class="v">system_prompt</span>=<span class="n">SYSTEM_PROMPT</span>,
+    <span class="v">tools</span>=<span class="v">_build_tools_phase1</span>(),       <span class="c"># resolve_config, resolve_secret</span>
+)
+<span class="v">full_prompt</span> = <span class="s">f"Conversation so far:\n<span class="v">{history}</span>\n\nLatest: <span class="v">{prompt}</span>"</span>
+<span class="v">response</span> = <span class="v">agent</span>(<span class="v">full_prompt</span>)
+<span class="v">plan</span> = <span class="v">self</span>.<span class="v">_parse_plan</span>(<span class="v">str</span>(<span class="v">response</span>))   <span class="c"># strips markdown, extracts JSON</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-blue">5</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx — callAgent() response reader</span>
+        <h4>Streaming response parsed → plan rendered in UI</h4>
+        <p>
+          The response is a <code>ReadableStream</code>. The UI reads it chunk by chunk, splitting on
+          newlines to parse NDJSON events as they arrive. The final JSON is parsed into a <code>Plan</code>
+          object, stored in state, and rendered as numbered steps in the right panel.
+          The <code>confirmationMessage</code> is shown in chat. The agent asks: <em>"Would you like me to execute this?"</em>
+        </p>
+        <div class="snippet">
+<span class="c">// Plan shape returned by Claude:</span>
+{
+  <span class="s">"confirmationMessage"</span>: <span class="s">"Got it! We'll navigate to amazon.com..."</span>,
+  <span class="s">"summary"</span>: <span class="s">"Search for iPhone 17 on Amazon"</span>,
+  <span class="s">"steps"</span>: [
+    { <span class="s">"stepNumber"</span>: <span class="n">1</span>, <span class="s">"type"</span>: <span class="s">"navigate"</span>, <span class="s">"tool"</span>: <span class="s">"playwright"</span>,
+      <span class="s">"action"</span>: <span class="s">"Go to amazon.com"</span>, <span class="s">"detail"</span>: <span class="s">"Navigate to https://amazon.com"</span> }
+  ],
+  <span class="s">"estimatedTokens"</span>: <span class="n">320</span>, <span class="s">"mcpCalls"</span>: <span class="n">4</span>
+}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- ══════════════════════════ SECTION 2: AUTOMATE — CALL 1 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-orange">2</div>
+    <h2>Automate Mode — Call 1: start_session</h2>
+  </div>
+  <p class="section-desc">
+    User types "yes" / "run". The frontend detects this, opens a blank popup window synchronously
+    (before any <code>await</code> to avoid browser popup blockers), then calls <code>start_session</code>
+    to claim a warm ECS task and get the live browser URL.
+  </p>
+
+  <div class="flow">
+
+    <!-- Step 1 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-orange">1</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx — send()</span>
+        <h4>Confirmation detected → popup opened synchronously</h4>
+        <p>
+          The UI checks if a plan exists and the text matches <code>/^(yes|run|execute|go|ok|sure|start|do it)/i</code>.
+          <code>window.open()</code> is called <strong>before any await</strong> — this is critical.
+          Browsers only allow popups triggered directly by user gesture; any async gap would cause it to be blocked.
+        </p>
+        <div class="snippet">
+<span class="k">if</span> (<span class="v">plan</span> &amp;&amp; <span class="v">/^(yes|run|execute|go|ok|sure|start|do it)/i</span>.<span class="v">test</span>(<span class="v">text</span>)) {
+  <span class="c">// MUST be before any await — opens within user gesture</span>
+  <span class="k">const</span> <span class="v">popup</span> = <span class="v">window</span>.<span class="v">open</span>(<span class="s">'about:blank'</span>, <span class="s">'novnc-popup'</span>, <span class="s">'width=1280,height=820'</span>)
+
+  <span class="c">// Now we can await</span>
+  <span class="k">const</span> <span class="v">sessionRaw</span> = <span class="k">await</span> <span class="v">callAgent</span>({ <span class="v">mode</span>: <span class="s">'start_session'</span>, ... })
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-orange">2</div>
+      <div class="flow-body">
+        <span class="file-ref">main.py → agent_runner.py — start_session()</span>
+        <h4>AgentCore claims the warm ECS task</h4>
+        <p>
+          <code>ECSSession._start()</code> reads cluster name and task config from SSM Parameter Store,
+          then calls ECS <code>ListTasks</code> to find the already-running warm task.
+          It grabs the task's public IP and constructs the noVNC and MCP URLs.
+          The task is <strong>not started</strong> — it was already running in the warm pool.
+          No wait. Returns immediately.
+        </p>
+        <div class="snippet">
+<span class="k">from</span> <span class="v">agent.ecs_session</span> <span class="k">import</span> <span class="v">ECSSession</span>
+
+<span class="v">ecs</span> = <span class="v">ECSSession</span>(<span class="v">region</span>=<span class="v">self</span>.<span class="v">region</span>)
+<span class="v">ecs</span>.<span class="v">_start</span>()    <span class="c"># reads SSM → ListTasks → gets public IP</span>
+
+<span class="k">return</span> {
+    <span class="s">"novnc_url"</span>:    <span class="v">ecs</span>.<span class="v">novnc_url</span>,       <span class="c"># http://3.91.x.x:6080/vnc.html</span>
+    <span class="s">"mcp_endpoint"</span>: <span class="v">ecs</span>.<span class="v">mcp_endpoint</span>,    <span class="c"># http://3.91.x.x:3000</span>
+    <span class="s">"task_arn"</span>:     <span class="v">ecs</span>.<span class="v">task_arn</span>,
+    <span class="s">"cluster"</span>:      <span class="v">ecs</span>.<span class="v">cluster</span>,
+}
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-orange">3</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx</span>
+        <h4>noVNC URL received → popup navigated to live browser</h4>
+        <p>
+          The response is parsed. The already-open blank popup is navigated to the noVNC URL
+          with <code>autoconnect=true&amp;resize=scale</code>. The browser connects directly to the ECS task
+          at <code>IP:6080</code> — no proxy, no CloudFront. The user can now watch the live browser.
+        </p>
+        <div class="snippet">
+<span class="k">const</span> <span class="v">sessionResult</span> = <span class="v">JSON</span>.<span class="v">parse</span>(<span class="v">sessionRaw</span>)
+<span class="k">const</span> <span class="v">novncUrl</span> = <span class="v">sessionResult</span>.<span class="v">novnc_url</span>
+
+<span class="k">if</span> (<span class="v">popup</span>) <span class="v">popup</span>.<span class="v">location</span>.<span class="v">href</span> = <span class="s">`<span class="v">${novncUrl}</span>?autoconnect=true&amp;resize=scale`</span>
+<span class="c">// Popup now shows live Chromium browser running on the ECS task</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- ══════════════════════════ SECTION 3: AUTOMATE — CALL 2 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-green">3</div>
+    <h2>Automate Mode — Call 2: automate</h2>
+  </div>
+  <p class="section-desc">
+    With the live browser already visible in the popup, the frontend sends the plan to <code>automate</code>.
+    AgentCore connects to playwright-mcp via MCP/SSE and runs a Claude agent loop — one tool call per plan step.
+    The ECS task is stopped when the test finishes.
+  </p>
+
+  <div class="flow">
+
+    <!-- Step 1 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-green">1</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx</span>
+        <h4>automate payload sent with plan + task info</h4>
+        <p>
+          <code>callAgent()</code> is called with <code>mode: "automate"</code>, the full plan object,
+          and the <code>task_arn</code>, <code>cluster</code>, and <code>mcp_endpoint</code> returned by
+          <code>start_session</code>. This lets the backend reuse the already-running task without starting a new one.
+        </p>
+        <div class="snippet">
+<span class="k">const</span> <span class="v">raw</span> = <span class="k">await</span> <span class="v">callAgent</span>({
+  <span class="v">inputText</span>: <span class="v">text</span>,
+  <span class="v">mode</span>: <span class="s">'automate'</span>,
+  <span class="v">plan</span>,                              <span class="c">// the plan JSON from step 1</span>
+  <span class="v">sessionId</span>,
+  <span class="v">task_arn</span>:     <span class="v">sessionResult</span>.<span class="v">task_arn</span>,
+  <span class="v">cluster</span>:      <span class="v">sessionResult</span>.<span class="v">cluster</span>,
+  <span class="v">mcp_endpoint</span>: <span class="v">sessionResult</span>.<span class="v">mcp_endpoint</span>,
+}, <span class="v">sessionId</span>)
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-green">2</div>
+      <div class="flow-body">
+        <span class="file-ref">main.py → agent_runner.py — automate_stream()</span>
+        <h4>AgentCore connects to playwright-mcp via SSE</h4>
+        <p>
+          Seeing <code>task_arn + cluster + mcp_endpoint</code> in the payload, <code>automate_stream()</code>
+          takes the pre-started task path. It builds an MCP client pointing to <code>mcp_endpoint/sse</code>
+          and overrides the <code>Host</code> header to <code>localhost:3000</code> — playwright-mcp
+          validates the Host for CSRF protection and only accepts <code>localhost</code>.
+        </p>
+        <div class="snippet">
+<span class="k">def</span> <span class="v">_build_mcp_client</span>(<span class="v">endpoint</span>):
+    <span class="v">sse_url</span> = <span class="v">endpoint</span>.<span class="v">rstrip</span>(<span class="s">"/"</span>) + <span class="s">"/sse"</span>
+    <span class="v">port</span> = <span class="v">urlparse</span>(<span class="v">endpoint</span>).<span class="v">port</span> <span class="k">or</span> <span class="n">3000</span>
+    <span class="v">host_header</span> = <span class="s">f"localhost:<span class="v">{port}</span>"</span>    <span class="c"># bypasses playwright-mcp CSRF check</span>
+    <span class="k">return</span> <span class="v">MCPClient</span>(<span class="k">lambda</span>: <span class="v">sse_client</span>(<span class="v">sse_url</span>, <span class="v">headers</span>={ <span class="s">"Host"</span>: <span class="v">host_header</span> }))
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-green">3</div>
+      <div class="flow-body">
+        <span class="file-ref">agent_runner.py — automate_stream()</span>
+        <h4>Strands Agent loop runs — one MCP tool call per plan step</h4>
+        <p>
+          A Strands <code>Agent</code> is built with the MCP tools from playwright-mcp
+          (<code>playwright_navigate</code>, <code>playwright_click</code>, <code>playwright_fill</code>,
+          <code>playwright_get_visible_text</code>, <code>playwright_screenshot</code>, etc.).
+          Claude reads the full steps text and executes each one in order, calling the tool,
+          observing the result, and deciding pass/fail before moving to the next step.
+          The user watches every action happen live in the noVNC popup.
+        </p>
+        <div class="snippet">
+<span class="k">with</span> <span class="v">_build_mcp_client</span>(<span class="v">mcp_endpoint</span>) <span class="k">as</span> <span class="v">mcp</span>:
+    <span class="v">tools</span> = <span class="v">mcp</span>.<span class="v">list_tools_sync</span>()      <span class="c"># playwright_navigate, _click, _fill…</span>
+    <span class="v">agent</span> = <span class="v">Agent</span>(
+        <span class="v">model</span>=<span class="v">_build_model</span>(),
+        <span class="v">system_prompt</span>=<span class="n">AUTOMATE_SYSTEM_PROMPT</span>,
+        <span class="v">tools</span>=<span class="v">tools</span>,
+    )
+    <span class="v">response</span> = <span class="v">agent</span>(<span class="v">prompt</span>)             <span class="c"># Claude loops until all steps done</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-green">4</div>
+      <div class="flow-body">
+        <span class="file-ref">agent_runner.py — automate_stream()</span>
+        <h4>Result yielded → ECS task stopped</h4>
+        <p>
+          After the agent loop completes, <code>_parse_plan()</code> extracts the result JSON from
+          Claude's response. A <code>complete</code> NDJSON event is yielded.
+          Then <code>ECSSession._stop()</code> calls ECS <code>StopTask</code>. The ECS Service
+          detects the stopped task and automatically starts a replacement — restoring the warm pool
+          for the next test run.
+        </p>
+        <div class="snippet">
+<span class="k">finally</span>:
+    <span class="v">ecs</span> = <span class="v">ECSSession</span>(<span class="v">region</span>=<span class="v">self</span>.<span class="v">region</span>)
+    <span class="v">ecs</span>.<span class="v">task_arn</span> = <span class="v">task_arn</span>
+    <span class="v">ecs</span>.<span class="v">cluster</span>  = <span class="v">cluster</span>
+    <span class="v">ecs</span>.<span class="v">_stop</span>()    <span class="c"># StopTask → ECS Service auto-replaces</span>
+
+<span class="k">yield</span> <span class="v">json</span>.<span class="v">dumps</span>({
+    <span class="s">"event"</span>: <span class="s">"complete"</span>, <span class="s">"result"</span>: <span class="v">result</span>
+}) + <span class="s">"\n"</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="flow-step">
+      <div class="flow-icon icon-blue">5</div>
+      <div class="flow-body">
+        <span class="file-ref">AgentPage.tsx</span>
+        <h4>Result displayed in chat</h4>
+        <p>
+          The streaming response is read until the <code>complete</code> event arrives.
+          <code>result.passed</code> determines whether to show ✅ or ❌.
+          The summary and step details are shown in the chat panel.
+        </p>
+        <div class="snippet">
+<span class="k">const</span> <span class="v">result</span> = <span class="v">JSON</span>.<span class="v">parse</span>(<span class="v">raw</span>)
+<span class="k">const</span> <span class="v">passed</span> = <span class="v">result</span>.<span class="v">result</span>?.<span class="v">passed</span> ?? <span class="v">result</span>.<span class="v">passed</span>
+
+<span class="c">// Result shape from Claude:</span>
+{ <span class="s">"passed"</span>: <span class="k">true</span>, <span class="s">"summary"</span>: <span class="s">"All 4 steps passed"</span>,
+  <span class="s">"steps"</span>: [{ <span class="s">"stepNumber"</span>: <span class="n">1</span>, <span class="s">"status"</span>: <span class="s">"passed"</span>, <span class="s">"detail"</span>: <span class="s">"Navigated to amazon.com"</span> }] }
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr class="divider"/>
+
+<!-- ══════════════════════════ SECTION 4: SUMMARY DIAGRAM -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-number num-blue">4</div>
+    <h2>End-to-End Call Map</h2>
+  </div>
+  <p class="section-desc">
+    Three distinct calls to AgentCore, each with a different <code>mode</code>. The frontend orchestrates them in sequence.
+  </p>
+
+  <div class="diagram-wrapper">
+    <svg viewBox="0 0 1100 400" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="d1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#7c3aed"/></marker>
+        <marker id="d2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ea580c"/></marker>
+        <marker id="d3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#15803d"/></marker>
+        <marker id="d4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3b82f6"/></marker>
+        <filter id="df"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000012"/></filter>
+      </defs>
+      <rect width="1100" height="400" fill="#f8fafc"/>
+
+      <!-- Column headers -->
+      <text x="90"  y="28" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="1">FRONTEND</text>
+      <text x="310" y="28" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="1">AGENTCORE</text>
+      <text x="560" y="28" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="1">BEDROCK</text>
+      <text x="780" y="28" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="1">ECS TASK</text>
+      <text x="990" y="28" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="1">RESULT</text>
+
+      <!-- Column dividers -->
+      <line x1="200" y1="35" x2="200" y2="390" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="430" y1="35" x2="430" y2="390" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="660" y1="35" x2="660" y2="390" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="880" y1="35" x2="880" y2="390" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- ── CALL 1: plan ── -->
+      <text x="90" y="60" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="700" letter-spacing="0.5">CALL 1 — plan</text>
+
+      <rect x="20"  y="68" width="140" height="50" rx="8" fill="white" stroke="#c4b5fd" stroke-width="1.5" filter="url(#df)"/>
+      <text x="90"  y="89" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">AgentPage.tsx</text>
+      <text x="90"  y="104" text-anchor="middle" fill="#64748b" font-size="9">mode: "plan" + inputText</text>
+
+      <rect x="234" y="68" width="152" height="50" rx="8" fill="white" stroke="#c4b5fd" stroke-width="1.5" filter="url(#df)"/>
+      <text x="310" y="89" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">runner.plan()</text>
+      <text x="310" y="104" text-anchor="middle" fill="#64748b" font-size="9">Strands Agent + SYSTEM_PROMPT</text>
+
+      <rect x="464" y="68" width="152" height="50" rx="8" fill="white" stroke="#8b5cf6" stroke-width="1.5" filter="url(#df)"/>
+      <text x="540" y="89" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="600">Claude Sonnet 4.5</text>
+      <text x="540" y="104" text-anchor="middle" fill="#64748b" font-size="9">Returns JSON plan</text>
+
+      <rect x="894" y="68" width="180" height="50" rx="8" fill="white" stroke="#c4b5fd" stroke-width="1.5" filter="url(#df)"/>
+      <text x="984" y="89" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">Plan JSON</text>
+      <text x="984" y="104" text-anchor="middle" fill="#64748b" font-size="9">Rendered in UI as steps</text>
+
+      <line x1="160" y1="93" x2="232" y2="93" stroke="#7c3aed" stroke-width="2" marker-end="url(#d1)"/>
+      <line x1="386" y1="93" x2="462" y2="93" stroke="#7c3aed" stroke-width="2" marker-end="url(#d1)"/>
+      <line x1="616" y1="93" x2="892" y2="93" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#d1)"/>
+
+      <!-- ── CALL 2: start_session ── -->
+      <text x="90" y="165" text-anchor="middle" fill="#ea580c" font-size="10" font-weight="700" letter-spacing="0.5">CALL 2 — start_session</text>
+
+      <rect x="20"  y="173" width="140" height="50" rx="8" fill="white" stroke="#fdba74" stroke-width="1.5" filter="url(#df)"/>
+      <text x="90"  y="194" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">window.open()</text>
+      <text x="90"  y="209" text-anchor="middle" fill="#64748b" font-size="9">mode: "start_session"</text>
+
+      <rect x="234" y="173" width="152" height="50" rx="8" fill="white" stroke="#fdba74" stroke-width="1.5" filter="url(#df)"/>
+      <text x="310" y="194" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">runner.start_session()</text>
+      <text x="310" y="209" text-anchor="middle" fill="#64748b" font-size="9">SSM → ListTasks → public IP</text>
+
+      <rect x="694" y="173" width="152" height="50" rx="8" fill="white" stroke="#86efac" stroke-width="1.5" filter="url(#df)"/>
+      <text x="770" y="194" text-anchor="middle" fill="#15803d" font-size="11" font-weight="600">ECS Warm Task</text>
+      <text x="770" y="209" text-anchor="middle" fill="#64748b" font-size="9">Already running · claimed</text>
+
+      <rect x="894" y="173" width="180" height="50" rx="8" fill="white" stroke="#fdba74" stroke-width="1.5" filter="url(#df)"/>
+      <text x="984" y="194" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">novnc_url + task_arn</text>
+      <text x="984" y="209" text-anchor="middle" fill="#64748b" font-size="9">popup → direct IP:6080</text>
+
+      <line x1="160" y1="198" x2="232" y2="198" stroke="#ea580c" stroke-width="2" marker-end="url(#d2)"/>
+      <line x1="386" y1="198" x2="692" y2="198" stroke="#ea580c" stroke-width="2" marker-end="url(#d2)"/>
+      <line x1="846" y1="198" x2="892" y2="198" stroke="#15803d" stroke-width="2" marker-end="url(#d3)"/>
+
+      <!-- ── CALL 3: automate ── -->
+      <text x="90" y="273" text-anchor="middle" fill="#15803d" font-size="10" font-weight="700" letter-spacing="0.5">CALL 3 — automate</text>
+
+      <rect x="20"  y="281" width="140" height="50" rx="8" fill="white" stroke="#86efac" stroke-width="1.5" filter="url(#df)"/>
+      <text x="90"  y="302" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">callAgent()</text>
+      <text x="90"  y="317" text-anchor="middle" fill="#64748b" font-size="9">plan + task_arn + mcp_endpoint</text>
+
+      <rect x="234" y="281" width="152" height="50" rx="8" fill="white" stroke="#86efac" stroke-width="1.5" filter="url(#df)"/>
+      <text x="310" y="302" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">automate_stream()</text>
+      <text x="310" y="317" text-anchor="middle" fill="#64748b" font-size="9">MCPClient → SSE IP:3000</text>
+
+      <rect x="464" y="281" width="152" height="50" rx="8" fill="white" stroke="#8b5cf6" stroke-width="1.5" filter="url(#df)"/>
+      <text x="540" y="302" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="600">Agent loop</text>
+      <text x="540" y="317" text-anchor="middle" fill="#64748b" font-size="9">think → tool → observe → repeat</text>
+
+      <rect x="694" y="281" width="152" height="50" rx="8" fill="white" stroke="#86efac" stroke-width="1.5" filter="url(#df)"/>
+      <text x="770" y="302" text-anchor="middle" fill="#15803d" font-size="11" font-weight="600">playwright-mcp</text>
+      <text x="770" y="317" text-anchor="middle" fill="#64748b" font-size="9">Chromium · Xvfb · noVNC</text>
+
+      <rect x="894" y="281" width="180" height="50" rx="8" fill="white" stroke="#86efac" stroke-width="1.5" filter="url(#df)"/>
+      <text x="984" y="302" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="600">passed / failed</text>
+      <text x="984" y="317" text-anchor="middle" fill="#64748b" font-size="9">StopTask → ECS replaces</text>
+
+      <line x1="160" y1="306" x2="232" y2="306" stroke="#15803d" stroke-width="2" marker-end="url(#d3)"/>
+      <line x1="386" y1="306" x2="462" y2="306" stroke="#15803d" stroke-width="2" marker-end="url(#d3)"/>
+      <line x1="616" y1="306" x2="692" y2="306" stroke="#15803d" stroke-width="2" marker-end="url(#d3)"/>
+      <line x1="846" y1="306" x2="892" y2="306" stroke="#15803d" stroke-width="2" marker-end="url(#d3)"/>
+
+      <!-- Key notes at bottom -->
+      <text x="90"  y="365" text-anchor="middle" fill="#7c3aed" font-size="9">InvokeAgentRuntime SDK</text>
+      <text x="90"  y="378" text-anchor="middle" fill="#7c3aed" font-size="9">SigV4 signed (Cognito creds)</text>
+      <text x="310" y="365" text-anchor="middle" fill="#64748b" font-size="9">POST /invocations</text>
+      <text x="310" y="378" text-anchor="middle" fill="#64748b" font-size="9">FastAPI · Python</text>
+      <text x="540" y="365" text-anchor="middle" fill="#64748b" font-size="9">Strands SDK</text>
+      <text x="540" y="378" text-anchor="middle" fill="#64748b" font-size="9">claude-sonnet-4-5</text>
+      <text x="770" y="365" text-anchor="middle" fill="#64748b" font-size="9">Host: localhost:3000</text>
+      <text x="770" y="378" text-anchor="middle" fill="#64748b" font-size="9">CSRF bypass header</text>
+    </svg>
+  </div>
+
+  <div class="cards">
+    <div class="card blue">
+      <div class="card-icon">🔐</div>
+      <h4>Auth</h4>
+      <p>Every call is authenticated. <code>fetchAuthSession()</code> gets Cognito temp credentials. The SDK SigV4-signs all requests automatically.</p>
+    </div>
+    <div class="card purple">
+      <div class="card-icon">🧠</div>
+      <h4>State</h4>
+      <p>Session ID is a stable UUID per page load. Conversation history is passed as a string on every plan call — AgentCore itself is stateless.</p>
+    </div>
+    <div class="card orange">
+      <div class="card-icon">🪟</div>
+      <h4>Popup timing</h4>
+      <p><code>window.open()</code> must be called synchronously inside the click handler. Any <code>await</code> before it causes browsers to block the popup.</p>
+    </div>
+    <div class="card green">
+      <div class="card-icon">♻️</div>
+      <h4>Warm pool</h4>
+      <p><code>start_session</code> claims an already-running ECS task — no cold start wait. <code>StopTask</code> at the end triggers ECS to auto-replace it for the next run.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
