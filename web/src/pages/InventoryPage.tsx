@@ -103,7 +103,15 @@ export default function InventoryPage() {
           )}
 
           {tab === 'cases' ? (
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[35%]" />
+                <col className="w-[12%]" />
+                <col className="w-[13%]" />
+                <col className="w-[11%]" />
+                <col className="w-[15%]" />
+                <col className="w-[14%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Test Case</th>
