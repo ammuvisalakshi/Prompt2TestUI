@@ -1,13 +1,6 @@
 import { useEnv } from '../context/EnvContext'
 
-const TEST_CASES = [
-  { id: 'tc1', name: 'Billing plan shows Enterprise for Acme Corp', service: 'Billing', tags: ['Smoke'], status: 'pass', envs: ['dev', 'qa', 'uat', 'prod'] },
-  { id: 'tc2', name: 'Export button visible for Enterprise plan', service: 'Billing', tags: ['Smoke'], status: 'pass', envs: ['dev', 'qa', 'uat'] },
-  { id: 'tc3', name: 'Max user limit 5 for Starter plan', service: 'Billing', tags: [], status: 'fail', envs: ['dev', 'qa'] },
-  { id: 'tc4', name: 'Payment charge succeeds for valid card', service: 'Payment', tags: ['Smoke'], status: 'pass', envs: ['dev', 'qa', 'uat', 'prod'] },
-  { id: 'tc5', name: 'CVV mismatch returns 422', service: 'Payment', tags: [], status: 'pass', envs: ['dev', 'qa'] },
-  { id: 'tc6', name: 'OAuth token refresh succeeds', service: 'Auth', tags: ['Smoke'], status: 'pass', envs: ['dev', 'qa', 'uat', 'prod'] },
-]
+const TEST_CASES: { id: string; name: string; service: string; tags: string[]; status: string; envs: string[] }[] = []
 
 export default function InventoryPage() {
   const { env } = useEnv()
