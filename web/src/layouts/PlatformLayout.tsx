@@ -64,9 +64,10 @@ const tabs = [
 
 export default function PlatformLayout() {
   const navigate = useNavigate()
-  const [initials, setInitials]     = useState('?')
-  const [displayName, setDisplayName] = useState('')
-  const [role, setRole]             = useState('')
+  const [initials, setInitials]         = useState('?')
+  const [displayName, setDisplayName]   = useState('')
+  const [role, setRole]                 = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   useEffect(() => {
     fetchUserAttributes().then(async attrs => {
@@ -124,14 +125,33 @@ export default function PlatformLayout() {
           ))}
         </nav>
 
-        {/* User info + sign out */}
-        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-          {displayName && <span className="text-[13px] text-slate-600 font-medium">{displayName}</span>}
-          {role && <span className="text-[11px] px-2 py-0.5 bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE] rounded-full font-medium">{role}</span>}
-          <button onClick={handleSignOut} className="text-[12px] text-slate-400 hover:text-slate-700 cursor-pointer">Sign out</button>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white">
+        {/* Avatar with dropdown */}
+        <div className="relative ml-auto flex-shrink-0">
+          <div
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white cursor-pointer select-none"
+            onClick={() => setDropdownOpen(o => !o)}
+          >
             {initials}
           </div>
+
+          {dropdownOpen && (
+            <>
+              {/* Backdrop to close on outside click */}
+              <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+              <div className="absolute right-0 top-10 z-50 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-slate-100">
+                  <div className="text-[13px] font-semibold text-slate-900 truncate">{displayName}</div>
+                  {role && <div className="text-[11px] text-[#7C3AED] font-medium mt-0.5">{role}</div>}
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-4 py-2 text-[13px] text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
