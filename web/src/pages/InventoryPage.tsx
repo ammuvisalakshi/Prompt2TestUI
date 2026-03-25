@@ -54,11 +54,32 @@ export default function InventoryPage() {
   const smoke    = cases.filter(tc => tc.tags.includes('Smoke')).length
   const failures = cases.filter(tc => tc.lastResult === 'FAIL').length
 
+  const confirmTc = cases.find(tc => tc.id === confirmDeleteId)
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
-      {/* Click-away for confirm delete */}
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-30" onClick={() => setConfirmDeleteId(null)} />
+      {/* Delete confirm modal */}
+      {confirmDeleteId && confirmTc && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setConfirmDeleteId(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-white rounded-2xl shadow-2xl p-5 w-80 pointer-events-auto">
+              <div className="text-[15px] font-semibold text-slate-800 mb-1">Delete test case?</div>
+              <div className="text-[13px] text-slate-500 mb-4 line-clamp-2">{confirmTc.description}</div>
+              <p className="text-[12px] text-slate-400 mb-4">This will also delete all run records for this test case.</p>
+              <div className="flex gap-2">
+                <button onClick={() => handleDelete(confirmDeleteId)} disabled={deletingId === confirmDeleteId}
+                  className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-colors">
+                  {deletingId === confirmDeleteId ? 'Deleting…' : 'Delete'}
+                </button>
+                <button onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-[13px] font-semibold hover:bg-slate-50 cursor-pointer transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       <div className="flex-1 overflow-y-auto p-5">
@@ -155,32 +176,14 @@ export default function InventoryPage() {
                           Run
                         </button>
 
-                        {/* Delete button + confirm popover */}
-                        <div className="relative">
-                          <button onClick={() => setConfirmDeleteId(confirmDeleteId === tc.id ? null : tc.id)}
-                            title="Delete test case"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
-                            <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
-                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-                            </svg>
-                          </button>
-
-                          {confirmDeleteId === tc.id && (
-                            <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-red-200 rounded-xl shadow-xl p-3 w-48">
-                              <p className="text-[12px] text-slate-600 mb-2">Delete this test case and all its run records?</p>
-                              <div className="flex gap-2">
-                                <button onClick={() => handleDelete(tc.id)} disabled={deletingId === tc.id}
-                                  className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[12px] font-semibold cursor-pointer disabled:opacity-50">
-                                  {deletingId === tc.id ? 'Deleting…' : 'Delete'}
-                                </button>
-                                <button onClick={() => setConfirmDeleteId(null)}
-                                  className="flex-1 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-[12px] font-semibold hover:bg-slate-50 cursor-pointer">
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        {/* Delete button */}
+                        <button onClick={() => setConfirmDeleteId(tc.id)}
+                          title="Delete test case"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                          <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
