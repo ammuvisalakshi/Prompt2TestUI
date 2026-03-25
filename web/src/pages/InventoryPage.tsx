@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useEnv } from '../context/EnvContext'
-import { listTestCases, listRunRecords, deleteTestCase, type TestCase, type RunRecord } from '../lib/lambdaClient'
+import { listTestCases, listRunRecords, deleteTestCase, getTestCase, type TestCase, type RunRecord } from '../lib/lambdaClient'
 
 type Tab = 'cases' | 'runs'
+
+type Step = { stepNumber: number; type: string; tool?: string; action: string; detail: string }
 
 export default function InventoryPage() {
   const { env } = useEnv()
@@ -15,16 +17,15 @@ export default function InventoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [viewTc, setViewTc] = useState<(TestCase & { steps: Step[] }) | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      if (tab === 'cases') {
-        setCases(await listTestCases(env))
-      } else {
-        setRuns(await listRunRecords(env))
-      }
+      if (tab === 'cases') setCases(await listTestCases(env))
+      else setRuns(await listRunRecords(env))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
     } finally {
@@ -47,17 +48,38 @@ export default function InventoryPage() {
     }
   }
 
+  async function handleView(tc: TestCase) {
+    setViewLoading(true)
+    try {
+      const full = await getTestCase(tc.id)
+      setViewTc(full as TestCase & { steps: Step[] })
+    } catch {
+      setError('Failed to load test case details')
+    } finally {
+      setViewLoading(false)
+    }
+  }
+
   function handleRun(tc: TestCase) {
     navigate(`/agent?tcId=${tc.id}&tcDesc=${encodeURIComponent(tc.description)}`)
   }
 
+  // Group test cases by service
+  const grouped = cases.reduce<Record<string, TestCase[]>>((acc, tc) => {
+    const svc = tc.service || 'Uncategorized'
+    if (!acc[svc]) acc[svc] = []
+    acc[svc].push(tc)
+    return acc
+  }, {})
+  const services = Object.keys(grouped).sort()
+
   const smoke    = cases.filter(tc => tc.tags.includes('Smoke')).length
   const failures = cases.filter(tc => tc.lastResult === 'FAIL').length
-
   const confirmTc = cases.find(tc => tc.id === confirmDeleteId)
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
+
       {/* Delete confirm modal */}
       {confirmDeleteId && confirmTc && (
         <>
@@ -82,13 +104,53 @@ export default function InventoryPage() {
         </>
       )}
 
+      {/* View test case modal */}
+      {(viewTc || viewLoading) && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setViewTc(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-6">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col pointer-events-auto">
+              <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100">
+                <div>
+                  <div className="text-[15px] font-semibold text-slate-800">{viewTc?.description ?? 'Loading…'}</div>
+                  {viewTc?.service && (
+                    <span className="text-[12px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-medium mt-1 inline-block">{viewTc.service}</span>
+                  )}
+                </div>
+                <button onClick={() => setViewTc(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer ml-4 flex-shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-current fill-none stroke-2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {viewLoading && <div className="text-[14px] text-slate-400 text-center py-8">Loading steps…</div>}
+                {viewTc?.steps?.length === 0 && (
+                  <div className="text-[13px] text-slate-400 text-center py-4">No steps recorded for this test case.</div>
+                )}
+                {viewTc?.steps?.map((step, i) => (
+                  <div key={i} className="flex gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                    <div className="w-5 h-5 rounded-full bg-[#7C3AED] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {step.stepNumber ?? i + 1}
+                    </div>
+                    <div>
+                      <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
+                      <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
+                      <div className="text-[11px] text-[#7C3AED] mt-0.5 font-medium uppercase tracking-wide">{step.type} {step.tool ? `· ${step.tool}` : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="flex-1 overflow-y-auto p-5">
-        {/* Stats (test cases tab only) */}
+        {/* Stats */}
         {tab === 'cases' && (
           <div className="grid grid-cols-4 gap-3 mb-5">
             {[
               { label: 'Total TCs',    value: cases.length,                                   color: 'text-slate-900' },
-              { label: 'Services',     value: [...new Set(cases.map(t => t.service))].length,  color: 'text-[#7C3AED]' },
+              { label: 'Services',     value: services.filter(s => s !== 'Uncategorized').length || cases.length > 0 ? services.length : 0, color: 'text-[#7C3AED]' },
               { label: 'Smoke tagged', value: smoke,                                           color: 'text-green-700' },
               { label: failures > 0 ? 'Failures' : 'All passing', value: failures > 0 ? failures : '✓', color: failures > 0 ? 'text-red-700' : 'text-green-700' },
             ].map(s => (
@@ -100,8 +162,8 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* Tab bar */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          {/* Tab bar */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <div className="flex gap-1">
               {(['cases', 'runs'] as Tab[]).map(t => (
@@ -124,72 +186,83 @@ export default function InventoryPage() {
           )}
 
           {tab === 'cases' ? (
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col className="w-[35%]" />
-                <col className="w-[12%]" />
-                <col className="w-[13%]" />
-                <col className="w-[11%]" />
-                <col className="w-[15%]" />
-                <col className="w-[14%]" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Test Case</th>
-                  <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Service</th>
-                  <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Tags</th>
-                  <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Last Result</th>
-                  <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Created By</th>
-                  <th className="px-4 py-2.5" />
-                </tr>
-              </thead>
-              <tbody>
-                {cases.length === 0 && !loading && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[14px] text-slate-400">No test cases yet for {env.toUpperCase()}</td></tr>
-                )}
-                {cases.map((tc, i) => (
-                  <tr key={tc.id} className={`border-b border-slate-50 hover:bg-slate-50 ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
-                    <td className="px-4 py-3 text-[14px] text-slate-700 font-medium max-w-xs truncate" title={tc.description}>{tc.description}</td>
-                    <td className="px-4 py-3">
-                      {tc.service && <span className="text-[12px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-medium">{tc.service}</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {tc.tags.map(tag => (
-                        <span key={tag} className="text-[12px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium mr-1">{tag}</span>
-                      ))}
-                    </td>
-                    <td className="px-4 py-3">
-                      {tc.lastResult ? (
-                        <span className={`text-[12px] px-2 py-0.5 rounded-full font-semibold ${tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                          {tc.lastResult}
-                        </span>
-                      ) : <span className="text-[12px] text-slate-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-[13px] text-slate-500">{tc.createdBy || '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 justify-end relative">
-                        {/* Run button */}
-                        <button onClick={() => handleRun(tc)}
-                          title="Run this test"
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
-                          <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                          Run
-                        </button>
+            cases.length === 0 && !loading ? (
+              <div className="px-4 py-8 text-center text-[14px] text-slate-400">No test cases yet for {env.toUpperCase()}</div>
+            ) : (
+              <div>
+                {services.map(svc => (
+                  <div key={svc}>
+                    {/* Service group header */}
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{svc}</span>
+                      <span className="text-[11px] text-slate-400">({grouped[svc].length})</span>
+                    </div>
 
-                        {/* Delete button */}
-                        <button onClick={() => setConfirmDeleteId(tc.id)}
-                          title="Delete test case"
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
-                          <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    {/* Rows */}
+                    {grouped[svc].map((tc) => {
+                      const isAutomated = (tc as TestCase & { stepCount?: number }).stepCount ?? 0 > 0
+                      return (
+                        <div key={tc.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                          {/* Description */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[14px] text-slate-700 font-medium truncate" title={tc.description}>{tc.description}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {tc.tags.map(tag => (
+                                <span key={tag} className="text-[11px] px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium">{tag}</span>
+                              ))}
+                              {tc.lastResult && (
+                                <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                  {tc.lastResult}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Automation status */}
+                          <span className={`flex-shrink-0 text-[11px] px-2 py-1 rounded-full font-semibold border ${
+                            isAutomated
+                              ? 'bg-purple-50 text-[#7C3AED] border-purple-200'
+                              : 'bg-slate-50 text-slate-400 border-slate-200'
+                          }`}>
+                            {isAutomated ? '⚡ Automated' : 'Manual'}
+                          </span>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {/* View */}
+                            <button onClick={() => handleView(tc)} disabled={viewLoading}
+                              title="View test case steps"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer disabled:opacity-40">
+                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              View
+                            </button>
+
+                            {/* Run (only if automated) */}
+                            {isAutomated && (
+                              <button onClick={() => handleRun(tc)}
+                                title="Run this test"
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
+                                <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                Run
+                              </button>
+                            )}
+
+                            {/* Delete */}
+                            <button onClick={() => setConfirmDeleteId(tc.id)}
+                              title="Delete test case"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                              <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )
           ) : (
             <table className="w-full">
               <thead>

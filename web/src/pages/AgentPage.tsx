@@ -105,6 +105,8 @@ export default function AgentPage() {
   const [userName, setUserName] = useState('')
   const savedTcId = useRef<string | null>(null)
   const [tcSaved, setTcSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [tcService, setTcService] = useState('')
+  const [tcName, setTcName] = useState('')
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -496,76 +498,98 @@ export default function AgentPage() {
             </>
           ) : (
             <>
-              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
+              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
                 <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Execution Plan</div>
-                {plan && (
-                  <button
-                    onClick={async () => {
-                      if (tcSaved !== 'idle') return
-                      setTcSaved('saving')
-                      try {
-                        const id = await saveTestCase({
-                          description: plan.summary ?? messages.find(m => m.role === 'user')?.text ?? '',
-                          env,
-                          steps: plan.steps ?? [],
-                          createdBy: userName,
-                        })
-                        savedTcId.current = id
-                        setTcSaved('saved')
-                      } catch {
-                        setTcSaved('idle')
-                      }
-                    }}
-                    disabled={tcSaved !== 'idle'}
-                    className={`flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-                      tcSaved === 'saved'
-                        ? 'bg-green-50 text-green-700 border-green-200'
-                        : 'bg-[#EDE9FE] text-[#7C3AED] border-[#DDD6FE] hover:bg-[#DDD6FE] disabled:opacity-50'
-                    }`}
-                  >
-                    {tcSaved === 'saving' ? (
-                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
-                    ) : tcSaved === 'saved' ? (
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polyline points="20 6 9 17 4 12"/></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                    )}
-                    {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved' : 'Save Test Case'}
-                  </button>
-                )}
               </div>
               {plan ? (
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                  {plan.summary && (
-                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-                      <div className="text-[12px] text-slate-400 uppercase tracking-wider mb-1">Summary</div>
-                      <div className="text-[14px] text-slate-800 font-medium">{plan.summary}</div>
-                      {(plan.estimatedTokens || plan.mcpCalls) && (
-                        <div className="flex gap-3 mt-2 text-[12px] text-slate-500">
-                          {plan.estimatedTokens && <span>~{plan.estimatedTokens} tokens</span>}
-                          {plan.mcpCalls && <span>{plan.mcpCalls} MCP calls</span>}
+                <>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {plan.summary && (
+                      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+                        <div className="text-[12px] text-slate-400 uppercase tracking-wider mb-1">Summary</div>
+                        <div className="text-[14px] text-slate-800 font-medium">{plan.summary}</div>
+                        {(plan.estimatedTokens || plan.mcpCalls) && (
+                          <div className="flex gap-3 mt-2 text-[12px] text-slate-500">
+                            {plan.estimatedTokens && <span>~{plan.estimatedTokens} tokens</span>}
+                            {plan.mcpCalls && <span>{plan.mcpCalls} MCP calls</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {plan.steps?.map(step => (
+                      <div key={step.stepNumber} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex gap-3">
+                        <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                          {step.stepNumber}
                         </div>
+                        <div>
+                          <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
+                          <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
+                          <div className="text-[11px] text-[#7C3AED] mt-1 font-medium uppercase tracking-wide">{step.type} · {step.tool ?? ''}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {plan.raw && (
+                      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+                        <pre className="text-[12px] text-slate-600 whitespace-pre-wrap">{plan.raw}</pre>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Save test case form */}
+                  <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0">
+                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Save Test Case</div>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        value={tcService}
+                        onChange={e => setTcService(e.target.value)}
+                        placeholder="Service (e.g. Amazon)"
+                        disabled={tcSaved === 'saved'}
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] transition-colors disabled:opacity-50 disabled:bg-slate-50"
+                      />
+                      <input
+                        value={tcName}
+                        onChange={e => setTcName(e.target.value)}
+                        placeholder="Test case name"
+                        disabled={tcSaved === 'saved'}
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] transition-colors disabled:opacity-50 disabled:bg-slate-50"
+                      />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (tcSaved !== 'idle' || !tcService.trim() || !tcName.trim()) return
+                        setTcSaved('saving')
+                        try {
+                          const id = await saveTestCase({
+                            description: tcName.trim(),
+                            env,
+                            service: tcService.trim(),
+                            steps: plan.steps ?? [],
+                            createdBy: userName,
+                          })
+                          savedTcId.current = id
+                          setTcSaved('saved')
+                        } catch {
+                          setTcSaved('idle')
+                        }
+                      }}
+                      disabled={tcSaved !== 'idle' || !tcService.trim() || !tcName.trim()}
+                      className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors cursor-pointer ${
+                        tcSaved === 'saved'
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-[#EDE9FE] text-[#7C3AED] border-[#DDD6FE] hover:bg-[#DDD6FE] disabled:opacity-40 disabled:cursor-not-allowed'
+                      }`}
+                    >
+                      {tcSaved === 'saving' ? (
+                        <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                      ) : tcSaved === 'saved' ? (
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                       )}
-                    </div>
-                  )}
-                  {plan.steps?.map(step => (
-                    <div key={step.stepNumber} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex gap-3">
-                      <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                        {step.stepNumber}
-                      </div>
-                      <div>
-                        <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
-                        <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
-                        <div className="text-[11px] text-[#7C3AED] mt-1 font-medium uppercase tracking-wide">{step.type} · {step.tool ?? ''}</div>
-                      </div>
-                    </div>
-                  ))}
-                  {plan.raw && (
-                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-                      <pre className="text-[12px] text-slate-600 whitespace-pre-wrap">{plan.raw}</pre>
-                    </div>
-                  )}
-                </div>
+                      {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved to Test Inventory' : 'Save Test Case'}
+                    </button>
+                  </div>
+                </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-[14px] text-slate-400">
                   Plan will appear here once the agent authors a test case.

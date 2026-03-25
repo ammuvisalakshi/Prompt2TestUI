@@ -59,10 +59,11 @@ def handler(event, context):
                            ) ORDER BY r.run_at DESC)
                            FROM (SELECT * FROM run_records WHERE test_case_id = tc.id
                                  ORDER BY run_at DESC LIMIT 5) r
-                          ) as runs
+                          ) as runs,
+                          COALESCE(json_array_length(tc.steps::json), 0) as step_count
                    FROM test_cases tc
                    WHERE tc.env = :env
-                   ORDER BY tc.created_at DESC''',
+                   ORDER BY tc.service ASC, tc.created_at DESC''',
                 [{'name':'env','value':{'stringValue': env}}]
             )
             items = []
@@ -78,6 +79,7 @@ def handler(event, context):
                     'lastResult':  cell(row[7]),
                     'lastRunAt':   cell(row[8]),
                     'runs':        json.loads(cell(row[9])) if cell(row[9]) else [],
+                    'stepCount':   cell(row[10]) or 0,
                 })
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps(items)}
 
