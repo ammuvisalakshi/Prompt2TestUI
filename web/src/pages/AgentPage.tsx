@@ -196,7 +196,7 @@ export default function AgentPage() {
         } else {
           // Generate / refine the plan
           setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
-          const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history }, sessionId)
+          const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history, env }, sessionId)
           const result = JSON.parse(raw)
 
           // Surface agent-side errors immediately
