@@ -1,11 +1,42 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { fetchAuthSession } from '@aws-amplify/auth'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { fetchAuthSession, fetchUserAttributes } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 import { useEnv } from '../context/EnvContext'
-import { listTestCases, listRunRecords, deleteTestCase, getTestCase, updateTestCaseService, type TestCase, type RunRecord } from '../lib/lambdaClient'
+import { listTestCases, listRunRecords, deleteTestCase, getTestCase, updateTestCaseService, saveRunRecord, type TestCase, type RunRecord } from '../lib/lambdaClient'
+import { callAgent } from '../lib/agentClient'
+import type { RunEntry } from '../layouts/PlatformLayout'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+
+const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;gap:0}
+.icon{font-size:40px;margin-bottom:20px}h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
+.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 55s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:92%}}
+.steps{margin-top:20px;display:flex;flex-direction:column;gap:6px;width:320px}
+.step{font-size:11px;color:#475569;display:flex;align-items:center;gap:8px}
+.dot{width:6px;height:6px;border-radius:50%;background:#334155;flex-shrink:0}
+.dot.done{background:#7c3aed}.dot.active{background:#a855f7;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}</style></head>
+<body><div class="icon">🎭</div><h2>Launching browser…</h2><p>Starting a dedicated Fargate task for your session</p>
+<div class="track"><div class="bar"></div></div>
+<div class="steps">
+<div class="step"><div class="dot done"></div>ECS task scheduled</div>
+<div class="step"><div class="dot active"></div>Pulling container image &amp; starting Chromium</div>
+<div class="step"><div class="dot"></div>noVNC ready — connecting live view</div>
+</div></body></html>`
+
+function saveRun(entry: Omit<RunEntry, 'id'>) {
+  try {
+    const raw = localStorage.getItem('p2t_run_history')
+    const runs: RunEntry[] = raw ? JSON.parse(raw) : []
+    runs.push({ id: Date.now().toString(36), ...entry })
+    if (runs.length > 50) runs.splice(0, runs.length - 50)
+    localStorage.setItem('p2t_run_history', JSON.stringify(runs))
+    window.dispatchEvent(new Event('p2t_run_saved'))
+  } catch { /* ignore */ }
+}
 
 async function loadServiceNames(env: string): Promise<string[]> {
   const session = await fetchAuthSession()
@@ -16,7 +47,7 @@ async function loadServiceNames(env: string): Promise<string[]> {
   do {
     const resp = await client.send(new GetParametersByPathCommand({ Path: path, Recursive: true, NextToken: nextToken }))
     for (const p of resp.Parameters ?? []) {
-      const rel = p.Name!.slice(path.length + 1) // "{svcname}/{FIELD}"
+      const rel = p.Name!.slice(path.length + 1)
       const slash = rel.indexOf('/')
       if (slash > 0) names.add(rel.slice(0, slash))
     }
@@ -26,12 +57,11 @@ async function loadServiceNames(env: string): Promise<string[]> {
 }
 
 type Tab = 'cases' | 'runs'
-
 type Step = { stepNumber: number; type: string; tool?: string; action: string; detail: string }
+type RunPhase = 'idle' | 'loading-tc' | 'starting-session' | 'automating' | 'done' | 'error'
 
 export default function InventoryPage() {
   const { env } = useEnv()
-  const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('cases')
   const [cases, setCases] = useState<TestCase[]>([])
   const [runs, setRuns] = useState<RunRecord[]>([])
@@ -46,6 +76,22 @@ export default function InventoryPage() {
   const [assignSaving, setAssignSaving] = useState(false)
   const [availableServices, setAvailableServices] = useState<string[]>([])
   const [servicesLoading, setServicesLoading] = useState(false)
+
+  // Inline execution state
+  const [runningTc, setRunningTc] = useState<TestCase | null>(null)
+  const [runPhase, setRunPhase] = useState<RunPhase>('idle')
+  const [runStatusMsg, setRunStatusMsg] = useState('')
+  const [runResult, setRunResult] = useState<{ passed: boolean; summary: string } | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
+  const [novncUrl, setNovncUrl] = useState<string | null>(null)
+  const popupRef = useRef<Window | null>(null)
+  const [userName, setUserName] = useState('')
+
+  useEffect(() => {
+    fetchUserAttributes().then(attrs => {
+      setUserName(attrs.name || attrs.email?.split('@')[0] || '')
+    }).catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -87,10 +133,6 @@ export default function InventoryPage() {
     }
   }
 
-  function handleRun(tc: TestCase) {
-    navigate(`/agent?tcId=${tc.id}&tcDesc=${encodeURIComponent(tc.description)}&autoRun=true`)
-  }
-
   function openAssign(tc: TestCase) {
     setAssignTc(tc)
     setAssignService(tc.service)
@@ -114,6 +156,95 @@ export default function InventoryPage() {
     }
   }
 
+  function handleRun(tc: TestCase) {
+    // Open popup synchronously (user gesture) — shows loading animation while Fargate boots
+    const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+    const loadingUrl = URL.createObjectURL(loadingBlob)
+    const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+    popupRef.current = popup
+
+    setRunningTc(tc)
+    setRunPhase('loading-tc')
+    setRunStatusMsg('Loading test case…')
+    setRunResult(null)
+    setRunError(null)
+    setNovncUrl(null)
+
+    const sessionId = crypto.randomUUID()
+
+    ;(async () => {
+      try {
+        // Load full TC to get steps
+        const full = await getTestCase(tc.id)
+        const plan = {
+          summary: full.description,
+          steps: (full.steps ?? []) as Step[],
+          mcpCalls: 0,
+        }
+
+        setRunPhase('starting-session')
+        setRunStatusMsg('Starting browser session… (~60s for Fargate task)')
+
+        const sessionRaw = await callAgent({ inputText: tc.description, mode: 'start_session', sessionId }, sessionId)
+        const resolvedSession = JSON.parse(sessionRaw)
+        if (resolvedSession.error) throw new Error(resolvedSession.error as string)
+
+        URL.revokeObjectURL(loadingUrl)
+        const url = resolvedSession.novnc_url as string
+        setNovncUrl(url)
+        if (popup) popup.location.href = `${url}?autoconnect=true&resize=scale`
+
+        setRunPhase('automating')
+        setRunStatusMsg('Browser is live — running test steps…')
+
+        const raw = await callAgent({
+          inputText: tc.description,
+          mode: 'automate',
+          plan,
+          sessionId,
+          task_arn: resolvedSession.task_arn,
+          cluster: resolvedSession.cluster,
+          mcp_endpoint: resolvedSession.mcp_endpoint,
+        }, sessionId)
+
+        const result = JSON.parse(raw)
+        if (result.error) throw new Error(result.error as string)
+
+        const passed = result.result?.passed ?? result.passed
+        const summary = result.result?.summary ?? result.summary ?? ''
+
+        saveRun({ description: tc.description, passed, timestamp: new Date().toISOString() })
+        saveRunRecord({ testCaseId: tc.id, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
+
+        // Update lastResult in local state
+        setCases(prev => prev.map(c => c.id === tc.id ? { ...c, lastResult: passed ? 'PASS' : 'FAIL', lastRunAt: new Date().toISOString() } : c))
+
+        setRunResult({ passed, summary })
+        setRunPhase('done')
+        setRunStatusMsg(passed ? '✅ Test passed' : '❌ Test failed')
+
+        // Close popup when done
+        window.open('', 'novnc-popup')?.close()
+        popupRef.current = null
+      } catch (err) {
+        URL.revokeObjectURL(loadingUrl)
+        window.open('', 'novnc-popup')?.close()
+        popupRef.current = null
+        setRunError(err instanceof Error ? err.message : String(err))
+        setRunPhase('error')
+        setRunStatusMsg('Execution failed')
+      }
+    })()
+  }
+
+  function closeRunModal() {
+    setRunningTc(null)
+    setRunPhase('idle')
+    setRunResult(null)
+    setRunError(null)
+    setNovncUrl(null)
+  }
+
   // Group test cases by service
   const grouped = cases.reduce<Record<string, TestCase[]>>((acc, tc) => {
     const svc = tc.service || 'Uncategorized'
@@ -126,6 +257,7 @@ export default function InventoryPage() {
   const smoke    = cases.filter(tc => tc.tags.includes('Smoke')).length
   const failures = cases.filter(tc => tc.lastResult === 'FAIL').length
   const confirmTc = cases.find(tc => tc.id === confirmDeleteId)
+  const runIsActive = runPhase !== 'idle'
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
@@ -162,7 +294,6 @@ export default function InventoryPage() {
             <div className="bg-white rounded-2xl shadow-2xl p-5 w-96 pointer-events-auto">
               <div className="text-[15px] font-semibold text-slate-800 mb-1">Assign Service</div>
               <div className="text-[13px] text-slate-500 mb-4 line-clamp-1">{assignTc.description}</div>
-
               {servicesLoading ? (
                 <div className="text-[13px] text-slate-400 py-4 text-center">Loading services…</div>
               ) : availableServices.length === 0 ? (
@@ -231,6 +362,113 @@ export default function InventoryPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Execution modal */}
+      {runIsActive && runningTc && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-6">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto">
+              {/* Header */}
+              <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100">
+                <div>
+                  <div className="text-[15px] font-semibold text-slate-800">Running Test</div>
+                  <div className="text-[13px] text-slate-500 mt-0.5 line-clamp-1">{runningTc.description}</div>
+                </div>
+                {(runPhase === 'done' || runPhase === 'error') && (
+                  <button onClick={closeRunModal} className="text-slate-400 hover:text-slate-600 cursor-pointer ml-4 flex-shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-current fill-none stroke-2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="px-5 py-5">
+                {/* Progress / status */}
+                {(runPhase === 'loading-tc' || runPhase === 'starting-session' || runPhase === 'automating') && (
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-5 h-5 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    <div className="text-[14px] text-slate-700">{runStatusMsg}</div>
+                  </div>
+                )}
+
+                {/* Phase steps */}
+                <div className="space-y-2 mb-4">
+                  {[
+                    { phase: 'loading-tc',        label: 'Load test case' },
+                    { phase: 'starting-session',   label: 'Start browser session (~60s)' },
+                    { phase: 'automating',         label: 'Execute test steps' },
+                    { phase: 'done',               label: 'Complete' },
+                  ].map(({ phase, label }) => {
+                    const phases: RunPhase[] = ['loading-tc', 'starting-session', 'automating', 'done']
+                    const currentIdx = phases.indexOf(runPhase as RunPhase)
+                    const stepIdx = phases.indexOf(phase as RunPhase)
+                    const isDone = runPhase === 'done' ? true : currentIdx > stepIdx
+                    const isActive = currentIdx === stepIdx && runPhase !== 'done' && runPhase !== 'error'
+                    return (
+                      <div key={phase} className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                          isDone ? 'bg-[#7C3AED] text-white' :
+                          isActive ? 'border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin' :
+                          'bg-slate-100 text-slate-300'
+                        }`}>
+                          {isDone && !isActive ? '✓' : ''}
+                        </div>
+                        <span className={`text-[13px] ${isDone ? 'text-slate-700 font-medium' : isActive ? 'text-[#7C3AED] font-semibold' : 'text-slate-400'}`}>
+                          {label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Watch live link (once novnc is ready) */}
+                {novncUrl && runPhase === 'automating' && (
+                  <button
+                    onClick={() => {
+                      const p = window.open(`${novncUrl}?autoconnect=true&resize=scale`, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+                      if (p) popupRef.current = p
+                    }}
+                    className="w-full mb-4 py-2 rounded-xl bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-2">
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    Watch Live
+                  </button>
+                )}
+
+                {/* Result */}
+                {runPhase === 'done' && runResult && (
+                  <div className={`rounded-xl p-4 ${runResult.passed ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <div className={`text-[15px] font-bold mb-1 ${runResult.passed ? 'text-green-700' : 'text-red-700'}`}>
+                      {runResult.passed ? '✅ PASS' : '❌ FAIL'}
+                    </div>
+                    {runResult.summary && (
+                      <div className="text-[13px] text-slate-600 leading-relaxed">{runResult.summary}</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Error */}
+                {runPhase === 'error' && runError && (
+                  <div className="rounded-xl p-4 bg-red-50 border border-red-200">
+                    <div className="text-[13px] font-semibold text-red-700 mb-1">Execution error</div>
+                    <div className="text-[12px] text-red-600 font-mono break-all">{runError}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {(runPhase === 'done' || runPhase === 'error') && (
+                <div className="px-5 pb-5">
+                  <button onClick={closeRunModal}
+                    className="w-full py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-[13px] font-semibold cursor-pointer transition-colors">
+                    Close
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -339,9 +577,9 @@ export default function InventoryPage() {
 
                             {/* Run (only if automated) */}
                             {isAutomated && (
-                              <button onClick={() => handleRun(tc)}
+                              <button onClick={() => handleRun(tc)} disabled={runIsActive}
                                 title="Run this test"
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer disabled:opacity-40">
                                 <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                 Run
                               </button>
