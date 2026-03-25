@@ -3,6 +3,7 @@ import { fetchAuthSession, fetchUserAttributes } from '@aws-amplify/auth'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
+import { saveTestCase, saveRunRecord } from '../lib/lambdaClient'
 
 function saveRun(entry: Omit<RunEntry, 'id'>) {
   try {
@@ -101,6 +102,7 @@ export default function AgentPage() {
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [userName, setUserName] = useState('')
+  const [savedTcId, setSavedTcId] = useState<string | null>(null)
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -156,6 +158,14 @@ export default function AgentPage() {
         if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
           setMode('auto')
 
+          // Save test case to Aurora (fire-and-forget, don't block execution)
+          saveTestCase({
+            description: plan.summary ?? messages.find(m => m.role === 'user')?.text ?? text,
+            env,
+            steps: plan.steps ?? [],
+            createdBy: userName,
+          }).then(id => setSavedTcId(id)).catch(() => {})
+
           // Open popup immediately within user gesture — shows progress bar while task boots
           const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
           const loadingUrl = URL.createObjectURL(loadingBlob)
@@ -193,10 +203,12 @@ export default function AgentPage() {
           const result = JSON.parse(raw)
           if (result.error) throw new Error(result.error as string)
           const passed = result.result?.passed ?? result.passed
+          const summary = result.result?.summary ?? result.summary ?? ''
           saveRun({ description: text, passed, timestamp: new Date().toISOString() })
+          setSavedTcId(prev => { if (prev) saveRunRecord({ testCaseId: prev, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {}); return prev })
           setMessages(prev => [
             ...prev.slice(0, -1),
-            { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
+            { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` },
           ])
           window.open('', 'novnc-popup')?.close()
           popupRef.current = null
@@ -266,10 +278,12 @@ export default function AgentPage() {
         }, sessionId)
         const result = JSON.parse(raw)
         const passed = result.result?.passed ?? result.passed
+        const summary2 = result.result?.summary ?? result.summary ?? ''
         saveRun({ description: text, passed, timestamp: new Date().toISOString() })
+        setSavedTcId(prev => { if (prev) saveRunRecord({ testCaseId: prev, env, result: passed ? 'PASS' : 'FAIL', summary: summary2, runBy: userName }).catch(() => {}); return prev })
         setMessages(prev => [
           ...prev.slice(0, -1),
-          { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
+          { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary2}` },
         ])
         window.open('', 'novnc-popup')?.close()
         popupRef.current = null
