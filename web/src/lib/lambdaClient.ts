@@ -83,6 +83,10 @@ export async function getTestCase(id: string): Promise<TestCase & { steps: objec
   return invokeLambda('p2t-testcase-reader', { action: 'get_test_case', id }) as Promise<TestCase & { steps: object[] }>
 }
 
+export async function updateTestCaseService(id: string, service: string): Promise<void> {
+  await invokeLambda('p2t-testcase-writer', { action: 'update_test_case', id, service })
+}
+
 export async function deleteTestCase(id: string): Promise<void> {
   await invokeLambda('p2t-testcase-writer', { action: 'delete_test_case', id })
 }

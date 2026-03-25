@@ -96,6 +96,17 @@ def handler(event, context):
             )
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'id': run_id})}
 
+        # ── Update Test Case ─────────────────────────────────────────────
+        elif action == 'update_test_case':
+            tc_id   = body['id']
+            service = body.get('service', '')
+            sql('UPDATE test_cases SET service = :service WHERE id = :id',
+                [
+                    {'name':'service', 'value':{'stringValue': service}},
+                    {'name':'id',      'value':{'stringValue': tc_id}},
+                ])
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'updated': tc_id})}
+
         # ── Delete Test Case ─────────────────────────────────────────────
         elif action == 'delete_test_case':
             tc_id = body['id']
