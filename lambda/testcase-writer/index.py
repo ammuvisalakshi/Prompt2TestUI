@@ -1,6 +1,7 @@
 import json
 import boto3
 import uuid
+import time
 
 rds    = boto3.client('rds-data',       region_name='us-east-1')
 br     = boto3.client('bedrock-runtime', region_name='us-east-1')
@@ -9,11 +10,28 @@ CLUSTER = 'arn:aws:rds:us-east-1:590183962483:cluster:prompt2test-vectors'
 SECRET  = 'arn:aws:secretsmanager:us-east-1:590183962483:secret:prompt2test/aurora/credentials-ITbucn'
 DB      = 'prompt2test'
 
-def sql(statement, params=None):
+def sql(statement, params=None, retries=8, delay=8):
     kwargs = dict(resourceArn=CLUSTER, secretArn=SECRET, database=DB, sql=statement)
     if params:
         kwargs['parameters'] = params
-    return rds.execute_statement(**kwargs)
+    for attempt in range(retries):
+        try:
+            return rds.execute_statement(**kwargs)
+        except rds.exceptions.from_code('DatabaseResumingException'):
+            if attempt < retries - 1:
+                print(f'Aurora resuming, waiting {delay}s (attempt {attempt+1}/{retries})...')
+                time.sleep(delay)
+            else:
+                raise
+        except Exception as e:
+            if 'DatabaseResumingException' in str(e) or 'resuming' in str(e).lower():
+                if attempt < retries - 1:
+                    print(f'Aurora resuming (str match), waiting {delay}s (attempt {attempt+1}/{retries})...')
+                    time.sleep(delay)
+                else:
+                    raise
+            else:
+                raise
 
 def embed(text):
     r = br.invoke_model(

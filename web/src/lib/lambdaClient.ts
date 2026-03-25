@@ -19,9 +19,18 @@ async function invokeLambda(functionName: string, payload: object): Promise<unkn
   if (!res.Payload) return null
   const text = new TextDecoder().decode(res.Payload)
   const parsed = JSON.parse(text)
+
+  // Lambda function-level error (unhandled exception)
+  if (res.FunctionError) {
+    throw new Error(parsed.errorMessage ?? 'Lambda function error')
+  }
+
   // Lambda wraps response in statusCode/body envelope
-  if (parsed.body) return JSON.parse(parsed.body)
-  return parsed
+  const body = parsed.body ? JSON.parse(parsed.body) : parsed
+  if (parsed.statusCode && parsed.statusCode >= 400) {
+    throw new Error(body.error ?? `Lambda returned ${parsed.statusCode}`)
+  }
+  return body
 }
 
 export type TestCase = {
