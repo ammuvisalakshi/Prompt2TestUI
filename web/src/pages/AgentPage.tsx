@@ -92,6 +92,7 @@ export default function AgentPage() {
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [userName, setUserName] = useState('')
+  const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -305,53 +306,77 @@ export default function AgentPage() {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-slate-200">
-            {/* Mode toggle — IDE-style at the bottom */}
-            <div className="flex items-center gap-1 mb-2">
-              {(['plan', 'auto'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`px-3 py-1 text-[12px] font-medium rounded-md transition-colors cursor-pointer ${
-                    mode === m
-                      ? 'bg-[#7C3AED] text-white'
-                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  {m === 'plan' ? '⚡ Plan' : '▶ Automate'}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 items-end">
-              <textarea
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                placeholder={mode === 'plan' ? (plan ? 'Type "yes" to run, or refine the plan…' : 'Describe what you want to test…') : 'Type "run" to execute the plan…'}
-                rows={2}
-                disabled={loading}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none focus:border-[#7C3AED] transition-colors font-sans disabled:opacity-60"
-              />
-              <button
-                onClick={send}
-                disabled={loading}
-                className="px-3 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
-              >
+          <div className="px-3 pt-3 pb-2 border-t border-slate-200">
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              placeholder={mode === 'plan' ? (plan ? 'Type "yes" to run, or refine the plan…' : 'Describe what you want to test…') : 'Type "run" to execute the plan…'}
+              rows={2}
+              disabled={loading}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none focus:border-[#7C3AED] transition-colors font-sans disabled:opacity-60"
+            />
+
+            {/* Bottom toolbar — Copilot style */}
+            <div className="flex items-center justify-between mt-1.5">
+              <div className="flex items-center gap-1.5">
+                {/* Mode dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setModeOpen(o => !o)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[13px] font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 cursor-pointer transition-colors"
+                  >
+                    {mode === 'plan'
+                      ? <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      : <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    }
+                    {mode === 'plan' ? 'Plan' : 'Automate'}
+                    <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2 opacity-50"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+
+                  {modeOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setModeOpen(false)} />
+                      <div className="absolute bottom-full mb-1 left-0 z-50 w-44 bg-white border border-slate-200 rounded-xl shadow-lg py-1 overflow-hidden">
+                        {([['plan', 'Plan', 'Plan & review before running'] , ['auto', 'Automate', 'Run test directly']] as const).map(([m, label, desc]) => (
+                          <button key={m} onClick={() => { setMode(m); setModeOpen(false) }}
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-start gap-2.5 cursor-pointer">
+                            <div className="mt-0.5 flex-shrink-0">
+                              {m === 'plan'
+                                ? <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                : <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                              }
+                            </div>
+                            <div>
+                              <div className={`text-[13px] font-medium ${mode === m ? 'text-[#7C3AED]' : 'text-slate-700'}`}>{label}</div>
+                              <div className="text-[11px] text-slate-400">{desc}</div>
+                            </div>
+                            {mode === m && (
+                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-[#7C3AED] fill-none stroke-2 ml-auto mt-0.5 flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Hint chips */}
+                {HINTS.map(h => (
+                  <button key={h} onClick={() => setInput(h)}
+                    className="text-[12px] px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-500 hover:border-[#7C3AED] hover:text-[#7C3AED] transition-colors cursor-pointer hidden sm:block">
+                    {h}
+                  </button>
+                ))}
+              </div>
+
+              {/* Send button */}
+              <button onClick={send} disabled={loading}
+                className="px-3 py-1.5 bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
                   <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
                 </svg>
               </button>
-            </div>
-            <div className="flex gap-2 mt-2 flex-wrap">
-              {HINTS.map(h => (
-                <button
-                  key={h}
-                  onClick={() => setInput(h)}
-                  className="text-[12px] px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-500 hover:border-[#7C3AED] hover:text-[#7C3AED] transition-colors cursor-pointer"
-                >
-                  {h}
-                </button>
-              ))}
             </div>
           </div>
         </div>
