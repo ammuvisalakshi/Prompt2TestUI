@@ -16,9 +16,8 @@ const BASE_FIELDS = [
 ]
 
 const SERVICES = ['Billing', 'Payment', 'Auth', 'User', 'Notification']
-const PLANS = ['Starter', 'Pro', 'Enterprise']
 
-type Account = { id: string; name: string; email: string; plan: string; envs: string[] }
+type Account = { id: string; name: string; code: string }
 
 // ── SSM helpers ────────────────────────────────────────────────────────────
 
@@ -111,10 +110,8 @@ export default function ConfigPage() {
       }
       const list: Account[] = Object.entries(map).map(([id, fields]) => ({
         id,
-        name:  fields['NAME']  ?? '',
-        email: fields['EMAIL'] ?? '',
-        plan:  fields['PLAN']  ?? '',
-        envs:  (fields['ENVS'] ?? '').split(',').filter(Boolean),
+        name: fields['NAME'] ?? '',
+        code: fields['CODE'] ?? '',
       }))
       setAccounts(list)
     } catch (e) { console.error('Load accounts failed:', e) }
@@ -162,7 +159,7 @@ export default function ConfigPage() {
 
   async function deleteAccount(id: string) {
     try {
-      await Promise.all(['NAME', 'EMAIL', 'PLAN', 'ENVS', 'PASSWORD'].map(f =>
+      await Promise.all(['NAME', 'CODE'].map(f =>
         deleteParam(`${SSM_PREFIX}/accounts/${id}/${f}`).catch(() => {/* ignore missing */})
       ))
       setAccounts(prev => prev.filter(a => a.id !== id))
@@ -272,7 +269,7 @@ export default function ConfigPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="text-[14px] font-semibold text-slate-600">
-                Test accounts {accounts.filter(a => a.envs.includes(env)).length > 0 ? `available in ${env.toUpperCase()}` : `— none in ${env.toUpperCase()} yet`}
+                {accounts.length} test account{accounts.length !== 1 ? 's' : ''}
               </div>
               <button onClick={() => setShowAddModal(true)}
                 className="px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
@@ -284,20 +281,14 @@ export default function ConfigPage() {
               <div className="text-[13px] text-slate-400 py-6 text-center">Loading from SSM…</div>
             ) : (
               <div className="space-y-3">
-                {accounts.filter(a => a.envs.includes(env)).map(acc => (
+                {accounts.map(acc => (
                   <div key={acc.id} className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex items-center gap-4">
                     <div className="w-9 h-9 rounded-lg bg-[#EDE9FE] text-[#7C3AED] flex items-center justify-center text-[13px] font-bold flex-shrink-0">
                       {acc.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[14px] font-semibold text-slate-900">{acc.name}</div>
-                      <div className="text-[13px] text-slate-400">{acc.email}</div>
-                    </div>
-                    <span className="text-[12px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-medium">{acc.plan}</span>
-                    <div className="flex gap-1">
-                      {acc.envs.map(e => (
-                        <span key={e} className="text-[11px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-mono">{e}</span>
-                      ))}
+                      <div className="text-[12px] text-slate-400 font-mono">{acc.code}</div>
                     </div>
                     <button onClick={() => deleteAccount(acc.id)}
                       className="ml-2 text-slate-300 hover:text-red-400 transition-colors cursor-pointer text-[16px]" title="Delete">
@@ -305,9 +296,9 @@ export default function ConfigPage() {
                     </button>
                   </div>
                 ))}
-                {accounts.filter(a => a.envs.includes(env)).length === 0 && !acctLoading && (
+                {accounts.length === 0 && !acctLoading && (
                   <div className="text-center py-10 text-slate-400 text-[13px]">
-                    No test accounts for {env.toUpperCase()} yet. Click <strong>+ Add account</strong> to add one.
+                    No test accounts yet. Click <strong>+ Add account</strong> to add one.
                   </div>
                 )}
               </div>
@@ -330,25 +321,14 @@ export default function ConfigPage() {
 // ── Add Account Modal ──────────────────────────────────────────────────────
 
 function AddAccountModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [name,     setName]     = useState('')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [plan,     setPlan]     = useState('Starter')
-  const [envs,     setEnvs]     = useState<string[]>(['dev'])
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState('')
-
-  function toggleEnv(e: string) {
-    setEnvs(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])
-  }
+  const [name,   setName]   = useState('')
+  const [code,   setCode]   = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
 
   async function handleSave() {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setError('Name, email and password are required')
-      return
-    }
-    if (envs.length === 0) {
-      setError('Select at least one environment')
+    if (!name.trim() || !code.trim()) {
+      setError('Name and code are required')
       return
     }
     setSaving(true)
@@ -357,11 +337,8 @@ function AddAccountModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
       const id = Date.now().toString(36)
       const base = `${SSM_PREFIX}/accounts/${id}`
       await Promise.all([
-        saveParam(`${base}/NAME`,     name.trim()),
-        saveParam(`${base}/EMAIL`,    email.trim()),
-        saveParam(`${base}/PLAN`,     plan),
-        saveParam(`${base}/ENVS`,     envs.join(',')),
-        saveParam(`${base}/PASSWORD`, password),
+        saveParam(`${base}/NAME`, name.trim()),
+        saveParam(`${base}/CODE`, code.trim()),
       ])
       onSaved()
     } catch (e: unknown) {
@@ -373,7 +350,7 @@ function AddAccountModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-[440px] p-6" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div className="text-[16px] font-bold text-slate-900">Add Test Account</div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-[20px] cursor-pointer leading-none">×</button>
@@ -381,39 +358,14 @@ function AddAccountModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
         <div className="space-y-4">
           <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-1">Display Name</label>
+            <label className="block text-[13px] font-medium text-slate-600 mb-1">Name</label>
             <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED]"
-              placeholder="Acme Corp" value={name} onChange={e => setName(e.target.value)} />
+              placeholder="Acme Corp" autoFocus value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-1">Email / Username</label>
-            <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED]"
-              placeholder="admin@acme.com" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-1">Password</label>
-            <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED]"
-              placeholder="••••••••" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-1">Plan</label>
-            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED] bg-white"
-              value={plan} onChange={e => setPlan(e.target.value)}>
-              {PLANS.map(p => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-2">Environments</label>
-            <div className="flex gap-2">
-              {(['dev', 'qa', 'uat', 'prod'] as const).map(e => (
-                <button key={e} onClick={() => toggleEnv(e)}
-                  className={`px-3 py-1 rounded-lg text-[12px] font-semibold border cursor-pointer transition-colors ${
-                    envs.includes(e) ? 'bg-[#7C3AED] text-white border-[#7C3AED]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#7C3AED]'
-                  }`}>
-                  {e.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            <label className="block text-[13px] font-medium text-slate-600 mb-1">Code</label>
+            <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED] font-mono"
+              placeholder="ACME001" value={code} onChange={e => setCode(e.target.value.toUpperCase())} />
           </div>
         </div>
 
