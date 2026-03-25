@@ -1,11 +1,32 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { fetchUserAttributes } from '@aws-amplify/auth'
+import { fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
+import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
 import { saveTestCase, saveRunRecord, getTestCase } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
+
+const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+
+async function loadServiceNames(env: string): Promise<string[]> {
+  const session = await fetchAuthSession()
+  const client = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
+  const path = `/prompt2test/config/${env}/services`
+  const names = new Set<string>()
+  let nextToken: string | undefined
+  do {
+    const resp = await client.send(new GetParametersByPathCommand({ Path: path, Recursive: true, NextToken: nextToken }))
+    for (const p of resp.Parameters ?? []) {
+      const rel = p.Name!.slice(path.length + 1)
+      const slash = rel.indexOf('/')
+      if (slash > 0) names.add(rel.slice(0, slash))
+    }
+    nextToken = resp.NextToken
+  } while (nextToken)
+  return [...names].sort()
+}
 
 function saveRun(entry: Omit<RunEntry, 'id'>) {
   try {
@@ -50,6 +71,8 @@ export default function AgentPage() {
   const [tcSaved, setTcSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [tcService, setTcService] = useState('')
   const [tcName, setTcName] = useState('')
+  const [availableServices, setAvailableServices] = useState<string[]>([])
+  const [servicesLoading, setServicesLoading] = useState(false)
   const [autoRunReady, setAutoRunReady] = useState(false)
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
@@ -224,6 +247,10 @@ export default function AgentPage() {
 
           setPlan(agentPlan)
           setTcSaved('idle')
+          setTcService('')
+          setAvailableServices([])
+          setServicesLoading(true)
+          loadServiceNames(env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
 
           // Show confirmationMessage (what was agreed) + plan-ready prompt as separate messages
           const confirmMsg = agentPlan.confirmationMessage
@@ -535,14 +562,32 @@ export default function AgentPage() {
                   {/* Save test case form */}
                   {!autoRunReady && <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0">
                     <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Save Test Case</div>
+
+                    {/* Service chips */}
+                    <div className="mb-2">
+                      <div className="text-[11px] text-slate-400 mb-1.5">Service</div>
+                      {servicesLoading ? (
+                        <div className="text-[12px] text-slate-400">Loading services…</div>
+                      ) : availableServices.length === 0 ? (
+                        <div className="text-[12px] text-slate-400">No services configured for {env.toUpperCase()} yet.</div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {availableServices.map(svc => (
+                            <button key={svc} onClick={() => tcSaved === 'idle' && setTcService(svc)}
+                              disabled={tcSaved === 'saved'}
+                              className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border cursor-pointer transition-colors disabled:opacity-50 ${
+                                tcService === svc
+                                  ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]'
+                              }`}>
+                              {svc}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex gap-2 mb-2">
-                      <input
-                        value={tcService}
-                        onChange={e => setTcService(e.target.value)}
-                        placeholder="Service (e.g. Amazon)"
-                        disabled={tcSaved === 'saved'}
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] transition-colors disabled:opacity-50 disabled:bg-slate-50"
-                      />
                       <input
                         value={tcName}
                         onChange={e => setTcName(e.target.value)}
