@@ -1,6 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
 import { fetchAuthSession, fetchUserAttributes } from '@aws-amplify/auth'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
+import type { RunEntry } from '../layouts/PlatformLayout'
+
+function saveRun(entry: Omit<RunEntry, 'id'>) {
+  try {
+    const raw = localStorage.getItem('p2t_run_history')
+    const runs: RunEntry[] = raw ? JSON.parse(raw) : []
+    runs.push({ id: Date.now().toString(36), ...entry })
+    // keep last 50
+    if (runs.length > 50) runs.splice(0, runs.length - 50)
+    localStorage.setItem('p2t_run_history', JSON.stringify(runs))
+    window.dispatchEvent(new Event('p2t_run_saved'))
+  } catch { /* ignore */ }
+}
 
 type Message = { role: 'user' | 'agent'; text: string }
 
@@ -178,6 +191,7 @@ export default function AgentPage() {
           const result = JSON.parse(raw)
           if (result.error) throw new Error(result.error as string)
           const passed = result.result?.passed ?? result.passed
+          saveRun({ description: text, passed, timestamp: new Date().toISOString() })
           setMessages(prev => [
             ...prev.slice(0, -1),
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
@@ -250,6 +264,7 @@ export default function AgentPage() {
         }, sessionId)
         const result = JSON.parse(raw)
         const passed = result.result?.passed ?? result.passed
+        saveRun({ description: text, passed, timestamp: new Date().toISOString() })
         setMessages(prev => [
           ...prev.slice(0, -1),
           { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${result.result?.summary ?? result.summary ?? ''}` },
@@ -270,12 +285,10 @@ export default function AgentPage() {
   return (
     <div className="flex flex-col h-full bg-[#F5F7FA]">
       {/* Agent topbar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <span className="text-[15px] font-semibold text-slate-900">
-          Author Agent{' '}
-          <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full ml-1">
-            Bedrock · DEV
-          </span>
+      <div className="flex items-center gap-3 px-4 h-[52px] bg-white border-b border-slate-200 flex-shrink-0">
+        <span className="text-[14px] font-semibold text-slate-700">Author Agent</span>
+        <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full">
+          Bedrock · DEV
         </span>
       </div>
 
