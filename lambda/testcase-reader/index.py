@@ -1,12 +1,14 @@
 import json
 import boto3
 import time
+import os
 
 rds = boto3.client('rds-data',        region_name='us-east-1')
 br  = boto3.client('bedrock-runtime', region_name='us-east-1')
 
-CLUSTER = 'arn:aws:rds:us-east-1:590183962483:cluster:prompt2test-vectors'
-SECRET  = 'arn:aws:secretsmanager:us-east-1:590183962483:secret:prompt2test/aurora/credentials-ITbucn'
+# CDK sets these env vars; fallback to existing ARNs for the original account
+CLUSTER = os.environ.get('CLUSTER_ARN', 'arn:aws:rds:us-east-1:590183962483:cluster:prompt2test-vectors')
+SECRET  = os.environ.get('SECRET_ARN',  'arn:aws:secretsmanager:us-east-1:590183962483:secret:prompt2test/aurora/credentials-ITbucn')
 DB      = 'prompt2test'
 
 def sql(statement, params=None, retries=8, delay=8):
