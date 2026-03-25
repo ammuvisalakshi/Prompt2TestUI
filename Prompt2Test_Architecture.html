@@ -42,6 +42,8 @@
   .theme-pink   { background: #fdf2f8; border-color: #f9a8d4; }
   .theme-gray   { background: #f8fafc; border-color: #e2e8f0; }
   .theme-dark   { background: #f8fafc; border-color: #e2e8f0; }
+  .theme-indigo { background: #eef2ff; border-color: #c7d2fe; }
+  .theme-rose   { background: #fff1f2; border-color: #fecdd3; }
 
   /* ── Tags / badges ── */
   .tag {
@@ -56,6 +58,8 @@
   .tag-red    { background: #fee2e2; color: #b91c1c; }
   .tag-gray   { background: #f1f5f9; color: #475569; }
   .tag-yellow { background: #fef9c3; color: #a16207; }
+  .tag-indigo { background: #e0e7ff; color: #3730a3; }
+  .tag-rose   { background: #ffe4e6; color: #be123c; }
 
   /* ── Flow arrows ── */
   .flow-row {
@@ -76,6 +80,7 @@
   .flow-arrow.orange { color: #ea580c; }
   .flow-arrow.purple { color: #7c3aed; }
   .flow-arrow.teal   { color: #0d9488; }
+  .flow-arrow.indigo { color: #4338ca; }
 
   /* ── Wide card ── */
   .card.wide { flex: 1; }
@@ -102,10 +107,17 @@
     font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
     border: 1px solid #86efac;
   }
+  .new-badge {
+    position: absolute; top: 14px; right: 14px;
+    background: #ede9fe; color: #6d28d9;
+    font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid #ddd6fe;
+  }
 
   /* ── Grid 3 ── */
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 10px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; margin-top: 10px; }
 
   /* ── Metric ── */
   .metric { text-align: center; }
@@ -150,7 +162,7 @@
 <div class="page">
 
   <h1>🧪 TestPilot AI — Complete Architecture</h1>
-  <p class="subtitle">UI Deployment · Agent Backend · Playwright MCP · Scaling · CI/CD</p>
+  <p class="subtitle">UI Deployment · Agent Backend · Playwright MCP · Data Layer · Scaling · CI/CD</p>
 
   <!-- ══════════════════════════════════════════════════════════
        ROW 1 — USERS + UI
@@ -199,14 +211,17 @@
           </div>
         </div>
         <div class="sub-box" style="margin-top:10px;">
-          <div class="sub-box-title">Key Pages</div>
+          <div class="sub-box-title">All Pages</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <div class="tag tag-gray">LoginPage</div>
-            <div class="tag tag-gray">AgentPage</div>
-            <div class="tag tag-gray">noVNC Popup</div>
+            <div class="tag tag-blue">AgentPage — Author tests, generate plan, execute</div>
+            <div class="tag tag-purple">InventoryPage — Browse, run, manage TCs</div>
+            <div class="tag tag-teal">ConfigPage — Env config, SSM params</div>
+            <div class="tag tag-green">MembersPage — Team RBAC</div>
+            <div class="tag tag-gray">noVNC Popup — Live browser view</div>
           </div>
           <div style="margin-top:6px; font-size:12px; color:#64748b;">
-            AgentPage: submits prompt → receives plan → user confirms → opens noVNC popup → streams test output
+            AgentPage: describe test → plan → save TC → execute inline or from Inventory
           </div>
         </div>
       </div>
@@ -226,11 +241,15 @@
           <div class="sub-box-title">Identity Pool</div>
           Federated identities<br>
           Grants temp AWS creds<br>
-          <b>Calls AgentCore API</b>
+          <b>Direct SDK calls:</b><br>
+          AgentCore · Lambda · SSM<br>
+          Bedrock · Cognito IDP
         </div>
         <div class="sub-box" style="margin-top:8px;">
-          <div class="sub-box-title">Client</div>
-          <div class="tag tag-gray">1bvrafv6vd7vtue66cmk6f3ouk</div>
+          <div class="sub-box-title">Identity Provider (Admin)</div>
+          ListUsers · AdminCreateUser<br>
+          AdminDeleteUser<br>
+          Team member management
         </div>
       </div>
     </div>
@@ -244,6 +263,10 @@
     <div class="flow-box">Bedrock AgentCore Endpoint</div>
     <div class="flow-arrow blue">────▶</div>
     <div class="flow-box">Agent Container</div>
+    <div class="flow-arrow indigo" style="padding: 0 20px;">│ also │</div>
+    <div class="flow-box">React (Amplify)</div>
+    <div class="flow-arrow indigo">── Lambda SDK ──▶</div>
+    <div class="flow-box">p2t-testcase-writer/reader</div>
   </div>
 
   <div style="height:16px;"></div>
@@ -285,9 +308,12 @@
         <div class="sub-box" style="margin-top:10px;">
           <div class="sub-box-title">Agent Modes (main.py)</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <div class="tag tag-orange">plan — generate test plan from prompt</div>
+            <div class="tag tag-orange">plan — generate test plan from prompt + env SSM params</div>
             <div class="tag tag-blue">start_session — RunTask → poll RUNNING → get public IP via ENI</div>
             <div class="tag tag-teal">automate — run Playwright test via MCP tools → StopTask</div>
+          </div>
+          <div style="margin-top:6px; font-size:12px; color:#64748b;">
+            plan mode receives <b>env</b> in payload → agent reads SSM params for that environment when generating the plan
           </div>
         </div>
       </div>
@@ -306,8 +332,15 @@
           <div class="tag tag-green">ecs:RunTask · DescribeTasks · StopTask</div>
           <div class="tag tag-green">ec2:DescribeNetworkInterfaces</div>
           <div class="tag tag-green">iam:PassRole (task execution role)</div>
+          <div class="tag tag-indigo">lambda:InvokeFunction</div>
           <div class="tag tag-gray">ecr:GetAuthToken</div>
           <div class="tag tag-gray">logs:*</div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Cognito Auth Role</div>
+          Grants browser SDK calls to:<br>
+          AgentCore · Lambda · SSM<br>
+          Bedrock · Cognito IDP
         </div>
       </div>
     </div>
@@ -315,9 +348,142 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-       ROW 3 — SSM + FLOW
+       ROW 3 — DATA LAYER (NEW)
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">③ Session Resolution (SSM Parameter Store)</div>
+  <div class="section-label">③ Data Layer — Test Case Management</div>
+  <div class="row">
+
+    <!-- Lambda Functions -->
+    <div class="card theme-indigo medium">
+      <div class="new-badge">Live ✓</div>
+      <div class="card-title"><span class="icon">λ</span> AWS Lambda — TC Management</div>
+      <div class="card-body">
+        <div class="sub-box">
+          <div class="sub-box-title">p2t-testcase-writer</div>
+          <div class="tag tag-indigo">save_test_case</div>
+          <div class="tag tag-indigo">save_run_record</div>
+          <div class="tag tag-indigo">update_test_case</div>
+          <div class="tag tag-indigo">delete_test_case</div>
+          <div style="margin-top:6px; font-size:12px; color:#64748b;">
+            Runtime: Python 3.12 · Memory: 256 MB · Timeout: 120s
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">p2t-testcase-reader</div>
+          <div class="tag tag-blue">list_test_cases</div>
+          <div class="tag tag-blue">list_run_records</div>
+          <div class="tag tag-blue">get_test_case</div>
+          <div class="tag tag-blue">search (semantic)</div>
+          <div style="margin-top:6px; font-size:12px; color:#64748b;">
+            Runtime: Python 3.12 · Memory: 256 MB · Timeout: 120s
+          </div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Aurora Resume Handling</div>
+          Retries up to <b>8×8s = 64s</b> on<br>
+          <code>DatabaseResumingException</code><br>
+          First call after idle wait is transparent
+        </div>
+      </div>
+    </div>
+
+    <!-- Aurora + pgvector -->
+    <div class="card theme-rose wide">
+      <div class="new-badge">Live ✓</div>
+      <div class="card-title"><span class="icon">🗃️</span> Aurora Serverless v2 — PostgreSQL + pgvector</div>
+      <div class="card-body">
+        <div class="grid3">
+          <div class="sub-box">
+            <div class="sub-box-title">Cluster</div>
+            <div class="tag tag-rose">prompt2test-vectors</div><br>
+            Engine: <b>PostgreSQL 15</b><br>
+            Extension: <b>pgvector</b><br>
+            Region: <b>us-east-1</b><br>
+            <div class="tag tag-green">Auto-pause enabled</div>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">test_cases table</div>
+            id · env · service<br>
+            description · steps (JSON)<br>
+            tags · created_by · created_at<br>
+            last_result · last_run_at<br>
+            <b>embedding vector(1024)</b>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">run_records table</div>
+            id · test_case_id<br>
+            env · result (PASS/FAIL)<br>
+            summary · run_by<br>
+            run_at<br>
+            <b>FK → test_cases</b>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:8px;">
+          <div class="sub-box">
+            <div class="sub-box-title">Vector Search (pgvector)</div>
+            Embeddings: <b>1024 dimensions</b><br>
+            Model: <b>Titan Embed v2</b><br>
+            Index: IVFFlat cosine<br>
+            Semantic TC similarity search
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Access</div>
+            Via <b>RDS Data API</b> (no persistent conn)<br>
+            Credentials from <b>Secrets Manager</b><br>
+            Secret: <code>prompt2test/aurora/credentials</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bedrock Embeddings + Secrets -->
+    <div class="card theme-gray narrow">
+      <div class="card-title"><span class="icon">🔢</span> Supporting Services</div>
+      <div class="card-body">
+        <div class="sub-box">
+          <div class="sub-box-title">Bedrock — Titan Embed v2</div>
+          <div class="tag tag-purple">amazon.titan-embed-text-v2:0</div><br>
+          1024-dim embeddings<br>
+          Called by <b>writer</b> on TC save<br>
+          Called by <b>reader</b> on search<br>
+          <b>~$0.00002/1K tokens</b>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Secrets Manager</div>
+          1 secret: Aurora credentials<br>
+          Auto-rotation capable<br>
+          <b>$0.40/month</b> (idle cost)
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">RDS Data API</div>
+          HTTP-based SQL execution<br>
+          No VPC / no DB drivers<br>
+          Serverless-friendly
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Flow arrow row 3 data layer -->
+  <div class="flow-row">
+    <div class="flow-box">React (Amplify)</div>
+    <div class="flow-arrow indigo">── Lambda SDK ──▶</div>
+    <div class="flow-box">Lambda (writer/reader)</div>
+    <div class="flow-arrow indigo">── RDS Data API ──▶</div>
+    <div class="flow-box">Aurora PostgreSQL</div>
+    <div class="flow-arrow indigo" style="padding:0 20px;">│ writer also │</div>
+    <div class="flow-box">Bedrock Titan Embed v2</div>
+    <div class="flow-arrow indigo">──▶</div>
+    <div class="flow-box">1024-dim vector stored</div>
+  </div>
+
+  <div style="height:16px;"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ROW 4 — SSM + FLOW
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">④ Session Resolution &amp; Configuration (SSM Parameter Store)</div>
   <div class="row">
 
     <div class="card theme-teal wide">
@@ -325,26 +491,31 @@
       <div class="card-body">
         <div class="grid3">
           <div class="sub-box">
-            <div class="sub-box-title">ECS Config <span class="tag tag-green">KEY</span></div>
-            <code style="font-size:12px; color:#0f766e;">/prompt2test/playwright/cluster-name</code><br>
-            <code style="font-size:12px; color:#0f766e;">/prompt2test/playwright/task-definition-family</code><br>
-            <code style="font-size:12px; color:#0f766e;">/prompt2test/playwright/subnet-ids</code><br>
-            <code style="font-size:12px; color:#0f766e;">/prompt2test/playwright/security-group-id</code><br>
+            <div class="sub-box-title">ECS Config <span class="tag tag-green">Agent reads</span></div>
+            <code>/prompt2test/playwright/cluster-name</code><br>
+            <code>/prompt2test/playwright/task-definition-family</code><br>
+            <code>/prompt2test/playwright/subnet-ids</code><br>
+            <code>/prompt2test/playwright/security-group-id</code><br>
             <span style="color:#94a3b8; font-size:12px;">Read once at session start to RunTask</span>
           </div>
           <div class="sub-box">
-            <div class="sub-box-title">Parallel Fetch</div>
-            All 4 params fetched in<br>parallel via <b>ThreadPoolExecutor</b><br>
-            First call: <b>~80ms</b><br>
-            Cached in <b>_SSM_CACHE dict</b><br>
-            Subsequent: <b>~0ms</b>
+            <div class="sub-box-title">Service Config <span class="tag tag-blue">UI reads</span></div>
+            <code>/prompt2test/config/{env}/services/{svc}/URL</code><br>
+            <code>/prompt2test/config/{env}/services/{svc}/API_KEY</code><br>
+            <code>/prompt2test/config/{env}/services/{svc}/...</code><br>
+            <span style="color:#94a3b8; font-size:12px;">Loaded in ConfigPage + chips in AgentPage save form + InventoryPage assign</span>
           </div>
           <div class="sub-box">
-            <div class="sub-box-title">After RunTask</div>
-            No SSM needed — agent<br>has direct <b>task public IP</b><br>from ENI attachment.<br>
-            MCP: <b>ip:3000</b><br>
-            noVNC: <b>ip:6080</b>
+            <div class="sub-box-title">Member Roles <span class="tag tag-purple">UI reads/writes</span></div>
+            <code>/prompt2test/config/members/{user}/ROLE</code><br>
+            Roles: Admin · QA Lead<br>
+            QA Engineer · Developer<br>
+            <span style="color:#94a3b8; font-size:12px;">Managed via MembersPage</span>
           </div>
+        </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">SSM Cache (Agent side)</div>
+          All ECS params fetched in parallel via <b>ThreadPoolExecutor</b> — First call: <b>~80ms</b> · Cached in <b>_SSM_CACHE dict</b> · Subsequent: <b>~0ms</b>
         </div>
       </div>
     </div>
@@ -355,38 +526,38 @@
       <div class="card-body">
         <div class="step">
           <div class="step-num">1</div>
-          <div class="step-text">User submits prompt → Agent generates <b>plan</b></div>
+          <div class="step-text">User describes test → Agent reads <b>env SSM params</b> → generates <b>plan</b></div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
-          <div class="step-text">User reviews plan, says <b>"yes"</b> → popup opens with <b>progress bar</b></div>
+          <div class="step-text">User selects <b>service chip</b> + TC name → <b>Save Test Case</b> → Lambda saves to Aurora + embeds vector</div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <div class="step-text"><b>start_session:</b> reads SSM config → <b>RunTask</b> (dedicated Fargate task)</div>
+          <div class="step-text">User clicks <b>Run</b> (AgentPage or InventoryPage) → popup opens instantly with <b>progress bar</b></div>
         </div>
         <div class="step">
           <div class="step-num">4</div>
-          <div class="step-text">Poll DescribeTasks (~60s) → RUNNING → public IP via ENI → <b>TCP poll port 3000</b> until ready</div>
+          <div class="step-text"><b>start_session:</b> reads SSM config → <b>RunTask</b> (dedicated Fargate task)</div>
         </div>
         <div class="step">
           <div class="step-num">5</div>
-          <div class="step-text"><b>Pre-warm:</b> MCP connect → <code>browser_navigate about:blank</code> → Chromium opens in noVNC</div>
+          <div class="step-text">Poll DescribeTasks (~60s) → RUNNING → public IP via ENI → <b>TCP poll port 3000</b> until ready</div>
         </div>
         <div class="step">
           <div class="step-num">6</div>
-          <div class="step-text">Popup redirects to <b>ip:6080/vnc.html</b> — browser already visible</div>
+          <div class="step-text"><b>Pre-warm:</b> MCP connect → <code>browser_navigate about:blank</code> → Chromium open in noVNC</div>
         </div>
         <div class="step">
           <div class="step-num">7</div>
-          <div class="step-text">Agent connects MCP → navigates to test URL → runs steps → <b>StopTask</b></div>
+          <div class="step-text">Agent runs test steps → <b>StopTask</b> → Lambda saves <b>run record</b> (PASS/FAIL)</div>
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- Flow arrow row 2→3 -->
+  <!-- Flow arrow row 4→5 -->
   <div class="flow-row">
     <div class="flow-box">Agent (start_session)</div>
     <div class="flow-arrow teal">── SSM ──▶</div>
@@ -400,9 +571,9 @@
   <div style="height:16px;"></div>
 
   <!-- ══════════════════════════════════════════════════════════
-       ROW 4 — PLAYWRIGHT MCP (ON-DEMAND)
+       ROW 5 — PLAYWRIGHT MCP (ON-DEMAND)
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">④ Playwright MCP — ECS Fargate (On-Demand per Session)</div>
+  <div class="section-label">⑤ Playwright MCP — ECS Fargate (On-Demand per Session)</div>
   <div class="row">
 
     <!-- On-demand task lifecycle -->
@@ -486,9 +657,9 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-       ROW 5 — AUTOSCALING
+       ROW 6 — AUTOSCALING + COST
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">⑤ Scaling Model &amp; Cost</div>
+  <div class="section-label">⑥ Scaling Model &amp; Cost</div>
   <div class="row">
 
     <div class="card theme-green wide">
@@ -533,23 +704,26 @@
       <div class="card-title"><span class="icon">💰</span> Cost Estimate</div>
       <div class="card-body">
         <div class="sub-box" style="border-color:#bbf7d0;">
-          <div class="sub-box-title" style="color:#15803d;">On-Demand (current)</div>
-          Per task/hr: <b>~$0.10</b><br>
-          20 users × 15 min/day:<br>
-          <b>~$17/mo</b> total<br>
-          <div class="tag tag-green">Pay per test only</div>
+          <div class="sub-box-title" style="color:#15803d;">Idle (zero usage)</div>
+          Secrets Manager: <b>$0.40</b><br>
+          ECR storage: <b>~$0.10</b><br>
+          Everything else: <b>$0</b><br>
+          Aurora: $0 (auto-paused)<br>
+          <div class="tag tag-green">Total: ~$0.50/month</div>
         </div>
         <div class="sub-box" style="margin-top:8px; border-color:#fed7aa;">
-          <div class="sub-box-title" style="color:#c2410c;">Old warm pool (removed)</div>
+          <div class="sub-box-title" style="color:#c2410c;">Active (small team)</div>
+          Aurora (active ~4hr/day): <b>~$20</b><br>
+          Bedrock (plans + runs): <b>~$10-40</b><br>
+          Fargate (50 runs/month): <b>~$1-5</b><br>
+          Lambda + Amplify: <b>~$1</b><br>
+          <div class="tag tag-orange">Total: ~$30-70/month</div>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Old warm pool (removed)</div>
           3 tasks 24/7:<br>
           <b>~$216/mo</b><br>
           <div class="tag tag-red">Always paying, idle or not</div>
-        </div>
-        <div class="sub-box" style="margin-top:8px;">
-          <div class="sub-box-title">Other Services</div>
-          AgentCore: per-invocation<br>
-          Amplify: ~$1/mo<br>
-          NLB: $0 (removed)
         </div>
       </div>
     </div>
@@ -557,9 +731,9 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-       ROW 6 — CI/CD
+       ROW 7 — CI/CD
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">⑥ CI/CD Pipelines</div>
+  <div class="section-label">⑦ CI/CD Pipelines</div>
   <div class="row">
 
     <!-- Playwright MCP Pipeline -->
@@ -651,76 +825,104 @@
           <div class="flow-arrow blue">──▶</div>
           <div class="flow-box" style="border-color:#16a34a; color:#15803d;">Live at Amplify URL<br><small>~2 min total</small></div>
         </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">Lambda Deploy (manual — no pipeline)</div>
+          PowerShell: <code>Compress-Archive index.py → zip</code> → <code>aws lambda update-function-code --zip-file</code><br>
+          Functions: <b>p2t-testcase-writer</b> · <b>p2t-testcase-reader</b>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-       ROW 7 — FULL FLOW SUMMARY
+       ROW 8 — FULL FLOW SUMMARY
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">⑦ End-to-End Request Flow</div>
+  <div class="section-label">⑧ End-to-End Request Flow</div>
   <div class="card theme-dark" style="padding: 20px;">
+
+    <!-- Authoring + Save flow -->
+    <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Author &amp; Save Test Case</div>
+    <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
+
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">👤</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">User</div>
+        <div style="font-size:12px; color:#475569;">Describes test</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#3b82f6;">AgentCore SDK + env</div>
+        <div style="font-size:16px; color:#3b82f6;">────▶</div>
+      </div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">🤖</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">AgentCore</div>
+        <div style="font-size:12px; color:#475569;">Reads SSM params<br>Generates plan</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#6d28d9;">Save + service chip</div>
+        <div style="font-size:16px; color:#6d28d9;">────▶</div>
+      </div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">λ</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">Lambda Writer</div>
+        <div style="font-size:12px; color:#475569;">Embeds + saves</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#be123c;">RDS Data API</div>
+        <div style="font-size:16px; color:#be123c;">────▶</div>
+      </div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">🗃️</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">Aurora</div>
+        <div style="font-size:12px; color:#475569;">TC + vector stored</div>
+      </div>
+
+    </div>
+
+    <!-- Execution flow -->
+    <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Execute Test (from AgentPage or InventoryPage)</div>
     <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; justify-content:center;">
 
-      <div style="text-align:center; min-width:90px;">
-        <div style="font-size:32px;">👤</div>
-        <div style="font-size:13px; color:#64748b; margin-top:4px;">User</div>
-        <div style="font-size:13px; color:#475569;">Types prompt</div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">▶</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">Run click</div>
+        <div style="font-size:12px; color:#475569;">Popup opens<br>(user gesture)</div>
       </div>
-
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
-        <div style="font-size:12px; color:#3b82f6;">HTTPS</div>
-        <div style="font-size:18px; color:#3b82f6;">────▶</div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#f97316;">AgentCore SDK</div>
+        <div style="font-size:16px; color:#f97316;">────▶</div>
       </div>
-
-      <div style="text-align:center; min-width:90px;">
-        <div style="font-size:32px;">🌐</div>
-        <div style="font-size:13px; color:#64748b; margin-top:4px;">Amplify UI</div>
-        <div style="font-size:13px; color:#475569;">React + Cognito</div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">🤖</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">AgentCore</div>
+        <div style="font-size:12px; color:#475569;">start_session<br>→ RunTask</div>
       </div>
-
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
-        <div style="font-size:12px; color:#f97316;">AgentCore SDK</div>
-        <div style="font-size:18px; color:#f97316;">────▶</div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#0d9488;">~60s</div>
+        <div style="font-size:16px; color:#0d9488;">────▶</div>
       </div>
-
-      <div style="text-align:center; min-width:90px;">
-        <div style="font-size:32px;">🤖</div>
-        <div style="font-size:13px; color:#64748b; margin-top:4px;">AgentCore</div>
-        <div style="font-size:13px; color:#475569;">Strands + Claude</div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">🎭</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">playwright-mcp</div>
+        <div style="font-size:12px; color:#475569;">Fargate task<br>ip:3000 (MCP)</div>
       </div>
-
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
-        <div style="font-size:12px; color:#14b8a6;">AgentCore SDK</div>
-        <div style="font-size:18px; color:#14b8a6;">────▶</div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#a855f7;">ip:6080</div>
+        <div style="font-size:16px; color:#a855f7;">────▶</div>
       </div>
-
-      <div style="text-align:center; min-width:90px;">
-        <div style="font-size:32px;">🔄</div>
-        <div style="font-size:13px; color:#64748b; margin-top:4px;">RunTask</div>
-        <div style="font-size:13px; color:#475569;">~60s startup</div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">🖥️</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">Browser Popup</div>
+        <div style="font-size:12px; color:#475569;">Live test view</div>
       </div>
-
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
-        <div style="font-size:12px; color:#22c55e;">Direct IP</div>
-        <div style="font-size:18px; color:#22c55e;">────▶</div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
+        <div style="font-size:11px; color:#6d28d9;">PASS/FAIL</div>
+        <div style="font-size:16px; color:#6d28d9;">────▶</div>
       </div>
-
-      <div style="text-align:center; min-width:90px;">
-        <div style="font-size:32px;">🎭</div>
-        <div style="font-size:13px; color:#64748b; margin-top:4px;">playwright-mcp</div>
-        <div style="font-size:13px; color:#475569;">ip:3000 (MCP)</div>
-      </div>
-
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:12px;">
-        <div style="font-size:12px; color:#a855f7;">ip:6080</div>
-        <div style="font-size:18px; color:#a855f7;">────▶</div>
-      </div>
-
-      <div style="text-align:center; min-width:90px;">
-        <div style="font-size:32px;">🖥️</div>
-        <div style="font-size:13px; color:#64748b; margin-top:4px;">Browser Popup</div>
-        <div style="font-size:13px; color:#475569;">Live test view</div>
+      <div style="text-align:center; min-width:80px;">
+        <div style="font-size:28px;">λ</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">Lambda Writer</div>
+        <div style="font-size:12px; color:#475569;">Save run record</div>
       </div>
 
     </div>
@@ -732,7 +934,15 @@
         LLM streaming via Strands<br>~2-5s
       </div>
       <div class="sub-box" style="flex:1; min-width:140px;">
-        <div class="sub-box-title">"Yes" → Popup opens</div>
+        <div class="sub-box-title">Save TC (warm Aurora)</div>
+        Lambda + embed + SQL<br><b>~1-2s</b>
+      </div>
+      <div class="sub-box" style="flex:1; min-width:140px;">
+        <div class="sub-box-title">Save TC (cold Aurora)</div>
+        Aurora resume + retry<br><b>~30-60s</b>
+      </div>
+      <div class="sub-box" style="flex:1; min-width:140px;">
+        <div class="sub-box-title">Run click → Popup</div>
         Blob URL progress bar<br><b>Instant</b> — user gesture
       </div>
       <div class="sub-box" style="flex:1; min-width:140px;">
@@ -740,15 +950,7 @@
         ECS + image pull + boot<br><b>~55-60s</b>
       </div>
       <div class="sub-box" style="flex:1; min-width:140px;">
-        <div class="sub-box-title">Port ready → Pre-warm</div>
-        TCP poll :3000<br>browser_navigate about:blank<br><b>~2-3s</b>
-      </div>
-      <div class="sub-box" style="flex:1; min-width:140px;">
-        <div class="sub-box-title">Popup → Browser visible</div>
-        noVNC redirects — Chromium<br>already open: <b>Instant</b>
-      </div>
-      <div class="sub-box" style="flex:1; min-width:140px;">
-        <div class="sub-box-title">Total: "Yes" → Test running</div>
+        <div class="sub-box-title">Total: Run → Test executing</div>
         Progress bar + pre-warm<br><b>~63 seconds</b> cold start
       </div>
     </div>
@@ -758,7 +960,7 @@
        REPOS + STACKS SUMMARY
   ══════════════════════════════════════════════════════════ -->
   <div style="height:16px;"></div>
-  <div class="section-label">⑧ Repositories &amp; CloudFormation Stacks</div>
+  <div class="section-label">⑨ Repositories, Stacks &amp; Service Summary</div>
   <div class="row">
     <div class="card theme-gray wide">
       <div class="card-title"><span class="icon">📦</span> GitHub Repositories</div>
@@ -766,10 +968,14 @@
         <div class="grid3">
           <div class="sub-box">
             <div class="sub-box-title">Prompt2TestUI</div>
-            React + TypeScript<br>
+            React + TypeScript + Vite<br>
             Amplify auto-deploy<br>
             <div class="tag tag-blue">AgentPage.tsx</div>
-            <div class="tag tag-blue">progress bar popup</div>
+            <div class="tag tag-purple">InventoryPage.tsx</div>
+            <div class="tag tag-teal">ConfigPage.tsx</div>
+            <div class="tag tag-green">MembersPage.tsx</div>
+            <div class="tag tag-indigo">lib/lambdaClient.ts</div>
+            <div class="tag tag-indigo">lib/agentClient.ts</div>
           </div>
           <div class="sub-box">
             <div class="sub-box-title">Prompt2TestAgent</div>
@@ -792,24 +998,46 @@
     </div>
 
     <div class="card theme-gray medium">
-      <div class="card-title"><span class="icon">☁️</span> CloudFormation Stacks</div>
+      <div class="card-title"><span class="icon">☁️</span> All AWS Services</div>
       <div class="card-body">
         <div class="sub-box">
-          <div class="sub-box-title">Prompt2TestAgentStack</div>
-          <div class="tag tag-green">UPDATE_COMPLETE</div><br>
-          ECR · CodePipeline · Cognito<br>IAM roles · SSM outputs
+          <div class="sub-box-title">Auth &amp; Identity</div>
+          <div class="tag tag-purple">Cognito User Pool</div>
+          <div class="tag tag-purple">Cognito Identity Pool</div>
+          <div class="tag tag-purple">Cognito IDP (admin)</div>
+          <div class="tag tag-gray">IAM</div>
         </div>
-        <div class="sub-box" style="margin-top:8px;">
-          <div class="sub-box-title">Prompt2TestPlaywrightMCPStack</div>
-          <div class="tag tag-green">UPDATE_COMPLETE</div><br>
-          VPC · ECS Cluster · Task Definition<br>Security Group · SSM params · CodePipeline
+        <div class="sub-box" style="margin-top:6px;">
+          <div class="sub-box-title">Frontend</div>
+          <div class="tag tag-blue">Amplify Hosting</div>
+          <div class="tag tag-blue">CloudFront CDN</div>
         </div>
+        <div class="sub-box" style="margin-top:6px;">
+          <div class="sub-box-title">AI / Agent</div>
+          <div class="tag tag-orange">Bedrock AgentCore</div>
+          <div class="tag tag-purple">Bedrock Titan Embed v2</div>
+        </div>
+        <div class="sub-box" style="margin-top:6px;">
+          <div class="sub-box-title">Data Layer</div>
+          <div class="tag tag-indigo">Lambda (×2)</div>
+          <div class="tag tag-rose">Aurora Serverless v2</div>
+          <div class="tag tag-rose">RDS Data API</div>
+          <div class="tag tag-gray">Secrets Manager</div>
+        </div>
+        <div class="sub-box" style="margin-top:6px;">
+          <div class="sub-box-title">Config &amp; Execution</div>
+          <div class="tag tag-teal">SSM Parameter Store</div>
+          <div class="tag tag-green">ECS Fargate</div>
+          <div class="tag tag-green">ECR (×2)</div>
+          <div class="tag tag-green">CodePipeline (×2)</div>
+        </div>
+        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">15 AWS services total</div>
       </div>
     </div>
   </div>
 
   <div class="footer">
-    TestPilot AI Architecture · AWS us-east-1 · Generated 2026-03-24
+    TestPilot AI Architecture · AWS us-east-1 · Updated 2026-03-25
   </div>
 
 </div>
