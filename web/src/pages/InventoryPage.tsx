@@ -88,7 +88,7 @@ export default function InventoryPage() {
   }
 
   function handleRun(tc: TestCase) {
-    navigate(`/agent?tcId=${tc.id}&tcDesc=${encodeURIComponent(tc.description)}`)
+    navigate(`/agent?tcId=${tc.id}&tcDesc=${encodeURIComponent(tc.description)}&autoRun=true`)
   }
 
   function openAssign(tc: TestCase) {

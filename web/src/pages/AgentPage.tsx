@@ -107,6 +107,7 @@ export default function AgentPage() {
   const [tcSaved, setTcSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [tcService, setTcService] = useState('')
   const [tcName, setTcName] = useState('')
+  const [autoRunReady, setAutoRunReady] = useState(false)
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -125,11 +126,12 @@ export default function AgentPage() {
 
   // Pre-load test case from inventory "Run" button
   useEffect(() => {
-    const tcId = searchParams.get('tcId')
-    const tcDesc = searchParams.get('tcDesc')
+    const tcId     = searchParams.get('tcId')
+    const tcDesc   = searchParams.get('tcDesc')
+    const autoRun  = searchParams.get('autoRun') === 'true'
     if (!tcId) return
-    setSearchParams({}, { replace: true }) // clear params from URL
-    setMessages(prev => [...prev, { role: 'agent', text: `Loading test case…` }])
+    setSearchParams({}, { replace: true })
+    setMessages(prev => [...prev, { role: 'agent', text: 'Loading test case…' }])
     getTestCase(tcId).then(tc => {
       const reconstructedPlan: Plan = {
         summary: tc.description,
@@ -139,30 +141,25 @@ export default function AgentPage() {
       savedTcId.current = tcId
       setTcSaved('saved')
       setPlan(reconstructedPlan)
-      setMessages(prev => [
-        ...prev.slice(0, -1),
-        { role: 'agent', text: `Loaded: **${tcDesc ?? tc.description}**\n\nPlan ready with ${reconstructedPlan.steps?.length ?? 0} steps. Reply **yes** to run it, or refine it in chat.` },
-      ])
+      if (autoRun) {
+        setAutoRunReady(true)
+        setMessages(prev => [
+          ...prev.slice(0, -1),
+          { role: 'agent', text: `Ready to run: **${tcDesc ?? tc.description}**\n\nClick ▶ Start Test Execution below to launch the browser.` },
+        ])
+      } else {
+        setMessages(prev => [
+          ...prev.slice(0, -1),
+          { role: 'agent', text: `Loaded: **${tcDesc ?? tc.description}**\n\nPlan ready with ${reconstructedPlan.steps?.length ?? 0} steps. Reply **yes** to run it, or refine it in chat.` },
+        ])
+      }
     }).catch(() => {
       setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Failed to load test case.' }])
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  async function send() {
-    const text = input.trim()
-    if (!text || loading) return
-    setMessages(prev => [...prev, { role: 'user', text }])
-    setInput('')
-    setLoading(true)
-
-    // Build conversation history to give agent memory across turns
-    const history = messages
-      .filter(m => m.text !== 'Generating test plan…' && m.text !== 'Executing test plan via Playwright MCP…')
-      .map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`)
-      .join('\n')
-
-    const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
+  const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;gap:0}
 .icon{font-size:40px;margin-bottom:20px}h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
 .track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
@@ -180,6 +177,18 @@ export default function AgentPage() {
 <div class="step"><div class="dot active"></div>Pulling container image &amp; starting Chromium</div>
 <div class="step"><div class="dot"></div>noVNC ready — connecting live view</div>
 </div></body></html>`
+
+  async function send() {
+    const text = input.trim()
+    if (!text || loading) return
+    setMessages(prev => [...prev, { role: 'user', text }])
+    setInput('')
+    setLoading(true)
+
+    const history = messages
+      .filter(m => m.text !== 'Generating test plan…' && m.text !== 'Executing test plan via Playwright MCP…')
+      .map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`)
+      .join('\n')
 
     try {
       if (mode === 'plan') {
@@ -535,8 +544,53 @@ export default function AgentPage() {
                     )}
                   </div>
 
+                  {/* Auto-run: Start Execution button */}
+                  {autoRunReady && (
+                    <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0">
+                      <button
+                        onClick={() => {
+                          const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+                          const loadingUrl = URL.createObjectURL(loadingBlob)
+                          const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+                          setAutoRunReady(false)
+                          setMode('auto')
+                          setLoading(true)
+                          const activePlan = plan!
+                          const label = activePlan.summary ?? 'test'
+                          setMessages(prev => [...prev, { role: 'agent', text: 'Launching dedicated browser… (~60s to start Fargate task)' }]);
+                          (async () => {
+                            try {
+                              const sessionRaw = await callAgent({ inputText: label, mode: 'start_session', sessionId }, sessionId)
+                              const resolvedSession = JSON.parse(sessionRaw)
+                              if (resolvedSession.error) throw new Error(resolvedSession.error as string)
+                              URL.revokeObjectURL(loadingUrl)
+                              setNovncUrl(resolvedSession.novnc_url as string)
+                              if (popup) { popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`; popupRef.current = popup }
+                              setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
+                              const raw = await callAgent({ inputText: label, mode: 'automate', plan: activePlan, sessionId, task_arn: resolvedSession.task_arn, cluster: resolvedSession.cluster, mcp_endpoint: resolvedSession.mcp_endpoint }, sessionId)
+                              const result = JSON.parse(raw)
+                              if (result.error) throw new Error(result.error as string)
+                              const passed = result.result?.passed ?? result.passed
+                              const summary = result.result?.summary ?? result.summary ?? ''
+                              saveRun({ description: label, passed, timestamp: new Date().toISOString() })
+                              if (savedTcId.current) saveRunRecord({ testCaseId: savedTcId.current, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
+                              setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` }])
+                              window.open('', 'novnc-popup')?.close(); popupRef.current = null
+                            } catch (err) {
+                              setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Error: ${err instanceof Error ? err.message : String(err)}` }])
+                            } finally { setLoading(false) }
+                          })()
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-[14px] font-semibold cursor-pointer transition-colors"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Start Test Execution
+                      </button>
+                    </div>
+                  )}
+
                   {/* Save test case form */}
-                  <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0">
+                  {!autoRunReady && <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0">
                     <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Save Test Case</div>
                     <div className="flex gap-2 mb-2">
                       <input
@@ -588,7 +642,7 @@ export default function AgentPage() {
                       )}
                       {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved to Test Inventory' : 'Save Test Case'}
                     </button>
-                  </div>
+                  </div>}
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-[14px] text-slate-400">
