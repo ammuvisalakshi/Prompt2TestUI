@@ -103,6 +103,7 @@ export default function AgentPage() {
   const [sessionId] = useState(() => crypto.randomUUID())
   const [userName, setUserName] = useState('')
   const savedTcId = useRef<string | null>(null)
+  const [tcSaved, setTcSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -242,6 +243,7 @@ export default function AgentPage() {
           }
 
           setPlan(agentPlan)
+          setTcSaved('idle')
 
           // Show confirmationMessage (what was agreed) + plan-ready prompt as separate messages
           const confirmMsg = agentPlan.confirmationMessage
@@ -468,8 +470,43 @@ export default function AgentPage() {
             </>
           ) : (
             <>
-              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
                 <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Execution Plan</div>
+                {plan && (
+                  <button
+                    onClick={async () => {
+                      if (tcSaved !== 'idle') return
+                      setTcSaved('saving')
+                      try {
+                        const id = await saveTestCase({
+                          description: plan.summary ?? messages.find(m => m.role === 'user')?.text ?? '',
+                          env,
+                          steps: plan.steps ?? [],
+                          createdBy: userName,
+                        })
+                        savedTcId.current = id
+                        setTcSaved('saved')
+                      } catch {
+                        setTcSaved('idle')
+                      }
+                    }}
+                    disabled={tcSaved !== 'idle'}
+                    className={`flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                      tcSaved === 'saved'
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-[#EDE9FE] text-[#7C3AED] border-[#DDD6FE] hover:bg-[#DDD6FE] disabled:opacity-50'
+                    }`}
+                  >
+                    {tcSaved === 'saving' ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                    ) : tcSaved === 'saved' ? (
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polyline points="20 6 9 17 4 12"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    )}
+                    {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved' : 'Save Test Case'}
+                  </button>
+                )}
               </div>
               {plan ? (
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
