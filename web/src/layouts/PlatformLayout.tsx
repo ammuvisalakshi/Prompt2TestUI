@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { fetchUserAttributes, signOut } from '@aws-amplify/auth'
+import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
+
+const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
 const tabs = [
   {
@@ -61,15 +64,26 @@ const tabs = [
 
 export default function PlatformLayout() {
   const navigate = useNavigate()
-  const [initials, setInitials] = useState('?')
+  const [initials, setInitials]     = useState('?')
   const [displayName, setDisplayName] = useState('')
+  const [role, setRole]             = useState('')
 
   useEffect(() => {
-    fetchUserAttributes().then(attrs => {
+    fetchUserAttributes().then(async attrs => {
       const name = attrs.name || attrs.email || ''
-      const parts = name.split(/[\s@]/)
-      setInitials(parts.filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
+      setInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
       setDisplayName(attrs.name || attrs.email?.split('@')[0] || '')
+
+      // Look up role from SSM by username (email)
+      const username = attrs.email ?? ''
+      if (username) {
+        try {
+          const session = await fetchAuthSession()
+          const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
+          const resp = await ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/ROLE` }))
+          setRole(resp.Parameter?.Value ?? '')
+        } catch { /* no role stored yet */ }
+      }
     }).catch(() => {})
   }, [])
 
@@ -110,14 +124,12 @@ export default function PlatformLayout() {
           ))}
         </nav>
 
-        {/* Avatar */}
+        {/* User info + sign out */}
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-          {displayName && <span className="text-[13px] text-slate-500">{displayName}</span>}
-          <div
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white cursor-pointer"
-            onClick={handleSignOut}
-            title="Sign out"
-          >
+          {displayName && <span className="text-[13px] text-slate-600 font-medium">{displayName}</span>}
+          {role && <span className="text-[11px] px-2 py-0.5 bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE] rounded-full font-medium">{role}</span>}
+          <button onClick={handleSignOut} className="text-[12px] text-slate-400 hover:text-slate-700 cursor-pointer">Sign out</button>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white">
             {initials}
           </div>
         </div>

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { fetchAuthSession, fetchUserAttributes, signOut } from '@aws-amplify/auth'
+import { fetchAuthSession, fetchUserAttributes } from '@aws-amplify/auth'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
-import { useNavigate } from 'react-router-dom'
 
 type Message = { role: 'user' | 'agent'; text: string }
 
@@ -81,7 +80,7 @@ async function callAgent(
 }
 
 export default function AgentPage() {
-  const navigate = useNavigate()
+
   const [messages, setMessages] = useState<Message[]>([
     { role: 'agent', text: "Hi! Ready to author tests.\n\nDescribe what you want to test in plain English." },
   ])
@@ -108,10 +107,6 @@ export default function AgentPage() {
     }).catch(() => {})
   }, [])
 
-  async function handleSignOut() {
-    await signOut()
-    navigate('/login')
-  }
 
   async function send() {
     const text = input.trim()
@@ -302,11 +297,8 @@ export default function AgentPage() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[13px] text-slate-500">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white">{userInitials}</div>
-          <span>{userName}</span>
-          <span className="px-2 py-0.5 bg-green-50 border border-green-200 rounded-full text-green-700 text-[12px]">DEV</span>
-          <button onClick={handleSignOut} className="text-[12px] text-slate-400 hover:text-slate-700 cursor-pointer ml-1">Sign out</button>
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
+          {userInitials}
         </div>
       </div>
 
