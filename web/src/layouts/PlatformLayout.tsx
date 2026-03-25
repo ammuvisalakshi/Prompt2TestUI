@@ -34,15 +34,6 @@ const tabs = [
     ),
   },
   {
-    to: '/architecture',
-    label: 'Architecture',
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2">
-        <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-      </svg>
-    ),
-  },
-  {
     to: '/concepts',
     label: 'Core Concepts',
     icon: (
