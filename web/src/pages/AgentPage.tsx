@@ -102,7 +102,7 @@ export default function AgentPage() {
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [userName, setUserName] = useState('')
-  const [savedTcId, setSavedTcId] = useState<string | null>(null)
+  const savedTcId = useRef<string | null>(null)
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -164,7 +164,7 @@ export default function AgentPage() {
             env,
             steps: plan.steps ?? [],
             createdBy: userName,
-          }).then(id => setSavedTcId(id)).catch(() => {})
+          }).then(id => { savedTcId.current = id }).catch(() => {})
 
           // Open popup immediately within user gesture — shows progress bar while task boots
           const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
@@ -205,7 +205,7 @@ export default function AgentPage() {
           const passed = result.result?.passed ?? result.passed
           const summary = result.result?.summary ?? result.summary ?? ''
           saveRun({ description: text, passed, timestamp: new Date().toISOString() })
-          setSavedTcId(prev => { if (prev) saveRunRecord({ testCaseId: prev, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {}); return prev })
+          if (savedTcId.current) saveRunRecord({ testCaseId: savedTcId.current, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
           setMessages(prev => [
             ...prev.slice(0, -1),
             { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` },
@@ -280,7 +280,7 @@ export default function AgentPage() {
         const passed = result.result?.passed ?? result.passed
         const summary2 = result.result?.summary ?? result.summary ?? ''
         saveRun({ description: text, passed, timestamp: new Date().toISOString() })
-        setSavedTcId(prev => { if (prev) saveRunRecord({ testCaseId: prev, env, result: passed ? 'PASS' : 'FAIL', summary: summary2, runBy: userName }).catch(() => {}); return prev })
+        if (savedTcId.current) saveRunRecord({ testCaseId: savedTcId.current, env, result: passed ? 'PASS' : 'FAIL', summary: summary2, runBy: userName }).catch(() => {})
         setMessages(prev => [
           ...prev.slice(0, -1),
           { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary2}` },
