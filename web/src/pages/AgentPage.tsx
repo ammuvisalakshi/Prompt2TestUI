@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { fetchAuthSession, fetchUserAttributes } from '@aws-amplify/auth'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
 import type { RunEntry } from '../layouts/PlatformLayout'
+import { useEnv } from '../context/EnvContext'
 
 function saveRun(entry: Omit<RunEntry, 'id'>) {
   try {
@@ -100,6 +101,7 @@ export default function AgentPage() {
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [userName, setUserName] = useState('')
+  const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
 
@@ -288,7 +290,7 @@ export default function AgentPage() {
       <div className="flex items-center gap-3 px-4 h-[52px] bg-white border-b border-slate-200 flex-shrink-0">
         <span className="text-[14px] font-semibold text-slate-700">Author Agent</span>
         <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full">
-          Bedrock · DEV
+          Bedrock · {env.toUpperCase()}
         </span>
       </div>
 
