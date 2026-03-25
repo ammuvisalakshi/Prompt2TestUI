@@ -1,6 +1,6 @@
 # Prompt2Test — CDK Infrastructure
 
-Single CDK stack that deploys the entire TestPilot AI platform to any AWS account.
+Single CDK stack that deploys the entire Prompt2Test platform to any AWS account.
 
 ## What this deploys
 

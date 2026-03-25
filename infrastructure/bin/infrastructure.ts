@@ -22,5 +22,5 @@ new Prompt2TestStack(app, 'Prompt2TestStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region:  process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
   },
-  description: 'TestPilot AI — Complete infrastructure (Cognito, Aurora, Lambda, ECS, AgentCore, Amplify)',
+  description: 'Prompt2Test — Complete infrastructure (Cognito, Aurora, Lambda, ECS, AgentCore, Amplify)',
 })
