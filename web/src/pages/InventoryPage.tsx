@@ -1,14 +1,4 @@
-import { useState } from 'react'
-
-const ENVS = ['dev', 'qa', 'uat', 'prod'] as const
-type Env = typeof ENVS[number]
-
-const ENV_COLORS: Record<Env, string> = {
-  dev: 'text-green-700 bg-green-50 border-green-200',
-  qa: 'text-blue-700 bg-blue-50 border-blue-200',
-  uat: 'text-amber-700 bg-amber-50 border-amber-200',
-  prod: 'text-red-700 bg-red-50 border-red-200',
-}
+import { useEnv } from '../context/EnvContext'
 
 const TEST_CASES = [
   { id: 'tc1', name: 'Billing plan shows Enterprise for Acme Corp', service: 'Billing', tags: ['Smoke'], status: 'pass', envs: ['dev', 'qa', 'uat', 'prod'] },
@@ -20,38 +10,21 @@ const TEST_CASES = [
 ]
 
 export default function InventoryPage() {
-  const [env, setEnv] = useState<Env>('dev')
+  const { env } = useEnv()
 
   const filtered = TEST_CASES.filter(tc => tc.envs.includes(env))
-  const smoke = filtered.filter(tc => tc.tags.includes('Smoke')).length
+  const smoke    = filtered.filter(tc => tc.tags.includes('Smoke')).length
   const failures = filtered.filter(tc => tc.status === 'fail').length
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
-      {/* Env tabs */}
-      <div className="flex items-center gap-1 px-5 pt-4 pb-0 flex-shrink-0">
-        {ENVS.map(e => (
-          <button
-            key={e}
-            onClick={() => setEnv(e)}
-            className={`px-4 py-1.5 rounded-t-lg text-[13px] font-semibold border border-b-0 cursor-pointer transition-colors ${
-              env === e
-                ? `${ENV_COLORS[e]} border-current`
-                : 'text-slate-400 bg-white border-slate-200 hover:text-slate-600'
-            }`}
-          >
-            {e.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
       <div className="flex-1 overflow-y-auto p-5">
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-5">
           {[
-            { label: 'Total TCs', value: filtered.length, color: 'text-slate-900' },
-            { label: 'Services', value: [...new Set(filtered.map(t => t.service))].length, color: 'text-[#7C3AED]' },
-            { label: 'Smoke tagged', value: smoke, color: 'text-green-700' },
+            { label: 'Total TCs',    value: filtered.length,                                   color: 'text-slate-900' },
+            { label: 'Services',     value: [...new Set(filtered.map(t => t.service))].length, color: 'text-[#7C3AED]' },
+            { label: 'Smoke tagged', value: smoke,                                             color: 'text-green-700' },
             { label: failures > 0 ? 'Failures' : 'All passing', value: failures > 0 ? failures : '✓', color: failures > 0 ? 'text-red-700' : 'text-green-700' },
           ].map(s => (
             <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">

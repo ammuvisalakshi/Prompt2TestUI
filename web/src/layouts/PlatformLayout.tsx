@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
+import { EnvContext, ENVS, ENV_COLORS, ENV_DOT, type Env } from '../context/EnvContext'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
@@ -60,6 +61,7 @@ export default function PlatformLayout() {
   const [role,         setRole]         = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [runs,         setRuns]         = useState<RunEntry[]>([])
+  const [env,          setEnv]          = useState<Env>('dev')
 
   useEffect(() => {
     fetchUserAttributes().then(async attrs => {
@@ -126,6 +128,22 @@ export default function PlatformLayout() {
             </svg>
             Author Agent
           </NavLink>
+        </div>
+
+        {/* Environment selector */}
+        <div className="px-3 pt-3 pb-1">
+          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-1 mb-1.5">Environment</div>
+          <div className="grid grid-cols-2 gap-1">
+            {ENVS.map(e => (
+              <button key={e} onClick={() => setEnv(e)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border cursor-pointer transition-all ${
+                  env === e ? ENV_COLORS[e] + ' border-current' : 'text-slate-400 bg-white border-slate-200 hover:text-slate-600'
+                }`}>
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${env === e ? ENV_DOT[e] : 'bg-slate-300'}`} />
+                {e.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Workspace nav */}
@@ -209,9 +227,11 @@ export default function PlatformLayout() {
       </div>
 
       {/* ── Main content ──────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden">
-        <Outlet />
-      </div>
+      <EnvContext.Provider value={{ env, setEnv }}>
+        <div className="flex-1 overflow-hidden">
+          <Outlet />
+        </div>
+      </EnvContext.Provider>
     </div>
   )
 }

@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchAuthSession } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand, PutParameterCommand, DeleteParameterCommand } from '@aws-sdk/client-ssm'
+import { useEnv } from '../context/EnvContext'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const SSM_PREFIX = '/prompt2test/config'
-
-const ENVS = ['dev', 'qa', 'uat', 'prod'] as const
-type Env = typeof ENVS[number]
 
 type ParamRow = { key: string; value: string }
 type Account  = { id: string; name: string; code: string }
@@ -47,7 +45,7 @@ async function deleteParam(name: string) {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function ConfigPage() {
-  const [env, setEnv]   = useState<Env>('dev')
+  const { env } = useEnv()
   const [tab, setTab]   = useState<'services' | 'accounts'>('services')
 
   // Services: svcName -> param rows
@@ -167,19 +165,6 @@ export default function ConfigPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
-      {/* Env tabs */}
-      <div className="flex items-center gap-1 px-5 pt-4 pb-0 flex-shrink-0">
-        {ENVS.map(e => (
-          <button key={e} onClick={() => setEnv(e)}
-            className={`px-4 py-1.5 rounded-t-lg text-[13px] font-semibold border border-b-0 cursor-pointer transition-colors ${
-              env === e
-                ? 'text-[#7C3AED] bg-[#F5F3FF] border-[#7C3AED]'
-                : 'text-slate-400 bg-white border-slate-200 hover:text-slate-600'
-            }`}
-          >{e.toUpperCase()}</button>
-        ))}
-      </div>
-
       <div className="flex-1 overflow-y-auto p-5">
         {/* Sub tabs */}
         <div className="flex gap-1 mb-5 border-b border-slate-200">
