@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { fetchAuthSession, fetchUserAttributes } from '@aws-amplify/auth'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
-import { saveTestCase, saveRunRecord } from '../lib/lambdaClient'
+import { saveTestCase, saveRunRecord, getTestCase } from '../lib/lambdaClient'
 
 function saveRun(entry: Omit<RunEntry, 'id'>) {
   try {
@@ -107,6 +108,7 @@ export default function AgentPage() {
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -116,9 +118,33 @@ export default function AgentPage() {
     fetchUserAttributes().then(attrs => {
       const name = attrs.name || attrs.email?.split('@')[0] || ''
       setUserName(name)
-
     }).catch(() => {})
   }, [])
+
+  // Pre-load test case from inventory "Run" button
+  useEffect(() => {
+    const tcId = searchParams.get('tcId')
+    const tcDesc = searchParams.get('tcDesc')
+    if (!tcId) return
+    setSearchParams({}, { replace: true }) // clear params from URL
+    setMessages(prev => [...prev, { role: 'agent', text: `Loading test case…` }])
+    getTestCase(tcId).then(tc => {
+      const reconstructedPlan: Plan = {
+        summary: tc.description,
+        steps: (tc.steps as Plan['steps']) ?? [],
+        mcpCalls: 0,
+      }
+      savedTcId.current = tcId
+      setTcSaved('saved')
+      setPlan(reconstructedPlan)
+      setMessages(prev => [
+        ...prev.slice(0, -1),
+        { role: 'agent', text: `Loaded: **${tcDesc ?? tc.description}**\n\nPlan ready with ${reconstructedPlan.steps?.length ?? 0} steps. Reply **yes** to run it, or refine it in chat.` },
+      ])
+    }).catch(() => {
+      setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Failed to load test case.' }])
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   async function send() {

@@ -96,6 +96,15 @@ def handler(event, context):
             )
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'id': run_id})}
 
+        # ── Delete Test Case ─────────────────────────────────────────────
+        elif action == 'delete_test_case':
+            tc_id = body['id']
+            sql('DELETE FROM run_records WHERE test_case_id = :id',
+                [{'name':'id', 'value':{'stringValue': tc_id}}])
+            sql('DELETE FROM test_cases WHERE id = :id',
+                [{'name':'id', 'value':{'stringValue': tc_id}}])
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'deleted': tc_id})}
+
         else:
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': f'Unknown action: {action}'})}
 

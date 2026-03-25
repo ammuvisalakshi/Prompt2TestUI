@@ -79,6 +79,14 @@ export async function listRunRecords(env: string): Promise<RunRecord[]> {
   return invokeLambda('p2t-testcase-reader', { action: 'list_run_records', env }) as Promise<RunRecord[]>
 }
 
+export async function getTestCase(id: string): Promise<TestCase & { steps: object[] }> {
+  return invokeLambda('p2t-testcase-reader', { action: 'get_test_case', id }) as Promise<TestCase & { steps: object[] }>
+}
+
+export async function deleteTestCase(id: string): Promise<void> {
+  await invokeLambda('p2t-testcase-writer', { action: 'delete_test_case', id })
+}
+
 export async function searchTestCases(query: string, env: string, threshold = 0.75): Promise<(TestCase & { similarity: number })[]> {
   return invokeLambda('p2t-testcase-reader', { action: 'search', query, env, threshold }) as Promise<(TestCase & { similarity: number })[]>
 }

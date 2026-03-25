@@ -108,6 +108,31 @@ def handler(event, context):
                 })
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps(items)}
 
+        # ── Get Single Test Case ─────────────────────────────────────────
+        elif action == 'get_test_case':
+            tc_id = body['id']
+            res = sql(
+                '''SELECT id, env, service, description, steps::text, tags,
+                          created_by, created_at::text, last_result, last_run_at::text
+                   FROM test_cases WHERE id = :id''',
+                [{'name':'id', 'value':{'stringValue': tc_id}}]
+            )
+            if not res['records']:
+                return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
+            row = res['records'][0]
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps({
+                'id':          cell(row[0]),
+                'env':         cell(row[1]),
+                'service':     cell(row[2]) or '',
+                'description': cell(row[3]),
+                'steps':       json.loads(cell(row[4]) or '[]'),
+                'tags':        parse_tags(cell(row[5])),
+                'createdBy':   cell(row[6]) or '',
+                'createdAt':   cell(row[7]),
+                'lastResult':  cell(row[8]),
+                'lastRunAt':   cell(row[9]),
+            })}
+
         # ── Semantic Search ─────────────────────────────────────────────
         elif action == 'search':
             query     = body.get('query', '')

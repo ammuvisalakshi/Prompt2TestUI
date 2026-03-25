@@ -1,16 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useEnv } from '../context/EnvContext'
-import { listTestCases, listRunRecords, type TestCase, type RunRecord } from '../lib/lambdaClient'
+import { listTestCases, listRunRecords, deleteTestCase, type TestCase, type RunRecord } from '../lib/lambdaClient'
 
 type Tab = 'cases' | 'runs'
 
 export default function InventoryPage() {
   const { env } = useEnv()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('cases')
   const [cases, setCases] = useState<TestCase[]>([])
   const [runs, setRuns] = useState<RunRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -30,20 +34,41 @@ export default function InventoryPage() {
 
   useEffect(() => { load() }, [load])
 
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    try {
+      await deleteTestCase(id)
+      setCases(prev => prev.filter(tc => tc.id !== id))
+    } catch {
+      setError('Failed to delete test case')
+    } finally {
+      setDeletingId(null)
+      setConfirmDeleteId(null)
+    }
+  }
+
+  function handleRun(tc: TestCase) {
+    navigate(`/agent?tcId=${tc.id}&tcDesc=${encodeURIComponent(tc.description)}`)
+  }
+
   const smoke    = cases.filter(tc => tc.tags.includes('Smoke')).length
   const failures = cases.filter(tc => tc.lastResult === 'FAIL').length
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
-      <div className="flex-1 overflow-y-auto p-5">
+      {/* Click-away for confirm delete */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-30" onClick={() => setConfirmDeleteId(null)} />
+      )}
 
+      <div className="flex-1 overflow-y-auto p-5">
         {/* Stats (test cases tab only) */}
         {tab === 'cases' && (
           <div className="grid grid-cols-4 gap-3 mb-5">
             {[
-              { label: 'Total TCs',    value: cases.length,                                  color: 'text-slate-900' },
-              { label: 'Services',     value: [...new Set(cases.map(t => t.service))].length, color: 'text-[#7C3AED]' },
-              { label: 'Smoke tagged', value: smoke,                                          color: 'text-green-700' },
+              { label: 'Total TCs',    value: cases.length,                                   color: 'text-slate-900' },
+              { label: 'Services',     value: [...new Set(cases.map(t => t.service))].length,  color: 'text-[#7C3AED]' },
+              { label: 'Smoke tagged', value: smoke,                                           color: 'text-green-700' },
               { label: failures > 0 ? 'Failures' : 'All passing', value: failures > 0 ? failures : '✓', color: failures > 0 ? 'text-red-700' : 'text-green-700' },
             ].map(s => (
               <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -86,11 +111,12 @@ export default function InventoryPage() {
                   <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Tags</th>
                   <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Last Result</th>
                   <th className="text-left px-4 py-2.5 text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Created By</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
               </thead>
               <tbody>
                 {cases.length === 0 && !loading && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-[14px] text-slate-400">No test cases yet for {env.toUpperCase()}</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[14px] text-slate-400">No test cases yet for {env.toUpperCase()}</td></tr>
                 )}
                 {cases.map((tc, i) => (
                   <tr key={tc.id} className={`border-b border-slate-50 hover:bg-slate-50 ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
@@ -111,6 +137,44 @@ export default function InventoryPage() {
                       ) : <span className="text-[12px] text-slate-400">—</span>}
                     </td>
                     <td className="px-4 py-3 text-[13px] text-slate-500">{tc.createdBy || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end relative">
+                        {/* Run button */}
+                        <button onClick={() => handleRun(tc)}
+                          title="Run this test"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
+                          <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          Run
+                        </button>
+
+                        {/* Delete button + confirm popover */}
+                        <div className="relative">
+                          <button onClick={() => setConfirmDeleteId(confirmDeleteId === tc.id ? null : tc.id)}
+                            title="Delete test case"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                            </svg>
+                          </button>
+
+                          {confirmDeleteId === tc.id && (
+                            <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-red-200 rounded-xl shadow-xl p-3 w-48">
+                              <p className="text-[12px] text-slate-600 mb-2">Delete this test case and all its run records?</p>
+                              <div className="flex gap-2">
+                                <button onClick={() => handleDelete(tc.id)} disabled={deletingId === tc.id}
+                                  className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[12px] font-semibold cursor-pointer disabled:opacity-50">
+                                  {deletingId === tc.id ? 'Deleting…' : 'Delete'}
+                                </button>
+                                <button onClick={() => setConfirmDeleteId(null)}
+                                  className="flex-1 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-[12px] font-semibold hover:bg-slate-50 cursor-pointer">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
