@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt2Test — New AWS Account Deployment Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; line-height: 1.6; }
+
+  .page { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0369a1 100%); color: white; border-radius: 16px; padding: 40px 48px; margin-bottom: 40px; }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .header .subtitle { font-size: 15px; opacity: 0.85; margin-bottom: 20px; }
+  .header .meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: 12px; opacity: 0.7; }
+  .header .meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* What is CDK box */
+  .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .info-box .info-title { font-weight: 700; color: #1d4ed8; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .info-box p { color: #1e40af; font-size: 13.5px; line-height: 1.6; margin-bottom: 8px; }
+  .info-box p:last-child { margin-bottom: 0; }
+
+  /* Warning box */
+  .warn-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+  .warn-box p { color: #92400e; font-size: 13px; }
+
+  /* Success box */
+  .success-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #22c55e; border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+  .success-box p { color: #166534; font-size: 13px; }
+
+  /* Phase header */
+  .phase { margin-bottom: 40px; }
+  .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; }
+  .phase-badge { background: #0369a1; color: white; font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .phase-badge.manual { background: #7c3aed; }
+  .phase-badge.auto { background: #059669; }
+  .phase-badge.verify { background: #dc2626; }
+  .phase-title { font-size: 20px; font-weight: 700; color: #0f172a; }
+  .phase-desc { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+  /* Steps */
+  .step { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .step-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+  .step-num { background: #f1f5f9; border: 2px solid #cbd5e1; color: #475569; font-weight: 700; font-size: 13px; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-title { font-weight: 700; font-size: 15px; color: #0f172a; }
+  .step-subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .step-body { padding-left: 46px; }
+  .step-body p { font-size: 13.5px; color: #334155; margin-bottom: 10px; }
+  .step-body ul, .step-body ol { padding-left: 20px; margin-bottom: 10px; }
+  .step-body li { font-size: 13.5px; color: #334155; margin-bottom: 6px; }
+  .step-body strong { color: #0f172a; }
+
+  /* Code blocks */
+  pre { background: #0f172a; color: #e2e8f0; font-family: 'Consolas', 'Courier New', monospace; font-size: 12.5px; padding: 16px 20px; border-radius: 8px; margin: 10px 0 14px; overflow-x: auto; line-height: 1.7; }
+  pre .comment { color: #64748b; }
+  pre .cmd { color: #7dd3fc; }
+  pre .val { color: #86efac; }
+  pre .key { color: #fbbf24; }
+  code { font-family: 'Consolas', 'Courier New', monospace; background: #f1f5f9; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 12.5px; }
+
+  /* Output sample */
+  .output-sample { background: #1e293b; color: #94a3b8; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; padding: 16px 20px; border-radius: 8px; margin: 10px 0 14px; line-height: 1.8; }
+  .output-sample .highlight { color: #86efac; font-weight: 600; }
+  .output-sample .arrow { color: #fbbf24; }
+  .output-sample .label { color: #7dd3fc; }
+
+  /* Console steps */
+  .console-steps { counter-reset: console-step; }
+  .console-step { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+  .console-step::before { counter-increment: console-step; content: counter(console-step); background: #0369a1; color: white; font-weight: 700; font-size: 11px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .console-step p { font-size: 13.5px; color: #334155; }
+
+  /* Save note */
+  .save-note { display: flex; gap: 10px; background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin: 12px 0; align-items: flex-start; }
+  .save-note .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .save-note p { font-size: 13px; color: #713f12; }
+
+  /* Checklist */
+  .checklist { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; }
+  .checklist h3 { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+  .check-item { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f8fafc; }
+  .check-item:last-child { border-bottom: none; }
+  .check-box { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+  .check-text { font-size: 13.5px; color: #334155; }
+  .check-text .phase-tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; margin-left: 6px; }
+  .tag-setup { background: #dbeafe; color: #1d4ed8; }
+  .tag-auto { background: #dcfce7; color: #166534; }
+  .tag-manual { background: #ede9fe; color: #5b21b6; }
+  .tag-verify { background: #fee2e2; color: #991b1b; }
+
+  /* Cost table */
+  .cost-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .cost-table th { background: #f8fafc; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; padding: 10px 14px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+  .cost-table td { padding: 10px 14px; font-size: 13.5px; border-bottom: 1px solid #f1f5f9; }
+  .cost-table tr:last-child td { font-weight: 700; color: #059669; border-top: 2px solid #e2e8f0; border-bottom: none; }
+  .cost-table .free { color: #059669; font-weight: 600; }
+
+  /* Resources table */
+  .resources-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .resources-table th { background: #f8fafc; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+  .resources-table td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+  .resources-table .auto-badge { background: #dcfce7; color: #166534; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .resources-table .manual-badge { background: #ede9fe; color: #5b21b6; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+
+  /* Footer */
+  .footer { text-align: center; font-size: 12px; color: #94a3b8; padding-top: 32px; border-top: 1px solid #e2e8f0; margin-top: 32px; }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 16px; max-width: 100%; }
+    .header { border-radius: 8px; }
+    pre, .output-sample { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Prompt2Test — New AWS Account Deployment Guide</h1>
+    <div class="subtitle">Complete step-by-step guide to deploy the entire platform from scratch on any AWS account</div>
+    <div class="meta">
+      <span>Estimated Time: 45–60 minutes</span>
+      <span>AWS Region: us-east-1</span>
+      <span>Updated: 2026-03-25</span>
+    </div>
+  </div>
+
+  <!-- What is CDK explanation -->
+  <div class="info-box">
+    <div class="info-title">What does the CDK Infrastructure do?</div>
+    <p>This project has a folder called <code>infrastructure/</code> which contains <strong>CDK (Cloud Development Kit)</strong> code — TypeScript code that, when you run a single command (<code>cdk deploy</code>), automatically creates all 15 AWS resources in your account.</p>
+    <p>Think of it as an <strong>installer</strong>. You don't have to manually create each service in the console — CDK does it all for you. However, there are 3 manual steps that CDK cannot automate: enabling Bedrock model access, creating the AgentCore runtime, and connecting Amplify to GitHub.</p>
+    <p>This guide walks you through everything — the automated parts and the manual parts — in the right order.</p>
+  </div>
+
+  <!-- Resources overview -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-title">What Gets Deployed</div>
+    </div>
+    <div class="step">
+      <table class="resources-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Resource</th>
+            <th>AWS Service</th>
+            <th>How</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>VPC (2 AZs, public + isolated subnets)</td><td>EC2 / VPC</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>2</td><td>User Pool + Identity Pool (login)</td><td>Cognito</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>3</td><td>Aurora Serverless v2 PostgreSQL + pgvector</td><td>RDS</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>4</td><td>Aurora credentials secret</td><td>Secrets Manager</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>5</td><td>DB schema init (tables, indexes, pgvector)</td><td>Lambda + Custom Resource</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>6</td><td>p2t-testcase-writer Lambda</td><td>Lambda</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>7</td><td>p2t-testcase-reader Lambda</td><td>Lambda</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>8</td><td>ECR repos: prompt2test-agent + playwright-mcp</td><td>ECR</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>9</td><td>ECS Fargate cluster + task definition (ARM64)</td><td>ECS</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>10</td><td>SSM parameters (ECS config for agent)</td><td>SSM</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>11</td><td>CodePipeline: GitHub → ECR (Agent)</td><td>CodePipeline</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>12</td><td>CodePipeline: GitHub → ECR (Playwright MCP)</td><td>CodePipeline</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>13</td><td>AgentCore IAM role</td><td>IAM</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>14</td><td>Cognito auth role (browser SDK permissions)</td><td>IAM</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>15</td><td>Amplify app (React UI hosting)</td><td>Amplify</td><td><span class="auto-badge">CDK Auto</span></td></tr>
+          <tr><td>16</td><td>Bedrock model access (Claude + Titan Embed)</td><td>Bedrock</td><td><span class="manual-badge">Manual</span></td></tr>
+          <tr><td>17</td><td>AgentCore Runtime</td><td>Bedrock AgentCore</td><td><span class="manual-badge">Manual</span></td></tr>
+          <tr><td>18</td><td>Amplify GitHub connection + branch</td><td>Amplify</td><td><span class="manual-badge">Manual</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 1 — LOCAL SETUP                              -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge">Phase 1</div>
+      <div>
+        <div class="phase-title">Local Machine Setup</div>
+        <div class="phase-desc">Install the tools you need on your computer before touching AWS</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Install AWS CLI</div>
+          <div class="step-subtitle">Lets you run AWS commands from your terminal</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Download and install from the AWS website, then verify:</p>
+        <pre><span class="comment"># Verify install</span>
+<span class="cmd">aws --version</span>
+<span class="comment"># Should output: aws-cli/2.x.x ...</span></pre>
+        <p>If not installed: download from <strong>aws.amazon.com/cli</strong> — choose Windows, Mac, or Linux installer.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Install Node.js (v18 or higher)</div>
+          <div class="step-subtitle">Required for CDK</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <pre><span class="cmd">node --version</span>
+<span class="comment"># Should output: v18.x.x or higher</span></pre>
+        <p>If not installed: download from <strong>nodejs.org</strong> → LTS version.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Install AWS CDK globally</div>
+          <div class="step-subtitle">The tool that deploys your infrastructure</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <pre><span class="cmd">npm install -g aws-cdk</span>
+<span class="cmd">cdk --version</span>
+<span class="comment"># Should output: 2.x.x</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">Configure AWS credentials for the new account</div>
+          <div class="step-subtitle">Tells AWS CLI which account to talk to</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>First, create an access key in the new AWS account:</p>
+        <div class="console-steps">
+          <div class="console-step"><p>Log into the <strong>new AWS account</strong> in a browser</p></div>
+          <div class="console-step"><p>Go to <strong>IAM → Users → your user → Security credentials</strong></p></div>
+          <div class="console-step"><p>Click <strong>Create access key</strong> → select <strong>CLI</strong> → copy both values</p></div>
+        </div>
+        <p style="margin-top:12px;">Then configure the CLI:</p>
+        <pre><span class="cmd">aws configure</span>
+
+<span class="comment"># Enter when prompted:</span>
+<span class="key">AWS Access Key ID</span>     <span class="arrow">→</span> <span class="val">AKIAIOSFODNN7EXAMPLE</span>
+<span class="key">AWS Secret Access Key</span> <span class="arrow">→</span> <span class="val">wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY</span>
+<span class="key">Default region name</span>   <span class="arrow">→</span> <span class="val">us-east-1</span>
+<span class="key">Default output format</span> <span class="arrow">→</span> <span class="val">json</span></pre>
+        <p>Verify it works:</p>
+        <pre><span class="cmd">aws sts get-caller-identity</span>
+<span class="comment"># Should show your new account's Account ID, UserId, Arn</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">5</div>
+        <div>
+          <div class="step-title">Clone the repository</div>
+          <div class="step-subtitle">Get the project code onto your machine</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <pre><span class="cmd">git clone https://github.com/YOUR_GITHUB_USERNAME/Prompt2TestUI</span>
+<span class="cmd">cd Prompt2TestUI</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 2 — AWS ACCOUNT PREP                         -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge manual">Phase 2</div>
+      <div>
+        <div class="phase-title">Prepare the AWS Account (Manual — Console Steps)</div>
+        <div class="phase-desc">Three things that must be done in the AWS Console before running CDK</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">6</div>
+        <div>
+          <div class="step-title">Enable Bedrock Model Access</div>
+          <div class="step-subtitle">Must be done first — can take a few minutes to activate</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <div class="warn-box">
+          <p><strong>Do this first</strong> — Bedrock model access takes a few minutes to become active. Start it now so it is ready by the time you need it.</p>
+        </div>
+        <div class="console-steps">
+          <div class="console-step"><p>Go to <strong>AWS Console → Amazon Bedrock</strong></p></div>
+          <div class="console-step"><p>In the left sidebar click <strong>Model access</strong></p></div>
+          <div class="console-step"><p>Click <strong>Manage model access</strong> (top right)</p></div>
+          <div class="console-step"><p>Check these two models:<br>
+            &nbsp;&nbsp;• <strong>Claude Sonnet 4.5</strong> (under Anthropic — use cross-region inference profile)<br>
+            &nbsp;&nbsp;• <strong>Titan Embed Text v2</strong> (under Amazon)</p></div>
+          <div class="console-step"><p>Click <strong>Save changes</strong></p></div>
+          <div class="console-step"><p>Wait until both show <strong>Access granted</strong> (usually 1–5 minutes)</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">7</div>
+        <div>
+          <div class="step-title">Bootstrap CDK in the new account</div>
+          <div class="step-subtitle">One-time setup — creates internal CDK resources (S3 bucket, IAM roles)</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>First get your account ID:</p>
+        <pre><span class="cmd">aws sts get-caller-identity --query Account --output text</span>
+<span class="comment"># Outputs something like: 123456789012</span></pre>
+        <p>Then bootstrap:</p>
+        <pre><span class="cmd">cdk bootstrap aws://123456789012/us-east-1</span>
+<span class="comment"># Replace 123456789012 with your actual account ID</span></pre>
+        <div class="success-box">
+          <p>You should see: <strong>Environment aws://123456789012/us-east-1 bootstrapped.</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">8</div>
+        <div>
+          <div class="step-title">Create a GitHub CodeStar Connection</div>
+          <div class="step-subtitle">Lets AWS CodePipeline pull code from your GitHub repos automatically</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <div class="console-steps">
+          <div class="console-step"><p>In the AWS Console, search for <strong>"Developer Tools"</strong> in the top search bar</p></div>
+          <div class="console-step"><p>Go to <strong>Settings → Connections</strong></p></div>
+          <div class="console-step"><p>Click <strong>Create connection</strong></p></div>
+          <div class="console-step"><p>Select <strong>GitHub</strong> → click <strong>Connect to GitHub</strong></p></div>
+          <div class="console-step"><p>Authorize the OAuth flow — GitHub will ask you to approve AWS access</p></div>
+          <div class="console-step"><p>Click <strong>Connect</strong> — the status will show <strong>Available</strong></p></div>
+          <div class="console-step"><p>Click on the connection and copy the <strong>Connection ARN</strong></p></div>
+        </div>
+        <div class="save-note">
+          <div class="icon">📋</div>
+          <p>Save this ARN — you need it in the next step.<br>
+          It looks like: <code>arn:aws:codestar-connections:us-east-1:123456789012:connection/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 3 — CDK DEPLOY                               -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge auto">Phase 3</div>
+      <div>
+        <div class="phase-title">CDK Deploy — Automated (Creates All 15 Resources)</div>
+        <div class="phase-desc">One command that provisions everything. Takes about 5–10 minutes.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">9</div>
+        <div>
+          <div class="step-title">Configure cdk.json with your GitHub details</div>
+          <div class="step-subtitle">Tell CDK where your GitHub repos are</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Open the file <code>infrastructure/cdk.json</code> and update the two values:</p>
+        <pre>{
+  "app": "npx ts-node --prefer-ts-exts bin/infrastructure.ts",
+  "context": {
+    <span class="key">"githubOwner"</span>: <span class="val">"your-actual-github-username"</span>,
+    <span class="key">"githubConnectionArn"</span>: <span class="val">"arn:aws:codestar-connections:us-east-1:123456789012:connection/xxxxxxxx"</span>
+  }
+}</pre>
+        <p>Replace <code>your-actual-github-username</code> with your GitHub username, and paste in the Connection ARN from Step 8.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">10</div>
+        <div>
+          <div class="step-title">Run CDK Deploy</div>
+          <div class="step-subtitle">This creates all 15 AWS resources automatically</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <pre><span class="cmd">cd infrastructure</span>
+<span class="cmd">npm install</span>
+<span class="cmd">cdk deploy</span></pre>
+        <p>CDK will show you a list of IAM changes it will make and ask for confirmation:</p>
+        <div class="output-sample">Do you wish to deploy these changes (y/n)? <span class="highlight">y</span></div>
+        <p>Then it runs for about 5–10 minutes. You will see progress like:</p>
+        <div class="output-sample">Prompt2TestStack: deploying...
+✅  Prompt2TestStack
+
+<span class="label">Outputs:</span>
+<span class="highlight">Prompt2TestStack.OutUserPoolId</span>       = us-east-1_XXXXXXXXX
+<span class="highlight">Prompt2TestStack.OutUserPoolClientId</span> = 1bvraf...
+<span class="highlight">Prompt2TestStack.OutIdentityPoolId</span>   = us-east-1:xxxx-xxxx-...
+<span class="highlight">Prompt2TestStack.OutRegion</span>           = us-east-1
+<span class="highlight">Prompt2TestStack.OutAgentCoreRoleArn</span> = arn:aws:iam::123456789012:role/...
+<span class="highlight">Prompt2TestStack.OutAgentEcrUri</span>      = 123456789012.dkr.ecr.us-east-1.amazonaws.com/prompt2test-agent
+<span class="highlight">Prompt2TestStack.OutAmplifyAppId</span>     = d1234abcd</div>
+        <div class="save-note">
+          <div class="icon">📋</div>
+          <p><strong>Copy and save all of these output values.</strong> You will need them in the next steps. You can also retrieve them later from: <strong>AWS Console → CloudFormation → Prompt2TestStack → Outputs</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 4 — DOCKER IMAGES                            -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge">Phase 4</div>
+      <div>
+        <div class="phase-title">Build & Push Docker Images</div>
+        <div class="phase-desc">Trigger the CodePipelines to build and push the agent and Playwright containers to ECR</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">11</div>
+        <div>
+          <div class="step-title">Trigger both CodePipelines</div>
+          <div class="step-subtitle">CDK created the pipelines but they haven't run yet</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <pre><span class="cmd">aws codepipeline start-pipeline-execution --name prompt2test-playwright-mcp</span>
+<span class="cmd">aws codepipeline start-pipeline-execution --name prompt2test-agent</span></pre>
+        <p>Then monitor progress:</p>
+        <div class="console-steps">
+          <div class="console-step"><p>Go to <strong>AWS Console → CodePipeline</strong></p></div>
+          <div class="console-step"><p>You should see both pipelines running</p></div>
+          <div class="console-step"><p>Wait until both show <strong>Succeeded</strong> — each takes about 5–10 minutes</p></div>
+        </div>
+        <div class="warn-box">
+          <p>If a pipeline fails, click on the failed stage → <strong>View in CodeBuild</strong> to see the build logs. The most common issue is a missing Dockerfile in the GitHub repo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 5 — AGENTCORE RUNTIME                        -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge manual">Phase 5</div>
+      <div>
+        <div class="phase-title">Create Bedrock AgentCore Runtime (Manual — CLI)</div>
+        <div class="phase-desc">AWS does not support AgentCore in CloudFormation/CDK yet — this must be done via CLI</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">12</div>
+        <div>
+          <div class="step-title">Create the AgentCore Runtime</div>
+          <div class="step-subtitle">Uses the ECR image (from Step 11) and the IAM role (from CDK output)</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Use the values from Step 10 outputs — replace both placeholders:</p>
+        <pre><span class="cmd">aws bedrock-agentcore-control create-agent-runtime \</span>
+<span class="cmd">  --agent-runtime-name Prompt2TestAgent \</span>
+<span class="cmd">  --agent-runtime-artifact \</span>
+<span class="val">    '{"containerConfiguration":{"image":"YOUR_OutAgentEcrUri:latest"}}' \</span>
+<span class="cmd">  --role-arn YOUR_OutAgentCoreRoleArn \</span>
+<span class="cmd">  --network-configuration '{"networkMode":"PUBLIC"}'</span></pre>
+        <p><strong>Example with real values:</strong></p>
+        <pre><span class="cmd">aws bedrock-agentcore-control create-agent-runtime \</span>
+<span class="cmd">  --agent-runtime-name Prompt2TestAgent \</span>
+<span class="cmd">  --agent-runtime-artifact \</span>
+<span class="val">    '{"containerConfiguration":{"image":"123456789012.dkr.ecr.us-east-1.amazonaws.com/prompt2test-agent:latest"}}' \</span>
+<span class="cmd">  --role-arn arn:aws:iam::123456789012:role/prompt2test-agentcore-role \</span>
+<span class="cmd">  --network-configuration '{"networkMode":"PUBLIC"}'</span></pre>
+        <p>The response JSON will include the runtime ARN:</p>
+        <div class="output-sample">{
+  <span class="label">"agentRuntimeArn"</span>: <span class="highlight">"arn:aws:bedrock:us-east-1:123456789012:agent-runtime/XXXXXXXXXX"</span>,
+  "agentRuntimeId": "XXXXXXXXXX",
+  "status": "CREATING"
+}</div>
+        <div class="save-note">
+          <div class="icon">📋</div>
+          <p><strong>Copy the <code>agentRuntimeArn</code></strong> — you need it in the next step to configure Amplify.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 6 — AMPLIFY                                  -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge manual">Phase 6</div>
+      <div>
+        <div class="phase-title">Connect Amplify to GitHub (Manual — Console)</div>
+        <div class="phase-desc">CDK created the Amplify app but GitHub OAuth requires a manual authorization step</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">13</div>
+        <div>
+          <div class="step-title">Connect Amplify to your GitHub repo and set the AgentCore ARN</div>
+          <div class="step-subtitle">Final wiring step — after this your UI is live</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <div class="console-steps">
+          <div class="console-step"><p>Go to <strong>AWS Console → AWS Amplify</strong></p></div>
+          <div class="console-step"><p>Click on <strong>Prompt2TestUI</strong></p></div>
+          <div class="console-step"><p>Click <strong>Connect branch</strong></p></div>
+          <div class="console-step"><p>Select <strong>GitHub</strong> → authorize if prompted → select repo <strong>Prompt2TestUI</strong> → branch <strong>master</strong></p></div>
+          <div class="console-step"><p>Under <strong>Environment variables</strong>, find <code>VITE_AGENT_RUNTIME_ARN</code> and update it with the ARN from Step 12</p></div>
+          <div class="console-step"><p>Click <strong>Save and deploy</strong></p></div>
+          <div class="console-step"><p>Wait 3–5 minutes for the build to complete</p></div>
+        </div>
+        <div class="success-box">
+          <p>When done, your app URL appears at the top of the Amplify console:<br>
+          <strong>https://master.xxxxxxxxx.amplifyapp.com</strong></p>
+        </div>
+        <div class="warn-box">
+          <p>All other environment variables (Cognito IDs, region, identity pool) were already set by CDK when it created the Amplify app. You only need to set <code>VITE_AGENT_RUNTIME_ARN</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 7 — CONFIG                                   -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge">Phase 7</div>
+      <div>
+        <div class="phase-title">Add Your Services & Create Users</div>
+        <div class="phase-desc">Configure your environment-specific data so the platform is usable</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">14</div>
+        <div>
+          <div class="step-title">Add Services to SSM Parameter Store</div>
+          <div class="step-subtitle">These appear as chips in the UI when selecting a service to test</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>The parameter naming pattern is: <code>/prompt2test/config/{env}/services/{ServiceName}/URL</code></p>
+        <pre><span class="comment"># Add services for dev environment</span>
+<span class="cmd">aws ssm put-parameter \</span>
+<span class="cmd">  --name "/prompt2test/config/dev/services/MyService/URL" \</span>
+<span class="cmd">  --value "https://myservice.dev.example.com" \</span>
+<span class="cmd">  --type String</span>
+
+<span class="comment"># Add another service</span>
+<span class="cmd">aws ssm put-parameter \</span>
+<span class="cmd">  --name "/prompt2test/config/dev/services/PaymentsAPI/URL" \</span>
+<span class="cmd">  --value "https://payments.dev.example.com" \</span>
+<span class="cmd">  --type String</span>
+
+<span class="comment"># Add for staging environment</span>
+<span class="cmd">aws ssm put-parameter \</span>
+<span class="cmd">  --name "/prompt2test/config/staging/services/MyService/URL" \</span>
+<span class="cmd">  --value "https://myservice.staging.example.com" \</span>
+<span class="cmd">  --type String</span></pre>
+        <p>Repeat for each service and each environment (dev, staging, prod, etc.) you want to test.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">15</div>
+        <div>
+          <div class="step-title">Create the First Admin User</div>
+          <div class="step-subtitle">Use the User Pool ID from the CDK outputs (Step 10)</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <pre><span class="cmd">aws cognito-idp admin-create-user \</span>
+<span class="cmd">  --user-pool-id YOUR_OutUserPoolId \</span>
+<span class="cmd">  --username admin@yourcompany.com \</span>
+<span class="cmd">  --temporary-password TempPass123! \</span>
+<span class="cmd">  --user-attributes \</span>
+<span class="cmd">    Name=email,Value=admin@yourcompany.com \</span>
+<span class="cmd">    Name=email_verified,Value=true</span></pre>
+        <p>The user will be prompted to change their password on first login.</p>
+        <p>To add more users (team members), repeat this command with their email address.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- PHASE 8 — VERIFY                                   -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-badge verify">Phase 8</div>
+      <div>
+        <div class="phase-title">Verify Everything Works End-to-End</div>
+        <div class="phase-desc">Run through these checks to confirm the deployment is successful</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">16</div>
+        <div>
+          <div class="step-title">End-to-End Verification Checklist</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <ol>
+          <li>Open your Amplify URL in a browser</li>
+          <li>Log in with <code>admin@yourcompany.com</code> and the temporary password</li>
+          <li>Set a new permanent password when prompted</li>
+          <li>Go to <strong>Config</strong> → confirm your services appear as chips</li>
+          <li>Go to <strong>Agent</strong> → select environment and service → type a test prompt → confirm the agent responds and generates a plan</li>
+          <li>Save the test case → go to <strong>Inventory</strong> → confirm it appears in the list</li>
+          <li>Click <strong>Run</strong> on a test case → confirm the browser automation starts and the live view opens</li>
+          <li>After execution, confirm PASS/FAIL result is recorded in the run history</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final Checklist -->
+  <div class="checklist">
+    <h3>Complete Deployment Checklist</h3>
+
+    <div class="check-item"><div class="check-box"></div><div class="check-text">AWS CLI installed and configured with new account credentials <span class="phase-tag tag-setup">Local Setup</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Node.js v18+ installed <span class="phase-tag tag-setup">Local Setup</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">AWS CDK installed globally (<code>npm install -g aws-cdk</code>) <span class="phase-tag tag-setup">Local Setup</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Bedrock model access enabled: Claude Sonnet 4.5 + Titan Embed Text v2 <span class="phase-tag tag-manual">Manual</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">CDK bootstrapped (<code>cdk bootstrap aws://ACCOUNT_ID/us-east-1</code>) <span class="phase-tag tag-setup">Local Setup</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">GitHub CodeStar connection created → Connection ARN saved <span class="phase-tag tag-manual">Manual</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text"><code>infrastructure/cdk.json</code> updated with githubOwner + githubConnectionArn <span class="phase-tag tag-setup">Local Setup</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text"><code>cdk deploy</code> completed successfully → all Stack Outputs saved <span class="phase-tag tag-auto">CDK Auto</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Both CodePipelines triggered and show Succeeded <span class="phase-tag tag-auto">CDK Auto</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Bedrock AgentCore runtime created via CLI → agentRuntimeArn saved <span class="phase-tag tag-manual">Manual</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Amplify connected to GitHub branch master, VITE_AGENT_RUNTIME_ARN set, deployed <span class="phase-tag tag-manual">Manual</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">SSM parameters added for your services and environments <span class="phase-tag tag-setup">Config</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">First admin user created in Cognito <span class="phase-tag tag-setup">Config</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Logged in and verified end-to-end flow works ✓ <span class="phase-tag tag-verify">Verify</span></div></div>
+  </div>
+
+  <!-- Cost -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-title">Cost Reference</div>
+    </div>
+    <div class="step">
+      <table class="cost-table">
+        <thead>
+          <tr><th>Service</th><th>When Idle (nothing running)</th><th>When Active (tests running)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Aurora Serverless v2</td><td class="free">$0 (auto-paused)</td><td>~$10–20/month</td></tr>
+          <tr><td>Secrets Manager</td><td>$0.40/month</td><td>$0.40/month</td></tr>
+          <tr><td>ECR (2 repos)</td><td>~$0.20/month</td><td>~$0.20/month</td></tr>
+          <tr><td>Bedrock AgentCore</td><td class="free">$0 (not running)</td><td>Pay per invocation</td></tr>
+          <tr><td>ECS Fargate</td><td class="free">$0 (on-demand per test)</td><td>~$0.10 per test run</td></tr>
+          <tr><td>Amplify Hosting</td><td class="free">$0 (free tier)</td><td class="free">$0 (free tier)</td></tr>
+          <tr><td>Everything else</td><td class="free">$0</td><td class="free">$0</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>~$0.60/month</strong></td><td><strong>~$30–70/month</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    Prompt2Test Deployment Guide · AWS us-east-1 · Updated 2026-03-25
+  </div>
+
+</div>
+</body>
+</html>
