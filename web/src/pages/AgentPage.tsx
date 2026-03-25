@@ -281,19 +281,6 @@ export default function AgentPage() {
             Bedrock · DEV
           </span>
         </span>
-        <div className="flex bg-slate-100 border border-slate-200 rounded-lg overflow-hidden">
-          {(['plan', 'auto'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`px-3 py-1 text-[13px] font-medium transition-colors cursor-pointer ${
-                mode === m ? 'bg-[#7C3AED] text-white' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {m === 'plan' ? 'Plan' : 'Automate'}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Main workspace */}
@@ -319,6 +306,22 @@ export default function AgentPage() {
 
           {/* Input */}
           <div className="p-3 border-t border-slate-200">
+            {/* Mode toggle — IDE-style at the bottom */}
+            <div className="flex items-center gap-1 mb-2">
+              {(['plan', 'auto'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`px-3 py-1 text-[12px] font-medium rounded-md transition-colors cursor-pointer ${
+                    mode === m
+                      ? 'bg-[#7C3AED] text-white'
+                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {m === 'plan' ? '⚡ Plan' : '▶ Automate'}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-2 items-end">
               <textarea
                 value={input}
