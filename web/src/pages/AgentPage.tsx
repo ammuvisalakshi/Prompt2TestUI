@@ -92,7 +92,6 @@ export default function AgentPage() {
   const popupRef = useRef<Window | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [userName, setUserName] = useState('')
-  const [userInitials, setUserInitials] = useState('?')
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -103,7 +102,7 @@ export default function AgentPage() {
     fetchUserAttributes().then(attrs => {
       const name = attrs.name || attrs.email?.split('@')[0] || ''
       setUserName(name)
-      setUserInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
+
     }).catch(() => {})
   }, [])
 
@@ -275,30 +274,25 @@ export default function AgentPage() {
   return (
     <div className="flex flex-col h-full bg-[#F5F7FA]">
       {/* Agent topbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="text-[15px] font-semibold text-slate-900">
-            Author Agent{' '}
-            <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full ml-1">
-              Bedrock · DEV
-            </span>
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
+        <span className="text-[15px] font-semibold text-slate-900">
+          Author Agent{' '}
+          <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full ml-1">
+            Bedrock · DEV
           </span>
-          <div className="flex bg-slate-100 border border-slate-200 rounded-lg overflow-hidden">
-            {(['plan', 'auto'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`px-3 py-1 text-[13px] font-medium transition-colors cursor-pointer ${
-                  mode === m ? 'bg-[#7C3AED] text-white' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {m === 'plan' ? 'Plan' : 'Automate'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
-          {userInitials}
+        </span>
+        <div className="flex bg-slate-100 border border-slate-200 rounded-lg overflow-hidden">
+          {(['plan', 'auto'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`px-3 py-1 text-[13px] font-medium transition-colors cursor-pointer ${
+                mode === m ? 'bg-[#7C3AED] text-white' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {m === 'plan' ? 'Plan' : 'Automate'}
+            </button>
+          ))}
         </div>
       </div>
 
