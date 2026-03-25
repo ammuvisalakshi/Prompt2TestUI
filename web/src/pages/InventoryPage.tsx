@@ -1,7 +1,29 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchAuthSession } from '@aws-amplify/auth'
+import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 import { useEnv } from '../context/EnvContext'
 import { listTestCases, listRunRecords, deleteTestCase, getTestCase, updateTestCaseService, type TestCase, type RunRecord } from '../lib/lambdaClient'
+
+const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+
+async function loadServiceNames(env: string): Promise<string[]> {
+  const session = await fetchAuthSession()
+  const client = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
+  const path = `/prompt2test/config/${env}/services`
+  const names = new Set<string>()
+  let nextToken: string | undefined
+  do {
+    const resp = await client.send(new GetParametersByPathCommand({ Path: path, Recursive: true, NextToken: nextToken }))
+    for (const p of resp.Parameters ?? []) {
+      const rel = p.Name!.slice(path.length + 1) // "{svcname}/{FIELD}"
+      const slash = rel.indexOf('/')
+      if (slash > 0) names.add(rel.slice(0, slash))
+    }
+    nextToken = resp.NextToken
+  } while (nextToken)
+  return [...names].sort()
+}
 
 type Tab = 'cases' | 'runs'
 
@@ -22,6 +44,8 @@ export default function InventoryPage() {
   const [assignTc, setAssignTc] = useState<TestCase | null>(null)
   const [assignService, setAssignService] = useState('')
   const [assignSaving, setAssignSaving] = useState(false)
+  const [availableServices, setAvailableServices] = useState<string[]>([])
+  const [servicesLoading, setServicesLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -65,6 +89,14 @@ export default function InventoryPage() {
 
   function handleRun(tc: TestCase) {
     navigate(`/agent?tcId=${tc.id}&tcDesc=${encodeURIComponent(tc.description)}`)
+  }
+
+  function openAssign(tc: TestCase) {
+    setAssignTc(tc)
+    setAssignService(tc.service)
+    setAvailableServices([])
+    setServicesLoading(true)
+    loadServiceNames(env).then(names => setAvailableServices(names)).catch(() => {}).finally(() => setServicesLoading(false))
   }
 
   async function handleAssignService() {
@@ -131,33 +163,24 @@ export default function InventoryPage() {
               <div className="text-[15px] font-semibold text-slate-800 mb-1">Assign Service</div>
               <div className="text-[13px] text-slate-500 mb-4 line-clamp-1">{assignTc.description}</div>
 
-              {/* Existing service quick-picks */}
-              {services.filter(s => s !== 'Uncategorized').length > 0 && (
-                <div className="mb-3">
-                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Existing services</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {services.filter(s => s !== 'Uncategorized').map(svc => (
-                      <button key={svc} onClick={() => setAssignService(svc)}
-                        className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border cursor-pointer transition-colors ${
-                          assignService === svc
-                            ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
-                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]'
-                        }`}>
-                        {svc}
-                      </button>
-                    ))}
-                  </div>
+              {servicesLoading ? (
+                <div className="text-[13px] text-slate-400 py-4 text-center">Loading services…</div>
+              ) : availableServices.length === 0 ? (
+                <div className="text-[13px] text-slate-400 py-2">No services configured for {env.toUpperCase()} yet. Add them in Config &amp; Accounts.</div>
+              ) : (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {availableServices.map(svc => (
+                    <button key={svc} onClick={() => setAssignService(svc)}
+                      className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border cursor-pointer transition-colors ${
+                        assignService === svc
+                          ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]'
+                      }`}>
+                      {svc}
+                    </button>
+                  ))}
                 </div>
               )}
-
-              <input
-                value={assignService}
-                onChange={e => setAssignService(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAssignService() }}
-                placeholder="Or type a new service name…"
-                autoFocus
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#7C3AED] transition-colors mb-3"
-              />
               <div className="flex gap-2">
                 <button onClick={handleAssignService} disabled={assignSaving || !assignService.trim()}
                   className="flex-1 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-colors">
@@ -299,7 +322,7 @@ export default function InventoryPage() {
                           {/* Actions */}
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {/* Assign service */}
-                            <button onClick={() => { setAssignTc(tc); setAssignService(tc.service) }}
+                            <button onClick={() => openAssign(tc)}
                               title="Assign service"
                               className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer">
                               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
