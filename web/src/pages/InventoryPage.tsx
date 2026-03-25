@@ -31,11 +31,6 @@ export default function InventoryPage() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex items-center px-4 py-3 border-b border-slate-100">
             <div className="text-[15px] font-bold text-slate-900">Test Cases — {env.toUpperCase()}</div>
-            {env === 'dev' && (
-              <button className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
-                + Author TC
-              </button>
-            )}
           </div>
           <table className="w-full">
             <thead>
