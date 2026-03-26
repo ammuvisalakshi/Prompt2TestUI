@@ -1065,9 +1065,168 @@
           <div class="tag tag-green">ECR (×2)</div>
           <div class="tag tag-green">CodePipeline (×3)</div>
         </div>
-        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">15 AWS services · 4 GitHub repos</div>
+        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">17 AWS services · 4 GitHub repos</div>
       </div>
     </div>
+  </div>
+
+  <!-- ══ AWS SERVICES INVENTORY ══════════════════════════════════════════ -->
+  <div class="divider"></div>
+  <div class="section-label">Complete AWS Services Inventory</div>
+
+  <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin-bottom:20px;">
+
+    <!-- Networking -->
+    <div class="card theme-gray">
+      <div class="card-title"><span class="icon">🌐</span> Networking</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">VPC / EC2</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>VPC</b> — 2 public subnets, Internet Gateway</div>
+            <div><b>Security Group</b> — controls ECS Fargate inbound/outbound</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth & Identity -->
+    <div class="card theme-purple">
+      <div class="card-title"><span class="icon">🔐</span> Auth &amp; Identity</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">Cognito</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>User Pool</b> <code>prompt2test-users</code> — login, passwords, sessions</div>
+            <div><b>Identity Pool</b> — maps users to IAM roles for SDK calls</div>
+            <div><b>Cognito Auth Role</b> (IAM) — permissions the React UI gets after login</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Layer -->
+    <div class="card theme-rose">
+      <div class="card-title"><span class="icon">🗄️</span> Data Layer</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">RDS &amp; Secrets Manager</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>Aurora Serverless v2</b> <code>prompt2test-vectors</code> — PostgreSQL + pgvector, auto-pauses when idle</div>
+            <div><b>RDS Data API</b> — Lambda calls Aurora without a VPC connection</div>
+            <div><b>Secrets Manager</b> <code>prompt2test/aurora/credentials</code> — Aurora password</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backend Logic -->
+    <div class="card theme-indigo">
+      <div class="card-title"><span class="icon">⚡</span> Backend Logic</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">Lambda (×3)</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>p2t-testcase-writer</b> — saves, updates, deletes test cases &amp; run records</div>
+            <div><b>p2t-testcase-reader</b> — lists, fetches, semantic search via pgvector</div>
+            <div><b>CDK Custom Resource Lambda</b> — one-time DB schema init on first deploy</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div class="card theme-orange">
+      <div class="card-title"><span class="icon">🤖</span> AI &amp; Machine Learning</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">Amazon Bedrock</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>Claude Sonnet 4.5</b> — powers the AI agent (test case generation)</div>
+            <div><b>Titan Embed Text v2</b> — generates vector embeddings for semantic search</div>
+            <div><b>AgentCore</b> <code>Prompt2TestAgent</code> — runs the agent container on demand, status: READY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Browser Automation -->
+    <div class="card theme-green">
+      <div class="card-title"><span class="icon">🎭</span> Browser Automation</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">ECS &amp; ECR</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>ECS Fargate Cluster</b> <code>prompt2test-playwright-cluster</code> — on-demand per test run, ARM64 2vCPU/4GB</div>
+            <div><b>ECS Task Definition</b> — pulls latest image from ECR on each run</div>
+            <div><b>ECR</b> <code>prompt2test-playwright-mcp</code> — Playwright + noVNC Docker image</div>
+            <div><b>ECR</b> <code>prompt2test-agent</code> — AI agent Docker image</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Hosting -->
+    <div class="card theme-blue">
+      <div class="card-title"><span class="icon">🌍</span> UI Hosting</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">Amplify</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>Amplify Hosting</b> <code>Prompt2TestUI</code> — serves the React app via CloudFront CDN</div>
+            <div><b>Auto-deploy</b> — push to <code>master</code> → Amplify rebuilds and re-deploys automatically</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CI/CD -->
+    <div class="card theme-teal">
+      <div class="card-title"><span class="icon">🔄</span> CI/CD — 3 Pipelines</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">CodePipeline · CodeBuild · S3 · KMS</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>prompt2test-lambda</b> — push → zip → <code>update-function-code</code></div>
+            <div><b>prompt2test-agent-pipeline</b> — push → Docker build → ECR</div>
+            <div><b>prompt2test-playwright-mcp-pipeline</b> — push → Docker build → ECR</div>
+            <div><b>CodeBuild</b> — build runner for all 3 pipelines</div>
+            <div><b>S3</b> (3 buckets) — pipeline artifact storage</div>
+            <div><b>KMS</b> (2 keys) — encrypts pipeline artifacts at rest</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Config & Observability -->
+    <div class="card theme-gray">
+      <div class="card-title"><span class="icon">⚙️</span> Config, Observability &amp; Infra</div>
+      <div class="card-body">
+        <div class="sub-box" style="margin-top:0;">
+          <div class="sub-box-title">SSM · CloudWatch · CloudFormation · IAM</div>
+          <div style="font-size:13px; line-height:2;">
+            <div><b>SSM Parameter Store</b> — service URLs, Playwright config, Aurora ARNs, member roles</div>
+            <div><b>CloudWatch Logs</b> — <code>/prompt2test/playwright-mcp</code> and <code>/prompt2test/agentcore</code></div>
+            <div><b>CloudFormation</b> (4 stacks) — CDKToolkit, AgentStack, PlaywrightMCPStack, LambdaPipeline</div>
+            <div><b>IAM</b> — ~12 scoped roles for Lambda, ECS, CodeBuild, CodePipeline, AgentCore</div>
+            <div><b>S3</b> <code>cdk-hnb659fds-assets-...</code> — CDK deployment assets</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Summary bar -->
+  <div style="background:#0f172a; color:#e2e8f0; border-radius:12px; padding:20px 28px; display:flex; gap:40px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
+    <div class="metric"><div class="val" style="color:#7dd3fc;">17</div><div class="lbl" style="color:#94a3b8;">AWS Services</div></div>
+    <div class="metric"><div class="val" style="color:#86efac;">4</div><div class="lbl" style="color:#94a3b8;">GitHub Repos</div></div>
+    <div class="metric"><div class="val" style="color:#c084fc;">3</div><div class="lbl" style="color:#94a3b8;">CodePipelines</div></div>
+    <div class="metric"><div class="val" style="color:#fbbf24;">3</div><div class="lbl" style="color:#94a3b8;">Lambda Functions</div></div>
+    <div class="metric"><div class="val" style="color:#f9a8d4;">2</div><div class="lbl" style="color:#94a3b8;">ECR Repos</div></div>
+    <div class="metric"><div class="val" style="color:#6ee7b7;">1</div><div class="lbl" style="color:#94a3b8;">ECS Cluster</div></div>
+    <div class="metric"><div class="val" style="color:#fca5a5;">1</div><div class="lbl" style="color:#94a3b8;">Aurora Cluster</div></div>
+    <div class="metric"><div class="val" style="color:#a5b4fc;">1</div><div class="lbl" style="color:#94a3b8;">AgentCore Runtime</div></div>
   </div>
 
   <div class="footer">
