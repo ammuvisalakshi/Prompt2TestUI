@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { getTestCase, saveRunRecord, updateReplayScript } from '../lib/lambdaClient'
+import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 type PlanStep = { step: number; action: string; expected: string }
@@ -348,9 +348,14 @@ export default function TestCasePage() {
                       if (!tc || stepsSaveState === 'saving') return
                       setStepsSaveState('saving')
                       try {
-                        await updateReplayScript(tc.id, replayScriptRef.current)
+                        const planStepsLocal = (tc.planSteps ?? []) as PlanStep[]
+                        const autoSteps = planStepsLocal.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected }))
+                        await updateTestCaseSteps(tc.id, autoSteps)
+                        if (replayScriptRef.current.length > 0) {
+                          await updateReplayScript(tc.id, replayScriptRef.current)
+                        }
                         setStepsSaveState('saved')
-                        setTc(prev => prev ? { ...prev, replayScript: replayScriptRef.current } as any : prev)
+                        setTc(prev => prev ? { ...prev, autoSteps, replayScript: replayScriptRef.current } as any : prev)
                       } catch {
                         setStepsSaveState('idle')
                       }
