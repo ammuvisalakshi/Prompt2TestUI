@@ -164,7 +164,7 @@ export default function InventoryPage() {
     // Open popup synchronously (user gesture) — shows loading animation while Fargate boots
     const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
     const loadingUrl = URL.createObjectURL(loadingBlob)
-    const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+    const popup = window.open(loadingUrl, '_blank')
     popupRef.current = popup
 
     setRunningTc(tc)
@@ -228,11 +228,11 @@ export default function InventoryPage() {
         setRunStatusMsg(passed ? '✅ Test passed' : '❌ Test failed')
 
         // Close popup when done
-        window.open('', 'novnc-popup')?.close()
+        popupRef.current?.close()
         popupRef.current = null
       } catch (err) {
         URL.revokeObjectURL(loadingUrl)
-        window.open('', 'novnc-popup')?.close()
+        popupRef.current?.close()
         popupRef.current = null
         setRunError(err instanceof Error ? err.message : String(err))
         setRunPhase('error')
@@ -489,7 +489,7 @@ export default function InventoryPage() {
                 {novncUrl && runPhase === 'automating' && (
                   <button
                     onClick={() => {
-                      const p = window.open(`${novncUrl}?autoconnect=true&resize=scale`, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+                      const p = window.open(`${novncUrl}?autoconnect=true&resize=scale`, '_blank')
                       if (p) popupRef.current = p
                     }}
                     className="w-full mb-4 py-2 rounded-xl bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-2">

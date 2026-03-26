@@ -286,7 +286,7 @@ export default function AgentPage() {
       // Step 2: open browser
       const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
       const loadingUrl = URL.createObjectURL(loadingBlob)
-      const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+      const popup = window.open(loadingUrl, '_blank')
       setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Launching browser… (~60s to start Fargate task)' }])
 
       const sessionRaw = await callAgent({ inputText: saveTitleInput, mode: 'start_session', sessionId }, sessionId)
@@ -824,7 +824,7 @@ export default function AgentPage() {
                         onClick={() => {
                           const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
                           const loadingUrl = URL.createObjectURL(loadingBlob)
-                          const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+                          const popup = window.open(loadingUrl, '_blank')
                           setAutoRunReady(false)
                           setMode('auto')
                           setLoading(true)
@@ -848,7 +848,7 @@ export default function AgentPage() {
                               saveRun({ description: label, passed, timestamp: new Date().toISOString() })
                               if (savedTcId.current) saveRunRecord({ testCaseId: savedTcId.current, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
                               setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` }])
-                              window.open('', 'novnc-popup')?.close(); popupRef.current = null
+                              popupRef.current?.close(); popupRef.current = null
                             } catch (err) {
                               setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Error: ${err instanceof Error ? err.message : String(err)}` }])
                             } finally { setLoading(false) }
