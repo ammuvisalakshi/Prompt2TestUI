@@ -15,7 +15,7 @@ import * as codebuild  from 'aws-cdk-lib/aws-codebuild'
 import * as cr         from 'aws-cdk-lib/custom-resources'
 import * as logs       from 'aws-cdk-lib/aws-logs'
 import * as amplify    from 'aws-cdk-lib/aws-amplify'
-import * as path       from 'path'
+
 
 export interface Prompt2TestStackProps extends cdk.StackProps {
   githubOwner: string
@@ -235,6 +235,9 @@ def handler(event, context):
 
     // ══════════════════════════════════════════════════════════════════════
     // 5. LAMBDA FUNCTIONS — testcase-writer + testcase-reader
+    //    Code lives in the Prompt2TestLambda repo.
+    //    CDK creates the functions with a placeholder — the Lambda
+    //    CodePipeline (Section 9c) deploys the real code after first run.
     // ══════════════════════════════════════════════════════════════════════
     const lambdaRole = new iam.Role(this, 'LambdaRole', {
       roleName: 'prompt2test-lambda-role',
@@ -265,6 +268,11 @@ def handler(event, context):
       SECRET_ARN:  dbSecret.secretArn,
     }
 
+    // Placeholder code — the Lambda pipeline replaces this on first run
+    const placeholderCode = lambda_.Code.fromInline(
+      `def handler(event, context):\n    return {'statusCode': 503, 'headers': {'Content-Type': 'application/json'}, 'body': '{"error": "Lambda not deployed yet. Run the prompt2test-lambda pipeline."}'}\n`
+    )
+
     const writerFn = new lambda_.Function(this, 'TestcaseWriter', {
       functionName: 'p2t-testcase-writer',
       runtime:      lambda_.Runtime.PYTHON_3_12,
@@ -273,9 +281,7 @@ def handler(event, context):
       memorySize:   256,
       role:         lambdaRole,
       environment:  lambdaEnv,
-      code: lambda_.Code.fromAsset(
-        path.join(__dirname, '../../lambda/testcase-writer'),
-      ),
+      code:         placeholderCode,
     })
 
     const readerFn = new lambda_.Function(this, 'TestcaseReader', {
@@ -286,9 +292,7 @@ def handler(event, context):
       memorySize:   256,
       role:         lambdaRole,
       environment:  lambdaEnv,
-      code: lambda_.Code.fromAsset(
-        path.join(__dirname, '../../lambda/testcase-reader'),
-      ),
+      code:         placeholderCode,
     })
 
 
@@ -385,10 +389,76 @@ def handler(event, context):
 
 
     // ══════════════════════════════════════════════════════════════════════
-    // 9. CODEPIPELINES — Playwright MCP + Agent (GitHub → ECR)
+    // 9. CODEPIPELINES — Lambda + Playwright MCP + Agent
+    //    9a. Lambda:        Prompt2TestLambda repo → zip → aws lambda update-function-code
+    //    9b. Playwright MCP: Prompt2TestPlaywrightMCP repo → Docker → ECR
+    //    9c. Agent:          Prompt2TestAgent repo → Docker → ECR
     // ══════════════════════════════════════════════════════════════════════
 
-    // ── Playwright MCP pipeline ──────────────────────────────────────────
+    // ── 9a. Lambda pipeline ──────────────────────────────────────────────
+    const lambdaBuildRole = new iam.Role(this, 'LambdaBuildRole', {
+      assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
+      inlinePolicies: {
+        deploy: new iam.PolicyDocument({ statements: [
+          new iam.PolicyStatement({
+            actions: ['lambda:UpdateFunctionCode'],
+            resources: [writerFn.functionArn, readerFn.functionArn],
+          }),
+          new iam.PolicyStatement({
+            actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+            resources: ['*'],
+          }),
+        ]}),
+      },
+    })
+
+    const lambdaBuild = new codebuild.PipelineProject(this, 'LambdaBuild', {
+      projectName: 'prompt2test-lambda-build',
+      environment: { buildImage: codebuild.LinuxBuildImage.STANDARD_7_0 },
+      environmentVariables: {
+        WRITER_FN: { value: writerFn.functionName },
+        READER_FN: { value: readerFn.functionName },
+      },
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          build: { commands: [
+            'cd testcase-writer && zip -r ../writer.zip . && cd ..',
+            'cd testcase-reader && zip -r ../reader.zip . && cd ..',
+            'aws lambda update-function-code --function-name $WRITER_FN --zip-file fileb://writer.zip',
+            'aws lambda update-function-code --function-name $READER_FN --zip-file fileb://reader.zip',
+          ]},
+        },
+      }),
+      role: lambdaBuildRole,
+      logging: { cloudWatch: { logGroup: new logs.LogGroup(this, 'LambdaBuildLogs', { retention: logs.RetentionDays.ONE_WEEK }) } },
+    })
+
+    const lambdaArtifact = new codepipeline.Artifact()
+    const lambdaPipeline = new codepipeline.Pipeline(this, 'LambdaPipeline', {
+      pipelineName: 'prompt2test-lambda',
+    })
+    lambdaPipeline.addStage({
+      stageName: 'Source',
+      actions: [new cpactions.CodeStarConnectionsSourceAction({
+        actionName:    'GitHub',
+        connectionArn: props.githubConnectionArn,
+        owner:         props.githubOwner,
+        repo:          'Prompt2TestLambda',
+        branch:        'main',
+        output:        lambdaArtifact,
+      })],
+    })
+    lambdaPipeline.addStage({
+      stageName: 'Build',
+      actions: [new cpactions.CodeBuildAction({
+        actionName: 'DeployLambda',
+        project:    lambdaBuild,
+        input:      lambdaArtifact,
+      })],
+    })
+
+    // ── 9b. Playwright MCP pipeline ─────────────────────────────────────
     const playwrightBuildRole = new iam.Role(this, 'PlaywrightBuildRole', {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
       inlinePolicies: {
@@ -448,7 +518,7 @@ def handler(event, context):
       })],
     })
 
-    // ── Agent pipeline ───────────────────────────────────────────────────
+    // ── 9c. Agent pipeline ───────────────────────────────────────────────
     const agentBuildRole = new iam.Role(this, 'AgentBuildRole', {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
       inlinePolicies: {
@@ -675,5 +745,6 @@ def handler(event, context):
     new cdk.CfnOutput(this, 'OutReaderFnArn',       { value: readerFn.functionArn,           exportName: 'P2T-ReaderFnArn' })
     new cdk.CfnOutput(this, 'OutAmplifyAppId',      { value: amplifyApp.attrAppId,           exportName: 'P2T-AmplifyAppId',      description: 'Connect GitHub OAuth in Amplify console' })
     new cdk.CfnOutput(this, 'OutEcsClusterName',    { value: ecsCluster.clusterName,         exportName: 'P2T-EcsClusterName' })
+    new cdk.CfnOutput(this, 'OutLambdaPipeline',    { value: 'prompt2test-lambda',            exportName: 'P2T-LambdaPipeline',    description: 'Trigger after pushing Prompt2TestLambda repo' })
   }
 }
