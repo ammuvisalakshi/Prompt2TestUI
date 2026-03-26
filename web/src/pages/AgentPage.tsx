@@ -101,6 +101,7 @@ export default function AgentPage() {
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [saveTitleInput, setSaveTitleInput] = useState('')
   const [saveTcIdInput, setSaveTcIdInput] = useState('')
+  const [saveService, setSaveService] = useState('')  // locked-in service at dialog-open time
   // Post-run state
   const [postRunPlan, setPostRunPlan] = useState<Plan | null>(null)
   const [postRunPassed, setPostRunPassed] = useState<boolean | null>(null)
@@ -228,6 +229,7 @@ export default function AgentPage() {
           setPlanScenario(responseText)
           setSaveTitleInput(parsed.summary)
           setSaveTcIdInput('TC-' + Date.now().toString(36).toUpperCase().slice(-6))
+          setSaveService(tcService)
           setShowSaveDialog(true)
           setTcSaved('idle')
           setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Final test case ready — fill in the details on the right to save it.' }])
@@ -312,6 +314,15 @@ export default function AgentPage() {
 
       setPostRunPlan(execPlan)
       setPostRunPassed(passed)
+
+      // Auto-save resolved steps on pass so the test case becomes "Automated"
+      if (passed && savedTcId.current && execPlan.steps?.length) {
+        setStepsSaved('saving')
+        updateTestCaseSteps(savedTcId.current, execPlan.steps)
+          .then(() => setStepsSaved('saved'))
+          .catch(() => setStepsSaved('idle'))
+      }
+
       setMessages(prev => [...prev.slice(0, -1), {
         role: 'agent',
         text: `Test ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}`,
@@ -696,7 +707,14 @@ export default function AgentPage() {
                   {/* Save dialog */}
                   {showSaveDialog && (
                     <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0 space-y-2">
-                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Save Test Case</div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Save Test Case</div>
+                        {(saveService || tcService) && (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE]">
+                            {saveService || tcService}
+                          </span>
+                        )}
+                      </div>
                       <input
                         value={saveTitleInput}
                         onChange={e => setSaveTitleInput(e.target.value)}
@@ -724,7 +742,7 @@ export default function AgentPage() {
                               description: saveTitleInput.trim(),
                               scenario: planScenario,
                               env,
-                              service: tcService || undefined,
+                              service: saveService || tcService || undefined,
                               steps: [],
                               createdBy: userName,
                             })
