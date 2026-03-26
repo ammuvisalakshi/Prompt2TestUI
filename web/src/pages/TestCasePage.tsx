@@ -259,35 +259,6 @@ export default function TestCasePage() {
           <span style={{ fontSize: 13, color: '#64748B' }}>Test Case</span>
         </div>
 
-        {/* Run Test button (automated) */}
-        {isAutomated && activeTab === 'automated' && (
-          <button onClick={runTest} disabled={isRunning}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#7C3AED', color: 'white', border: 'none', cursor: isRunning ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: isRunning ? 0.75 : 1 }}
-            onMouseEnter={e => { if (!isRunning) (e.currentTarget as HTMLButtonElement).style.background = '#5B21B6' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#7C3AED' }}
-          >
-            {isRunning ? (
-              <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{runPhase === 'starting' ? 'Starting…' : 'Running…'}</>
-            ) : (
-              <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'white' }}><polygon points="5 3 19 12 5 21 5 3"/></svg>Run Test</>
-            )}
-          </button>
-        )}
-
-        {/* Automate button (not yet automated) */}
-        {!isAutomated && planSteps.length > 0 && activeTab === 'plan' && (
-          <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1 }}
-            onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.background = '#B45309' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#D97706' }}
-          >
-            {automatePhase === 'starting' || automatePhase === 'running' ? (
-              <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{automatePhase === 'starting' ? 'Starting…' : 'Automating…'}</>
-            ) : (
-              <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automate</>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Hero — TC metadata */}
@@ -433,6 +404,22 @@ export default function TestCasePage() {
           {/* Plan Steps */}
           {activeTab === 'plan' && (
             planSteps.length > 0 ? (
+              <>
+              {!isAutomated && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                  <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1 }}
+                    onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.background = '#B45309' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#D97706' }}
+                  >
+                    {automatePhase === 'starting' || automatePhase === 'running' ? (
+                      <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{automatePhase === 'starting' ? 'Starting…' : 'Automating…'}</>
+                    ) : (
+                      <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automate</>
+                    )}
+                  </button>
+                </div>
+              )}
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
@@ -455,7 +442,7 @@ export default function TestCasePage() {
                   </tbody>
                 </table>
               </div>
-            ) : (
+            </>) : (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 4 }}>No plan steps yet</div>
@@ -467,6 +454,20 @@ export default function TestCasePage() {
           {/* Automated Steps */}
           {activeTab === 'automated' && (
             autoSteps.length > 0 ? (
+              <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <button onClick={runTest} disabled={isRunning}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#7C3AED', color: 'white', border: 'none', cursor: isRunning ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: isRunning ? 0.75 : 1 }}
+                  onMouseEnter={e => { if (!isRunning) (e.currentTarget as HTMLButtonElement).style.background = '#5B21B6' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#7C3AED' }}
+                >
+                  {isRunning ? (
+                    <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{runPhase === 'starting' ? 'Starting…' : 'Running…'}</>
+                  ) : (
+                    <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'white' }}><polygon points="5 3 19 12 5 21 5 3"/></svg>Run Test</>
+                  )}
+                </button>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {autoSteps.map((step, i) => (
                   <div key={i} style={{ display: 'flex', gap: 12, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
@@ -483,7 +484,7 @@ export default function TestCasePage() {
                   </div>
                 ))}
               </div>
-            ) : (
+            </>) : (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Not automated yet</div>
