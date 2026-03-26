@@ -146,7 +146,7 @@
   <!-- ══ WHAT IS CDK ══════════════════════════════════════════════════════ -->
   <div class="intro-box">
     <div class="intro-title">Understanding the two parts of this deployment</div>
-    <p><strong>infrastructure/ folder = CDK code (the automated installer)</strong> — TypeScript code that, when you run one command (<code>cdk deploy</code>), automatically creates all 15 AWS resources (Cognito, Aurora, Lambda, ECS, ECR, SSM, CodePipeline, Amplify, IAM roles) in your account. You do not click anything in the console for these.</p>
+    <p><strong>infrastructure/ folder = CDK code (the automated installer)</strong> — TypeScript code that, when you run one command (<code>cdk deploy</code>), automatically creates all 16 AWS resources (Cognito, Aurora, Lambda, ECS, ECR, SSM, CodePipeline, Amplify, IAM roles) in your account. You do not click anything in the console for these.</p>
     <p><strong>Manual steps (3 total)</strong> — Three things CDK cannot automate: enabling Bedrock model access, creating the AgentCore runtime (no CloudFormation support yet), and connecting Amplify to GitHub (requires OAuth). This guide walks through both in the correct order.</p>
   </div>
 
@@ -496,7 +496,7 @@ CDKToolkit: creating CloudFormation changeset...
             <div class="console-step"><div class="cs-num">6</div><p>Back in AWS, click <strong>Connect</strong></p></div>
             <div class="console-step"><div class="cs-num">7</div><p>Click on your new connection in the list → copy the <strong>Connection ARN</strong></p></div>
           </div>
-          <div class="save"><div class="save-icon">📋</div><p><strong>Save the Connection ARN — you need it in the next step.</strong><br>It looks like:<br><code>arn:aws:codestar-connections:us-east-1:123456789012:connection/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p></div>
+          <div class="save"><div class="save-icon">📋</div><p><strong>Save the Connection ARN — you need it in the next step.</strong><br>It looks like:<br><code>arn:aws:codeconnections:us-east-1:123456789012:connection/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p></div>
         </div>
       </div>
       <div class="expect">
@@ -505,7 +505,7 @@ CDKToolkit: creating CloudFormation changeset...
           <p>In the Connections list, your connection should show status:</p>
           <div class="terminal"><span class="t-label">Name:</span>   <span class="t-out">Prompt2TestGitHub</span>
 <span class="t-label">Status:</span> <span class="t-ok">Available</span>
-<span class="t-label">ARN:</span>    <span class="t-out">arn:aws:codestar-connections:us-east-1:123456789012:connection/xxxxxxxx</span></div>
+<span class="t-label">ARN:</span>    <span class="t-out">arn:aws:codeconnections:us-east-1:123456789012:connection/xxxxxxxx</span></div>
           <p>Status must be <strong>Available</strong>. If it shows <strong>Pending</strong>, click the connection → click <strong>Update pending connection</strong> and complete the GitHub authorization again.</p>
         </div>
       </div>
@@ -520,7 +520,7 @@ CDKToolkit: creating CloudFormation changeset...
     <div class="phase-header">
       <div class="phase-badge bg-green">Phase 3</div>
       <div>
-        <div class="phase-title">CDK Deploy — Creates All 15 AWS Resources Automatically</div>
+        <div class="phase-title">CDK Deploy — Creates All 16 AWS Resources Automatically</div>
         <div class="phase-desc">Two commands. Takes about 5–10 minutes. Creates everything in the "What Gets Deployed" table above.</div>
       </div>
     </div>
@@ -570,7 +570,8 @@ CDKToolkit: creating CloudFormation changeset...
           </div>
         </div>
         <div class="step-body">
-          <pre><span class="cmd">cd Prompt2TestUI/infrastructure</span>
+          <pre><span class="c"># You should already be inside the Prompt2TestUI folder from Step 6</span>
+<span class="cmd">cd infrastructure</span>
 <span class="cmd">npm install</span>
 <span class="cmd">cdk deploy</span></pre>
           <p>CDK will first show you a summary of all IAM permissions it will create and ask for confirmation:</p>
