@@ -204,7 +204,15 @@
               <tr><td><strong>Prompt2TestPlaywrightMCP</strong></td><td>main</td><td>Playwright browser automation + noVNC</td><td>prompt2test-playwright-mcp pipeline → ECR → ECS</td></tr>
             </tbody>
           </table>
-          <p style="margin-top:10px;">You also need a <strong>new AWS account</strong> with admin IAM access and a credit card on file.</p>
+          <p style="margin-top:14px;"><strong>AWS account requirements:</strong></p>
+          <table class="res-table" style="margin-top:6px;">
+            <thead><tr><th>Requirement</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>New AWS account with a credit card on file</td><td>Required to provision any paid services</td></tr>
+              <tr><td><strong>AdministratorAccess</strong> IAM policy attached to your user</td><td>CDK creates IAM roles, VPC, 15+ services — nothing less will work</td></tr>
+            </tbody>
+          </table>
+          <div class="note" style="margin-top:10px;"><div class="note-icon">⚠️</div><p><strong>If you are the root user of a brand new account</strong>, you already have full access. If you created a separate IAM user, attach <code>AdministratorAccess</code> to it first: <strong>AWS Console → IAM → Users → your user → Add permissions → AdministratorAccess</strong>. Without it, <code>cdk deploy</code> will fail with "Access Denied".</p></div>
         </div>
       </div>
     </div>
@@ -299,19 +307,25 @@
         <div class="step-header">
           <div class="step-num">4</div>
           <div>
-            <div class="step-title">Get your new AWS account access key</div>
-            <div class="step-subtitle">This lets your terminal authenticate with the new AWS account</div>
+            <div class="step-title">Attach AdministratorAccess and get your access key</div>
+            <div class="step-subtitle">Your IAM user needs AdministratorAccess — CDK creates IAM roles, VPC, and 15+ services across 10+ AWS services</div>
           </div>
         </div>
         <div class="step-body">
-          <p>Do this in the <strong>new AWS account</strong> in a browser:</p>
+          <p><strong>Part A — Attach AdministratorAccess to your IAM user</strong> (skip if you are the root user of the account):</p>
           <div class="console-steps">
             <div class="console-step"><div class="cs-num">1</div><p>Log into the new AWS account at <strong>console.aws.amazon.com</strong></p></div>
-            <div class="console-step"><div class="cs-num">2</div><p>Click your account name (top-right) → <strong>Security credentials</strong></p></div>
-            <div class="console-step"><div class="cs-num">3</div><p>Scroll to <strong>Access keys</strong> → click <strong>Create access key</strong></p></div>
-            <div class="console-step"><div class="cs-num">4</div><p>Select <strong>Command Line Interface (CLI)</strong> → check the confirmation → click <strong>Next</strong></p></div>
-            <div class="console-step"><div class="cs-num">5</div><p>Click <strong>Create access key</strong> — you will see two values: <strong>Access key ID</strong> and <strong>Secret access key</strong></p></div>
-            <div class="console-step"><div class="cs-num">6</div><p>Copy both — <strong>the secret is shown only once</strong></p></div>
+            <div class="console-step"><div class="cs-num">2</div><p>Search for <strong>IAM</strong> → click <strong>Users</strong> → click your username</p></div>
+            <div class="console-step"><div class="cs-num">3</div><p>Click <strong>Add permissions</strong> → <strong>Attach policies directly</strong></p></div>
+            <div class="console-step"><div class="cs-num">4</div><p>Search for <code>AdministratorAccess</code> → check the box → click <strong>Next</strong> → <strong>Add permissions</strong></p></div>
+          </div>
+          <p style="margin-top:10px;"><strong>Part B — Create an access key for CLI use:</strong></p>
+          <div class="console-steps">
+            <div class="console-step"><div class="cs-num">1</div><p>Click your account name (top-right) → <strong>Security credentials</strong></p></div>
+            <div class="console-step"><div class="cs-num">2</div><p>Scroll to <strong>Access keys</strong> → click <strong>Create access key</strong></p></div>
+            <div class="console-step"><div class="cs-num">3</div><p>Select <strong>Command Line Interface (CLI)</strong> → check the confirmation → click <strong>Next</strong></p></div>
+            <div class="console-step"><div class="cs-num">4</div><p>Click <strong>Create access key</strong> — you will see two values: <strong>Access key ID</strong> and <strong>Secret access key</strong></p></div>
+            <div class="console-step"><div class="cs-num">5</div><p>Copy both — <strong>the secret is shown only once</strong></p></div>
           </div>
         </div>
       </div>
@@ -944,6 +958,7 @@ Prompt2TestStack: creating CloudFormation changeset...
   ════════════════════════════════════════════════════════════════════════ -->
   <div class="checklist">
     <h3>Master Deployment Checklist</h3>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">IAM user has <code>AdministratorAccess</code> policy attached (required for CDK) <span class="tag t-red">Before You Begin</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">AWS CLI installed — <code>aws --version</code> shows 2.x <span class="tag t-blue">Phase 1</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">Node.js v18+ installed — <code>node --version</code> shows v18+ <span class="tag t-blue">Phase 1</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">CDK installed — <code>cdk --version</code> shows 2.x <span class="tag t-blue">Phase 1</span></div></div>
@@ -961,6 +976,7 @@ Prompt2TestStack: creating CloudFormation changeset...
     <div class="check-item"><div class="check-box"></div><div class="check-text">SSM parameters added for your services and environments <span class="tag t-blue">Phase 7</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">Admin user created in Cognito — status FORCE_CHANGE_PASSWORD <span class="tag t-blue">Phase 7</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">End-to-end verified: login → agent responds → test saved → run completes with PASS/FAIL ✓ <span class="tag t-red">Phase 8</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Optional: remove <code>AdministratorAccess</code> from your IAM user now that deployment is done — replace with minimal day-to-day permissions <span class="tag t-red">Post Deploy</span></div></div>
   </div>
 
 

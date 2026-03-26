@@ -66,6 +66,28 @@ info "Account : $ACCOUNT_ID"
 info "Identity: $USER_ARN"
 ok "Connected to AWS account $ACCOUNT_ID"
 
+step "4b" "IAM permissions check"
+# Check if the user/role has AdministratorAccess or is root (arn contains :root)
+if echo "$USER_ARN" | grep -q ':root'; then
+  ok "Running as root user — full access confirmed"
+else
+  ATTACHED=$(aws iam list-attached-user-policies \
+    --user-name "$(basename "$USER_ARN")" \
+    --query "AttachedPolicies[?PolicyName=='AdministratorAccess'].PolicyName" \
+    --output text 2>/dev/null || echo "")
+  if [[ "$ATTACHED" == "AdministratorAccess" ]]; then
+    ok "AdministratorAccess policy attached"
+  else
+    echo -e "${Y}   ⚠  Could not confirm AdministratorAccess on your IAM user.${N}"
+    echo "   CDK deploy will fail mid-way if permissions are insufficient."
+    echo "   Attach it via: AWS Console → IAM → Users → $(basename "$USER_ARN") → Add permissions → AdministratorAccess"
+    echo ""
+    echo -e "   Continue anyway? (y/N): \c"
+    read -r CONT
+    [[ "$CONT" =~ ^[Yy]$ ]] || err "Aborted. Attach AdministratorAccess and re-run."
+  fi
+fi
+
 # ════════════════════════════════════════════════════════════════════════════
 #  PHASE 2 — MANUAL CONSOLE STEPS
 # ════════════════════════════════════════════════════════════════════════════
@@ -334,4 +356,9 @@ echo "    • Inventory tab → save a test and verify it is stored"
 echo "    • Run a test    → live browser window opens → PASS/FAIL recorded"
 echo ""
 echo "  All saved values: deployment-outputs.txt"
+echo ""
+echo -e "${Y}  Security reminder:${N}"
+echo "  You ran this script with AdministratorAccess. Now that deployment is"
+echo "  complete, consider removing that policy from your IAM user and keeping"
+echo "  only the day-to-day permissions (SSM, Cognito, CodePipeline)."
 echo ""
