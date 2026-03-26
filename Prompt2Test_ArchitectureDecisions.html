@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt2Test — Architecture Decision Records</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; line-height: 1.6; }
+  .page { max-width: 980px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0369a1 100%); color: white; border-radius: 16px; padding: 40px 48px; margin-bottom: 32px; }
+  .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .header .subtitle { font-size: 14px; opacity: 0.85; margin-bottom: 18px; }
+  .header .meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: 12px; opacity: 0.7; }
+
+  /* Intro */
+  .intro-box { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; border-radius: 10px; padding: 20px 24px; margin-bottom: 28px; }
+  .intro-box .intro-title { font-weight: 700; color: #1d4ed8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .intro-box p { color: #1e40af; font-size: 13.5px; line-height: 1.6; margin-bottom: 6px; }
+  .intro-box p:last-child { margin-bottom: 0; }
+
+  /* ADR Card */
+  .adr { background: white; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 28px; overflow: hidden; }
+  .adr-header { padding: 20px 26px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: flex-start; gap: 16px; }
+  .adr-num { background: #0369a1; color: white; font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 20px; white-space: nowrap; margin-top: 3px; flex-shrink: 0; }
+  .adr-title-block { flex: 1; }
+  .adr-title { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .adr-subtitle { font-size: 12px; color: #64748b; }
+  .adr-status { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap; margin-top: 3px; flex-shrink: 0; }
+  .status-active   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .status-tradeoff { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+
+  .adr-body { padding: 0 26px 24px; }
+
+  /* Section within ADR */
+  .adr-section { margin-top: 20px; }
+  .adr-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9;
+  }
+  .col-blue   { color: #0369a1; border-color: #bfdbfe; }
+  .col-green  { color: #166534; border-color: #bbf7d0; }
+  .col-orange { color: #9a3412; border-color: #fed7aa; }
+  .col-red    { color: #991b1b; border-color: #fecaca; }
+  .col-purple { color: #6d28d9; border-color: #ddd6fe; }
+  .col-gray   { color: #475569; border-color: #e2e8f0; }
+
+  /* Context box */
+  .context-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; font-size: 13.5px; color: #334155; line-height: 1.7; }
+
+  /* Decision box */
+  .decision-box { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #0369a1; border-radius: 8px; padding: 14px 18px; font-size: 13.5px; color: #1e40af; line-height: 1.7; }
+  .decision-box strong { color: #1d4ed8; }
+
+  /* Alternatives table */
+  .alt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .alt-table th { background: #f8fafc; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+  .alt-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; line-height: 1.6; }
+  .alt-table tr:last-child td { border-bottom: none; }
+  .alt-chosen { background: #f0fdf4; }
+  .alt-chosen td:first-child { font-weight: 700; color: #166534; }
+  .badge-chosen   { background: #dcfce7; color: #166534; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+  .badge-rejected { background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+
+  /* Why box */
+  .why-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px; padding: 14px 18px; }
+  .why-box ul { padding-left: 18px; }
+  .why-box li { font-size: 13.5px; color: #14532d; margin-bottom: 6px; line-height: 1.6; }
+  .why-box li:last-child { margin-bottom: 0; }
+  .why-box li strong { color: #166534; }
+
+  /* Trade-off box */
+  .tradeoff-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #d97706; border-radius: 8px; padding: 14px 18px; }
+  .tradeoff-box ul { padding-left: 18px; }
+  .tradeoff-box li { font-size: 13.5px; color: #78350f; margin-bottom: 6px; line-height: 1.6; }
+  .tradeoff-box li:last-child { margin-bottom: 0; }
+  .tradeoff-box li strong { color: #92400e; }
+
+  /* Two-col layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Tags */
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin: 2px 2px 2px 0; }
+  .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+  .tag-green  { background: #dcfce7; color: #166534; }
+  .tag-orange { background: #ffedd5; color: #c2410c; }
+  .tag-purple { background: #ede9fe; color: #6d28d9; }
+  .tag-gray   { background: #f1f5f9; color: #475569; }
+  .tag-red    { background: #fee2e2; color: #b91c1c; }
+  .tag-yellow { background: #fef9c3; color: #a16207; }
+
+  code { font-family: 'Consolas','Courier New',monospace; background: #f1f5f9; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 12.5px; }
+
+  /* Index */
+  .index { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 26px; margin-bottom: 28px; }
+  .index h3 { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+  .index-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .index-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; text-decoration: none; color: #334155; font-size: 13px; transition: background 0.15s; }
+  .index-item:hover { background: #f1f5f9; }
+  .index-num { background: #0369a1; color: white; font-weight: 700; font-size: 10px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .footer { text-align: center; font-size: 12px; color: #94a3b8; padding-top: 28px; border-top: 1px solid #e2e8f0; margin-top: 32px; }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 16px; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Prompt2Test — Architecture Decision Records</h1>
+    <div class="subtitle">Why the platform is built the way it is · Context · Alternatives considered · Trade-offs</div>
+    <div class="meta">
+      <span>📋 12 Decisions documented</span>
+      <span>☁ AWS Region: us-east-1</span>
+      <span>📅 Updated: 2026-03-25</span>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <div class="intro-box">
+    <div class="intro-title">What is this document?</div>
+    <p>An <strong>Architecture Decision Record (ADR)</strong> captures the reasoning behind each significant technical choice — not just what was decided, but why, what alternatives were considered, and what trade-offs were accepted. This prevents decisions from being re-litigated without understanding the original context, and helps new team members understand the platform quickly.</p>
+    <p>Each record follows the same structure: <strong>Context</strong> (the problem) → <strong>Decision</strong> (what was chosen) → <strong>Alternatives</strong> (what was considered) → <strong>Why</strong> (the reasoning) → <strong>Trade-offs</strong> (what was accepted).</p>
+  </div>
+
+  <!-- INDEX -->
+  <div class="index">
+    <h3>Quick Index</h3>
+    <div class="index-grid">
+      <a href="#adr1"  class="index-item"><div class="index-num">1</div>Aurora Serverless v2 + pgvector for data &amp; search</a>
+      <a href="#adr2"  class="index-item"><div class="index-num">2</div>RDS Data API — Lambda outside the VPC</a>
+      <a href="#adr3"  class="index-item"><div class="index-num">3</div>Aurora auto-pause — cost vs cold start</a>
+      <a href="#adr4"  class="index-item"><div class="index-num">4</div>Bedrock AgentCore for the AI agent runtime</a>
+      <a href="#adr5"  class="index-item"><div class="index-num">5</div>ECS Fargate on-demand for Playwright</a>
+      <a href="#adr6"  class="index-item"><div class="index-num">6</div>ARM64 for ECS task definition</a>
+      <a href="#adr7"  class="index-item"><div class="index-num">7</div>4 separate GitHub repos, not a monorepo</a>
+      <a href="#adr8"  class="index-item"><div class="index-num">8</div>Amplify for UI hosting</a>
+      <a href="#adr9"  class="index-item"><div class="index-num">9</div>Cognito for authentication</a>
+      <a href="#adr10" class="index-item"><div class="index-num">10</div>Lambda placeholder code + separate pipeline</a>
+      <a href="#adr11" class="index-item"><div class="index-num">11</div>No API Gateway — Lambda called directly</a>
+      <a href="#adr12" class="index-item"><div class="index-num">12</div>SSM Parameter Store for runtime config</a>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 1 — Aurora Serverless v2 + pgvector
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr1">
+    <div class="adr-header">
+      <div class="adr-num">ADR-01</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Aurora Serverless v2 + pgvector for data storage and semantic search</div>
+        <div class="adr-subtitle">Covers: test case storage · run records · vector embeddings · similarity search</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The platform needs to store structured test case data (description, steps, tags, run history) <em>and</em> support semantic search — finding similar test cases using natural language queries like "login tests" or "payment flow". These are two very different storage patterns: relational for CRUD, vector for similarity search. Choosing two separate systems adds operational complexity.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Use <strong>Aurora Serverless v2 PostgreSQL</strong> with the <strong>pgvector extension</strong> as the single database for both structured data and vector embeddings. Test cases are stored as rows; their embeddings (generated by Titan Embed v2) are stored as a <code>vector</code> column on the same row.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>Aurora v2 + pgvector <span class="badge-chosen">CHOSEN</span></td>
+              <td>One database for both SQL and vectors. No extra service. pgvector supports cosine similarity natively. Aurora Serverless scales to zero.</td>
+              <td>pgvector is less scalable than dedicated vector DBs at very high volume (millions of vectors).</td>
+            </tr>
+            <tr>
+              <td>DynamoDB + Pinecone <span class="badge-rejected">REJECTED</span></td>
+              <td>DynamoDB is highly scalable; Pinecone is purpose-built for vectors.</td>
+              <td>Two services to manage. Extra cost. No joins. Pinecone adds another external dependency and monthly cost even at low usage.</td>
+            </tr>
+            <tr>
+              <td>DynamoDB + OpenSearch <span class="badge-rejected">REJECTED</span></td>
+              <td>Both managed AWS services. OpenSearch supports k-NN vector search.</td>
+              <td>OpenSearch minimum cost is ~$50–100/month even idle. DynamoDB has no native vector support. Complex sync between two stores.</td>
+            </tr>
+            <tr>
+              <td>RDS PostgreSQL (provisioned) + pgvector <span class="badge-rejected">REJECTED</span></td>
+              <td>Same pgvector capability. Predictable performance.</td>
+              <td>Always-on cost even when not in use (~$30+/month minimum). No auto-pause for a dev/test platform.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Single system</strong> — test case metadata and its vector embedding live on the same row. No sync, no dual writes, no eventual consistency issues.</li>
+              <li><strong>Scales to zero</strong> — Aurora Serverless v2 auto-pauses after 5 minutes of inactivity. For a platform that runs tests periodically (not continuously), this makes idle cost ~$0.</li>
+              <li><strong>pgvector is sufficient</strong> — at the scale of test cases (hundreds to low thousands), pgvector with an HNSW index performs sub-second similarity search. A dedicated vector DB would be over-engineering.</li>
+              <li><strong>SQL for everything else</strong> — run records, filtering by service/env/tag, aggregations — all naturally fit SQL. DynamoDB would require duplicating data or using scan operations.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Cold start latency</strong> — Aurora takes 8–30 seconds to resume from paused state. First query after idle period is slow. Mitigated with retry logic in Lambda (8 retries × 8s delay).</li>
+              <li><strong>pgvector scale ceiling</strong> — if the platform ever holds millions of test vectors, pgvector will be slower than Pinecone/OpenSearch. Acceptable for current scope.</li>
+              <li><strong>No offline/edge access</strong> — Aurora is VPC-bound (accessed via Data API). No local dev database without mocking.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 2 — RDS Data API
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr2">
+    <div class="adr-header">
+      <div class="adr-num">ADR-02</div>
+      <div class="adr-title-block">
+        <div class="adr-title">RDS Data API — Lambda runs outside the VPC</div>
+        <div class="adr-subtitle">Covers: Lambda-to-Aurora connectivity · VPC design · cold start performance</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          Lambda functions need to query Aurora PostgreSQL. The traditional approach is to place Lambda inside the same VPC as Aurora and use a direct TCP connection. However, this has well-known downsides. Aurora Serverless v2 supports an alternative: the <strong>RDS Data API</strong>, which exposes Aurora over HTTPS without requiring VPC membership.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Lambda functions (<code>p2t-testcase-writer</code> and <code>p2t-testcase-reader</code>) run <strong>outside any VPC</strong> and connect to Aurora exclusively through the <strong>RDS Data API</strong> (<code>rds-data.execute_statement</code>). No VPC configuration on the Lambda functions.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>RDS Data API (Lambda outside VPC) <span class="badge-chosen">CHOSEN</span></td>
+              <td>No VPC config on Lambda. Faster cold starts. Simpler IAM-based auth. No connection pool management.</td>
+              <td>Data API adds ~10–20ms latency per call. Not supported on all Aurora configurations.</td>
+            </tr>
+            <tr>
+              <td>Lambda inside VPC + direct TCP <span class="badge-rejected">REJECTED</span></td>
+              <td>Lower latency per query. Standard PostgreSQL driver (psycopg2). Connection pooling possible.</td>
+              <td>Lambda cold starts add 1–3 seconds for VPC ENI attachment. Requires NAT Gateway for internet access (~$32/month). Complex subnet/SG config.</td>
+            </tr>
+            <tr>
+              <td>Lambda inside VPC + RDS Proxy <span class="badge-rejected">REJECTED</span></td>
+              <td>Handles connection pooling. Reduces Aurora connection exhaustion.</td>
+              <td>RDS Proxy costs ~$20+/month. Adds another component. Still requires Lambda in VPC with all its cold start issues.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>No NAT Gateway cost</strong> — Lambda inside a VPC needs a NAT Gateway to reach Bedrock, Secrets Manager, and other AWS services. NAT Gateway costs ~$32/month minimum, plus data transfer. Avoiding it saves significant cost on a dev platform.</li>
+              <li><strong>Faster cold starts</strong> — VPC-attached Lambda cold starts are 1–3 seconds longer due to ENI creation. Outside VPC, cold starts are under 500ms.</li>
+              <li><strong>Simpler architecture</strong> — no subnet routing, no security group rules between Lambda and Aurora, no connection pool management.</li>
+              <li><strong>Aurora Serverless v2 is designed for this</strong> — the Data API is the recommended access pattern for serverless Aurora.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>~10–20ms extra latency</strong> per query vs direct TCP. Acceptable for a test management platform where queries take tens of milliseconds regardless.</li>
+              <li><strong>No persistent connections</strong> — each Data API call is stateless. Can't use transactions spanning multiple Lambda invocations.</li>
+              <li><strong>Data API payload limit</strong> — 1MB response limit per call. Fine for test case data but would need pagination for very large result sets.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 3 — Aurora Auto-Pause
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr3">
+    <div class="adr-header">
+      <div class="adr-num">ADR-03</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Aurora auto-pause enabled — optimise for cost, not always-on availability</div>
+        <div class="adr-subtitle">Covers: Aurora Serverless v2 scaling · idle cost · cold start UX impact</div>
+      </div>
+      <div class="adr-status status-tradeoff">⚠️ Trade-off</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          Aurora Serverless v2 supports auto-pause: if the cluster receives no queries for a configurable period (set to 5 minutes here), it scales down to 0 ACUs and stops billing for compute. The next query wakes it up. This is a deliberate cost-vs-latency trade-off that significantly affects the first user experience after an idle period.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Aurora auto-pause is <strong>enabled with a 5-minute idle threshold</strong>. All Lambda functions that query Aurora implement a <strong>retry loop</strong> (8 retries, 8-second delay) that catches <code>DatabaseResumingException</code> and waits for the cluster to resume before re-attempting the query.
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Cost</strong> — Aurora Serverless v2 at minimum capacity (0.5 ACU) costs ~$0.12/hour = ~$87/month even if unused. Auto-pause brings idle cost to <strong>$0</strong>. For a dev/test platform used periodically, this is the right trade-off.</li>
+              <li><strong>Transparent to users</strong> — the retry logic in Lambda absorbs the resume delay. The UI shows a loading spinner, not an error. Users experience a ~20-second delay on first query after idle, not a failure.</li>
+              <li><strong>Appropriate for usage pattern</strong> — test case management is not a 24/7 high-traffic system. Testers use it in bursts during working hours. Long idle periods between sessions make auto-pause ideal.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>First-request latency after idle</strong> — 8–30 seconds for Aurora to resume. First page load after an idle period is noticeably slow.</li>
+              <li><strong>Retry complexity in Lambda</strong> — every Lambda that queries Aurora must implement the retry pattern. Forgetting this on a new Lambda would cause intermittent 500 errors.</li>
+              <li><strong>Not suitable for production SLA</strong> — if this platform is ever used in a production context with SLA requirements, auto-pause should be disabled and minimum ACU set to 0.5 or higher.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 4 — Bedrock AgentCore
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr4">
+    <div class="adr-header">
+      <div class="adr-num">ADR-04</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Bedrock AgentCore for the AI agent runtime</div>
+        <div class="adr-subtitle">Covers: agent hosting · tool use · long-running conversations · session management</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The AI agent needs to run a Python container (built with the Strands SDK) that: maintains multi-turn conversation context, calls Bedrock Claude for reasoning, uses tools (MCP, SSM lookups, Lambda invocations), and streams responses back to the browser. This is a stateful, long-running workload that doesn't fit neatly into Lambda (15-minute limit, stateless) or a plain HTTP service.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Use <strong>Bedrock AgentCore</strong> to host the agent container. AgentCore manages the container lifecycle, session state, and streaming. The agent Docker image is built by CodePipeline and stored in ECR; AgentCore pulls from there.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>Bedrock AgentCore <span class="badge-chosen">CHOSEN</span></td>
+              <td>Built for agentic workloads. Handles session state, streaming, container lifecycle. Integrates natively with Bedrock models and MCP protocol.</td>
+              <td>New service, limited CloudFormation support — must be created via CLI. Less community documentation.</td>
+            </tr>
+            <tr>
+              <td>Lambda (Python) <span class="badge-rejected">REJECTED</span></td>
+              <td>Simple. Cheap. Auto-scaling. CDK native.</td>
+              <td>15-minute timeout. Stateless — session context must be stored externally on every call. No native streaming. Cold starts with large Strands/LangChain dependencies.</td>
+            </tr>
+            <tr>
+              <td>ECS Fargate (always-on) <span class="badge-rejected">REJECTED</span></td>
+              <td>Full container control. No timeout limits. Standard HTTP.</td>
+              <td>Always-on cost (~$30–50/month). Needs load balancer, service discovery. Manual session management. Not purpose-built for AI agents.</td>
+            </tr>
+            <tr>
+              <td>Bedrock Agents (managed) <span class="badge-rejected">REJECTED</span></td>
+              <td>Fully managed. No container to maintain.</td>
+              <td>Limited to Bedrock-defined action groups. Can't run arbitrary Python code or custom tool integrations. Less flexible for MCP.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Purpose-built for agentic workloads</strong> — AgentCore handles the hard parts: session persistence, response streaming, container warm-up, and MCP protocol integration.</li>
+              <li><strong>No always-on cost</strong> — unlike a standard ECS service, AgentCore only runs when invoked. Billing is per-invocation.</li>
+              <li><strong>Strands SDK alignment</strong> — the agent is built with AWS Strands, which is designed to deploy to AgentCore. Using a different runtime would require significant adaptation.</li>
+              <li><strong>Streaming to browser</strong> — AgentCore's streaming API lets the UI display the agent's response token by token, giving a ChatGPT-like experience without managing WebSockets manually.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>No CloudFormation support</strong> — AgentCore must be created via CLI (one manual step in the deployment). Cannot be fully automated with CDK today.</li>
+              <li><strong>New service risk</strong> — AgentCore is a relatively new AWS service. APIs may change, community resources are limited, and behaviour is less predictable than mature services.</li>
+              <li><strong>ECR image dependency</strong> — AgentCore must be created after the CodePipeline pushes the first image to ECR. Deployment order matters.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 5 — ECS Fargate on-demand for Playwright
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr5">
+    <div class="adr-header">
+      <div class="adr-num">ADR-05</div>
+      <div class="adr-title-block">
+        <div class="adr-title">ECS Fargate on-demand for Playwright browser automation</div>
+        <div class="adr-subtitle">Covers: test execution runtime · browser container · noVNC live view · cost model</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          Running Playwright requires a full browser (Chromium) in a headless or headed environment — this is a heavy workload (200MB+ memory for a browser process alone). It also needs to serve a live noVNC view so the user can watch the test run in real time in the browser. Lambda cannot run a browser, and an always-on container would waste money between test runs.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Playwright runs in an <strong>ECS Fargate task launched on-demand per test execution</strong> (ARM64, 2 vCPU, 4GB RAM). The task starts when a user clicks Run, serves a live browser view via <strong>noVNC over WebSocket</strong>, executes the test, records the result, then terminates. The UI embeds the noVNC stream in an iframe during execution.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>ECS Fargate on-demand task <span class="badge-chosen">CHOSEN</span></td>
+              <td>Full container. Runs real browser. noVNC live view. Scales to zero between runs. ~$0.10 per test run.</td>
+              <td>30–60 second cold start to pull image and start container. More complex than Lambda.</td>
+            </tr>
+            <tr>
+              <td>Lambda (headless Chrome via layer) <span class="badge-rejected">REJECTED</span></td>
+              <td>Faster start. Cheaper per invocation. Simpler deploy.</td>
+              <td>Lambda has 10GB ephemeral storage and 3GB RAM limit — barely enough for Chromium. 15-minute timeout. No live view possible. Unreliable for complex Playwright scripts.</td>
+            </tr>
+            <tr>
+              <td>ECS Fargate always-on service <span class="badge-rejected">REJECTED</span></td>
+              <td>No cold start. Always ready.</td>
+              <td>Costs ~$30–50/month even when no tests are running. Wasteful for a platform used periodically.</td>
+            </tr>
+            <tr>
+              <td>EC2 instance (dedicated) <span class="badge-rejected">REJECTED</span></td>
+              <td>Full control. Persistent storage.</td>
+              <td>Always-on cost. Manual maintenance (patching, AMIs). No auto-scaling. Not serverless.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Full browser environment</strong> — Playwright needs a real Chromium. Only a full container provides this reliably with the memory and CPU headroom needed.</li>
+              <li><strong>Live noVNC view</strong> — the test experience is differentiated by showing users what the browser is doing in real time. This requires a persistent WebSocket connection from a running container — impossible with Lambda.</li>
+              <li><strong>Pay per run</strong> — a 2-minute test run on 2vCPU/4GB Fargate costs approximately $0.04. Zero cost between runs.</li>
+              <li><strong>Isolation</strong> — each test run gets a fresh container, fresh browser state. No cross-contamination between test runs.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>30–60 second startup time</strong> — Fargate task takes time to start. Users see a "starting..." message before the live view appears. Mitigated by showing a progress indicator in the UI.</li>
+              <li><strong>Image pull latency</strong> — if the ECR image is large (Playwright + noVNC + Chromium can be 2–3GB), first pull after a long idle period is slower. Fargate caches images at the infrastructure level.</li>
+              <li><strong>No parallel run limit defined</strong> — currently no cap on simultaneous Fargate tasks. Heavy concurrent usage could incur unexpected cost.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 6 — ARM64 for ECS
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr6">
+    <div class="adr-header">
+      <div class="adr-num">ADR-06</div>
+      <div class="adr-title-block">
+        <div class="adr-title">ARM64 (Graviton) for ECS task definition</div>
+        <div class="adr-subtitle">Covers: compute architecture · cost · Docker build compatibility</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          ECS Fargate supports two CPU architectures: x86_64 (Intel/AMD) and ARM64 (AWS Graviton). The choice affects cost, performance, and — critically — Docker image compatibility. The Docker image must be built for the same architecture as the task definition.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          ECS task definition uses <strong>ARM64 (Graviton2)</strong>. The CodeBuild pipeline builds the Docker image with <code>--platform linux/arm64</code>. Fargate Graviton2 pricing is ~20% cheaper than x86_64 for the same vCPU/memory.
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>~20% cost reduction</strong> — Graviton2 Fargate pricing is lower per vCPU-hour and per GB-hour than x86_64. For a 2vCPU/4GB task, this is a meaningful saving per test run.</li>
+              <li><strong>Playwright supports ARM64</strong> — Playwright and Chromium have stable ARM64 Linux builds. No compatibility issues.</li>
+              <li><strong>Performance parity</strong> — for I/O-bound workloads like browser automation, ARM64 and x86_64 perform equivalently.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Build pipeline must target ARM64</strong> — CodeBuild must use a build environment with ARM64 support (<code>LINUX_ARM_CONTAINER</code>), or use Docker buildx with cross-compilation. If this is misconfigured, the container will fail to start with an "exec format error".</li>
+              <li><strong>Some native packages may lack ARM64 builds</strong> — if future dependencies don't have ARM64 packages, the architecture choice would need to be revisited.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 7 — 4 Separate Repos
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr7">
+    <div class="adr-header">
+      <div class="adr-num">ADR-07</div>
+      <div class="adr-title-block">
+        <div class="adr-title">4 separate GitHub repos — not a monorepo</div>
+        <div class="adr-subtitle">Covers: repo structure · deploy cadence · pipeline triggers · team ownership</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The platform has four distinct components with very different technology stacks, build tools, deploy targets, and change cadences: the React UI, the Python Lambda functions, the AI agent container, and the Playwright automation container. Deciding whether to keep these in one repository or separate ones has significant implications for CI/CD, team workflow, and deployment speed.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Four separate GitHub repositories: <strong>Prompt2TestUI</strong> (React + CDK), <strong>Prompt2TestLambda</strong> (Python), <strong>Prompt2TestAgent</strong> (agent container), <strong>Prompt2TestPlaywrightMCP</strong> (Playwright container). Each repo has its own pipeline that deploys independently on push.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>4 separate repos <span class="badge-chosen">CHOSEN</span></td>
+              <td>Independent deploys. Each repo has its own history. Changing Playwright doesn't trigger UI rebuild. Smaller clone size. Clear ownership boundaries.</td>
+              <td>Cross-cutting changes require PRs in multiple repos. Harder to do atomic changes across components.</td>
+            </tr>
+            <tr>
+              <td>Monorepo (all in one) <span class="badge-rejected">REJECTED</span></td>
+              <td>One place for all code. Atomic cross-component changes. Shared tooling.</td>
+              <td>A typo fix in the UI would trigger a full Lambda + Docker rebuild. Pipeline logic becomes complex (path filters). Slower CI for unrelated changes.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Independent deploy cadences</strong> — the UI changes frequently (daily). Lambda logic changes occasionally. The Playwright container rarely changes. Separate repos means each deploys at its own pace without affecting others.</li>
+              <li><strong>Clear boundaries</strong> — each repo corresponds to one deploy target (Amplify, Lambda, ECR×2). This makes it obvious what a push to each repo does.</li>
+              <li><strong>Smaller blast radius</strong> — a broken push to <code>Prompt2TestAgent</code> doesn't affect the UI or Lambda. Failures are isolated.</li>
+              <li><strong>Different tech stacks</strong> — TypeScript/React, Python, and Dockerfile-based containers have no shared build tooling. A monorepo would give the appearance of unity without the benefits.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Cross-repo changes need coordination</strong> — if a new Lambda API requires a UI change, two PRs in two repos must be coordinated and deployed in the right order.</li>
+              <li><strong>4 repos to keep up to date</strong> — each repo needs its own GitHub Actions / CodePipeline setup, README, and branch protection rules.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 8 — Amplify for UI Hosting
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr8">
+    <div class="adr-header">
+      <div class="adr-num">ADR-08</div>
+      <div class="adr-title-block">
+        <div class="adr-title">AWS Amplify for React UI hosting</div>
+        <div class="adr-subtitle">Covers: static hosting · CDN · CI/CD for frontend · env var management</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The React UI is a static single-page application (SPA) built with Vite. It needs to be hosted on a CDN, rebuilt automatically when code is pushed to GitHub, and have environment variables injected at build time (Cognito IDs, region, AgentCore ARN).
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Use <strong>AWS Amplify Hosting</strong>. CDK creates the Amplify app and sets all environment variables. GitHub branch connection (OAuth) is done manually once. After that, every push to <code>master</code> triggers an automatic build and deploy.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>AWS Amplify Hosting <span class="badge-chosen">CHOSEN</span></td>
+              <td>Managed CI/CD for frontend. Built-in CDN (CloudFront). Branch previews. Env var management. CDK-provisionable. Free tier covers typical usage.</td>
+              <td>GitHub OAuth connection cannot be automated (requires browser). Amplify build environment is opinionated.</td>
+            </tr>
+            <tr>
+              <td>S3 + CloudFront (manual) <span class="badge-rejected">REJECTED</span></td>
+              <td>Full control. CDK native. No OAuth step.</td>
+              <td>Must build a CI/CD pipeline manually (CodePipeline or GitHub Actions) to upload to S3 on push. More infrastructure to maintain. No automatic branch previews.</td>
+            </tr>
+            <tr>
+              <td>Vercel / Netlify <span class="badge-rejected">REJECTED</span></td>
+              <td>Excellent DX. Fast deploys. Free tier.</td>
+              <td>External service outside AWS. Env vars with AWS credentials/IDs stored outside AWS. Adds external vendor dependency.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Zero CI/CD work for the frontend</strong> — Amplify handles build, deploy, and CDN invalidation automatically on every push. No CodePipeline to configure for the UI.</li>
+              <li><strong>CDK can provision it</strong> — the Amplify app, environment variables (Cognito IDs, region), and build settings are all set by CDK. Only the GitHub OAuth step is manual.</li>
+              <li><strong>Free tier</strong> — Amplify free tier (1,000 build minutes/month, 15GB serving) covers typical dev usage at zero cost.</li>
+              <li><strong>Stays within AWS</strong> — all config stays inside the AWS account. No env vars leave the environment.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>OAuth step cannot be automated</strong> — connecting Amplify to GitHub requires a browser-based OAuth flow. This is the one step in the deployment guide that cannot be scripted.</li>
+              <li><strong>Amplify build is opinionated</strong> — Amplify expects a specific build output structure. The <code>amplify.yml</code> must match the Vite output directory (<code>web/dist</code>).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 9 — Cognito
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr9">
+    <div class="adr-header">
+      <div class="adr-num">ADR-09</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Amazon Cognito for authentication</div>
+        <div class="adr-subtitle">Covers: user login · session tokens · browser-to-AWS SDK calls · IAM federation</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The React UI needs to: authenticate users, call AWS services (Lambda, AgentCore, ECS) directly from the browser using the AWS SDK, and do so securely without embedding AWS credentials in frontend code. This requires both identity (who is this user?) and authorisation (what AWS resources can they access?).
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Use <strong>Cognito User Pool</strong> for login (username/password, session management) and <strong>Cognito Identity Pool</strong> to exchange the User Pool JWT for temporary AWS credentials. The browser SDK uses these credentials to call Lambda, AgentCore, and ECS directly — no backend proxy needed.
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Browser-to-AWS without a backend proxy</strong> — Cognito Identity Pool issues temporary STS credentials to the browser. The React app can call Lambda, ECS, and AgentCore directly using <code>aws-sdk</code> without routing everything through an API Gateway or backend server.</li>
+              <li><strong>No credentials in frontend code</strong> — credentials are short-lived (1 hour) and scoped to the Cognito Auth Role. No static AWS keys anywhere in the UI.</li>
+              <li><strong>Fully managed</strong> — Cognito handles password hashing, session tokens, MFA (if needed later), and JWT validation. No custom auth code to maintain.</li>
+              <li><strong>CDK native</strong> — User Pool, Identity Pool, and Auth Role are all provisionable with CDK in a few lines.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Cognito UX is basic</strong> — the default Cognito hosted UI and flows are functional but not polished. Custom login UI requires more work.</li>
+              <li><strong>FORCE_CHANGE_PASSWORD on new users</strong> — admin-created users must change password on first login. This is expected Cognito behaviour but must be handled in the UI flow.</li>
+              <li><strong>Identity Pool complexity</strong> — the User Pool + Identity Pool + Auth Role chain can be confusing to debug when permissions issues arise.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 10 — Lambda Placeholder + Separate Pipeline
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr10">
+    <div class="adr-header">
+      <div class="adr-num">ADR-10</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Lambda deployed via separate CodePipeline, not bundled in CDK</div>
+        <div class="adr-subtitle">Covers: Lambda code lifecycle · CDK asset management · repo separation</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          CDK can deploy Lambda code directly using <code>Code.fromAsset()</code> — bundling the Python files at deploy time. But Lambda code lives in a separate GitHub repo (<code>Prompt2TestLambda</code>) with its own change cadence. Developers should be able to push Lambda code changes without running <code>cdk deploy</code>.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          CDK creates Lambda functions with <strong>placeholder code</strong> (a stub that returns a 503). A separate <strong>CodePipeline</strong> (<code>prompt2test-lambda</code>) watches <code>Prompt2TestLambda</code> on GitHub and runs <code>aws lambda update-function-code</code> on every push to deploy real code.
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Lambda code has its own cadence</strong> — business logic in Lambda changes frequently and independently of infrastructure. Developers pushing a bug fix to <code>Prompt2TestLambda</code> should not need to run <code>cdk deploy</code>.</li>
+              <li><strong>CDK deploy is slow</strong> — <code>cdk deploy</code> takes 5–10 minutes. <code>update-function-code</code> takes under 30 seconds. Using the pipeline for Lambda updates is dramatically faster for day-to-day development.</li>
+              <li><strong>Separation of concerns</strong> — infrastructure team manages CDK; backend team manages Lambda code. These teams (or concerns) don't need to coordinate on every deploy.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Two-step initial deployment</strong> — after <code>cdk deploy</code>, Lambda functions return 503 until the CodePipeline runs for the first time. Must remember to trigger the pipeline after initial CDK deploy.</li>
+              <li><strong>Lambda code not in CDK state</strong> — CloudFormation does not track the Lambda code version. If the stack is torn down and redeployed, the pipeline must run again to restore the real code.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 11 — No API Gateway
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr11">
+    <div class="adr-header">
+      <div class="adr-num">ADR-11</div>
+      <div class="adr-title-block">
+        <div class="adr-title">No API Gateway — Lambda invoked directly from the browser</div>
+        <div class="adr-subtitle">Covers: API design · browser-to-Lambda call pattern · latency · cost</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The React UI needs to call <code>p2t-testcase-writer</code> and <code>p2t-testcase-reader</code> to save and fetch test cases. The typical pattern is to put API Gateway in front of Lambda to expose it as an HTTP endpoint. However, the React app already has AWS credentials from Cognito Identity Pool — meaning it can call Lambda directly using the AWS SDK.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          The React UI calls Lambda using <strong><code>lambda.invoke()</code> from the AWS SDK</strong> with the Cognito-issued credentials. No API Gateway. No HTTP REST or GraphQL endpoint. Lambda is invoked directly as an internal AWS API call.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>Direct Lambda invoke (SDK) <span class="badge-chosen">CHOSEN</span></td>
+              <td>No extra service. No cost per request beyond Lambda invocation. Already have AWS credentials from Cognito. No CORS config needed.</td>
+              <td>Tightly coupled to AWS SDK. Cannot be called from non-AWS clients without credentials. Not a standard REST API.</td>
+            </tr>
+            <tr>
+              <td>API Gateway REST API <span class="badge-rejected">REJECTED</span></td>
+              <td>Standard HTTP. Callable from any client. Built-in throttling, caching, request validation.</td>
+              <td>$3.50 per million requests. Extra latency hop. Requires CORS configuration. Adds CDK complexity. Unnecessary since the only client is the internal React app with AWS credentials.</td>
+            </tr>
+            <tr>
+              <td>API Gateway HTTP API <span class="badge-rejected">REJECTED</span></td>
+              <td>Cheaper ($1/million). Lower latency than REST API.</td>
+              <td>Still an extra service and hop. Same reasoning as REST API — unnecessary when the client already has AWS credentials.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>The client already has AWS credentials</strong> — Cognito Identity Pool gives the browser temporary STS credentials. Using them to call Lambda directly is the natural pattern. API Gateway would be an unnecessary layer.</li>
+              <li><strong>Cost</strong> — direct Lambda invoke is charged only for Lambda execution time. API Gateway adds per-request charges on top. For a low-traffic internal tool, this matters.</li>
+              <li><strong>Latency</strong> — removing API Gateway removes one network hop and one AWS service from the call chain.</li>
+              <li><strong>No CORS</strong> — API Gateway requires CORS headers configuration. Direct Lambda invoke through the SDK bypasses CORS entirely.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Not a standard REST API</strong> — Lambda cannot be called from Postman, curl, or other tools without AWS credentials. Fine for an internal tool; would be a blocker if external integrations were needed.</li>
+              <li><strong>AWS SDK dependency in UI</strong> — the React app imports and uses <code>aws-sdk</code>. This increases bundle size and couples the frontend to AWS.</li>
+              <li><strong>No built-in throttling</strong> — API Gateway provides per-client throttling out of the box. Without it, a misbehaving UI could flood Lambda. Lambda's own concurrency limits are the only protection.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 12 — SSM Parameter Store for Config
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr12">
+    <div class="adr-header">
+      <div class="adr-num">ADR-12</div>
+      <div class="adr-title-block">
+        <div class="adr-title">SSM Parameter Store for runtime configuration</div>
+        <div class="adr-subtitle">Covers: service URLs · Playwright config · environment-specific settings · ECS task config</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          The platform needs to store runtime configuration that varies per environment (dev/staging/prod): service names and URLs, Playwright cluster details, base URLs, timeouts, and OAuth endpoints. This config must be readable by the Lambda functions, the ECS Fargate tasks, and the React UI — and must be updatable without redeploying code.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          All runtime configuration is stored in <strong>SSM Parameter Store</strong> under a structured path hierarchy: <code>/prompt2test/config/{env}/services/{ServiceName}/URL</code>. ECS task definitions reference SSM paths directly. Lambda and the UI read parameters at runtime via the SSM API.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>SSM Parameter Store <span class="badge-chosen">CHOSEN</span></td>
+              <td>Hierarchical path structure. IAM-controlled access. Free for standard parameters. ECS can inject SSM params as env vars natively. CDK-provisionable.</td>
+              <td>Extra API call to read params at runtime. No secret rotation (use Secrets Manager for that).</td>
+            </tr>
+            <tr>
+              <td>Lambda/ECS environment variables <span class="badge-rejected">REJECTED</span></td>
+              <td>Zero latency — no API call needed.</td>
+              <td>Changing a config value requires redeploying the Lambda or ECS task definition. Not suitable for values that change independently of code (e.g. service URLs).</td>
+            </tr>
+            <tr>
+              <td>Secrets Manager <span class="badge-rejected">REJECTED</span></td>
+              <td>Built-in rotation. Encrypted at rest. Good for credentials.</td>
+              <td>$0.40/secret/month. Designed for secrets (passwords, API keys), not general config. Overkill for non-sensitive values like service URLs and timeouts.</td>
+            </tr>
+            <tr>
+              <td>DynamoDB config table <span class="badge-rejected">REJECTED</span></td>
+              <td>Flexible schema. Queryable.</td>
+              <td>Another service to provision and maintain. No IAM path-based access control. SSM already does this job well.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Update config without code deploy</strong> — adding a new service URL or changing a timeout is an <code>aws ssm put-parameter</code> command. No Lambda redeploy, no CDK run, no pipeline trigger.</li>
+              <li><strong>Hierarchical paths</strong> — the <code>/prompt2test/config/dev/services/*/URL</code> pattern lets the UI discover all services for an environment with a single <code>get-parameters-by-path</code> call.</li>
+              <li><strong>ECS native integration</strong> — ECS task definitions can reference SSM parameters directly as environment variables, injected securely at task launch time.</li>
+              <li><strong>Free for standard tier</strong> — non-secret configuration parameters are free in SSM. Secrets Manager would cost $0.40/parameter/month.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Runtime API call overhead</strong> — Lambda reads SSM on each invocation (or caches with a TTL). Adds ~5–10ms per parameter read. Acceptable for this use case.</li>
+              <li><strong>Not for secrets</strong> — SSM standard parameters are not encrypted by default. Sensitive values (passwords, tokens) use Secrets Manager instead (<code>prompt2test/aurora/credentials</code>). The distinction must be maintained as the platform grows.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <div class="footer">
+    Prompt2Test Architecture Decision Records · AWS us-east-1 · Updated 2026-03-25
+  </div>
+
+</div>
+</body>
+</html>
