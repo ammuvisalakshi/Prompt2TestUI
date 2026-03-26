@@ -57,7 +57,7 @@ type Plan = {
 export default function AgentPage() {
 
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'agent', text: "Hi! Ready to author tests.\n\nDescribe what you want to test in plain English." },
+    { role: 'agent', text: "Hi! Ready to author tests.\n\nPaste a scenario below, pick a service, and I'll enrich it with your real config values." },
   ])
   const [input, setInput] = useState('')
   const [mode, setMode] = useState<'plan' | 'auto'>('plan')
@@ -216,60 +216,13 @@ export default function AgentPage() {
           setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: responseText }])
         }
       } else {
-        // Automate mode — generate plan silently then execute immediately
-        setMessages(prev => [...prev, { role: 'user', text }, { role: 'agent', text: 'Generating test plan…' }])
+        // Automate mode — only runs test cases loaded from Test Inventory
+        setMessages(prev => [
+          ...prev,
+          { role: 'user', text },
+          { role: 'agent', text: 'Automate mode only runs saved test cases.\n\nGo to Test Inventory → find your test case → click Run.' },
+        ])
         setInput('')
-
-        const planRaw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history, env }, sessionId)
-        const planResult = JSON.parse(planRaw)
-        if (planResult.error) throw new Error(planResult.error as string)
-        const autoPlan: Plan = planResult.plan ?? planResult
-
-        if (!autoPlan.steps?.length) {
-          // Agent needs clarification before it can generate steps
-          const msg = autoPlan.raw?.trim() || (autoPlan.summary !== 'Plan generated' ? autoPlan.summary : '') || 'What would you like to test?'
-          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: msg ?? '' }])
-          return
-        }
-
-        setPlan(autoPlan)
-
-        // Open loading popup within user-gesture context
-        const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
-        const loadingUrl = URL.createObjectURL(loadingBlob)
-        const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
-        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Launching dedicated browser… (~60s to start Fargate task)' }])
-
-        const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
-        const resolvedSession = JSON.parse(sessionRaw)
-        if (resolvedSession.error) throw new Error(resolvedSession.error as string)
-
-        URL.revokeObjectURL(loadingUrl)
-        setNovncUrl(resolvedSession.novnc_url as string)
-        if (popup) { popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`; popupRef.current = popup }
-        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
-
-        const raw = await callAgent({
-          inputText: text, mode: 'automate', plan: autoPlan, sessionId,
-          task_arn: resolvedSession.task_arn, cluster: resolvedSession.cluster, mcp_endpoint: resolvedSession.mcp_endpoint,
-        }, sessionId)
-
-        const result = JSON.parse(raw)
-        if (result.error) throw new Error(result.error as string)
-        const passed = result.result?.passed ?? result.passed
-        const summary = result.result?.summary ?? result.summary ?? ''
-        saveRun({ description: text, passed, timestamp: new Date().toISOString() })
-
-        // Save test case + run record
-        saveTestCase({ description: autoPlan.summary ?? text, env, service: tcService || undefined, steps: autoPlan.steps ?? [], createdBy: userName })
-          .then(id => {
-            savedTcId.current = id
-            saveRunRecord({ testCaseId: id, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
-          }).catch(() => {})
-
-        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` }])
-        window.open('', 'novnc-popup')?.close()
-        popupRef.current = null
       }
     } catch (err: unknown) {
       setMessages(prev => [
@@ -319,9 +272,9 @@ export default function AgentPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                placeholder="Describe what you want to test…"
+                placeholder={mode === 'auto' && !autoRunReady ? 'Go to Test Inventory and click Run to execute a test case…' : 'Paste your scenario here…'}
                 rows={3}
-                disabled={loading}
+                disabled={loading || (mode === 'auto' && !autoRunReady)}
                 className="w-full bg-white px-4 pt-3 pb-1 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none font-sans disabled:opacity-60"
               />
 
@@ -382,6 +335,7 @@ export default function AgentPage() {
                         className="appearance-none pl-2.5 pr-6 py-1 rounded-md text-[13px] font-medium text-slate-600 bg-slate-100 border border-transparent hover:border-slate-200 outline-none cursor-pointer transition-colors disabled:opacity-50"
                       >
                         <option value="">Service…</option>
+                        <option value="exploratory">Exploratory</option>
                         {availableServices.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                       <svg viewBox="0 0 24 24" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 stroke-slate-400 fill-none stroke-2 pointer-events-none"><polyline points="6 9 12 15 18 9"/></svg>
