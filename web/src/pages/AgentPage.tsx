@@ -190,12 +190,20 @@ export default function AgentPage() {
     setAutomateError(null)
     setStepsSaveState('idle')
 
-    const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
-    const loadingUrl = URL.createObjectURL(loadingBlob)
-    const popup = window.open(loadingUrl, 'p2t-browser', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
-    popupRef.current = popup
-
+    const tcId = saveTcIdInput || savedTcId.current || ''
     const label = saveTitleInput || 'Test case'
+    const tabTitle = `${tcId} — ${label}`
+
+    // Loading page with TC ID + name as tab title
+    const loadingHtmlWithTitle = loadingHtml.replace(
+      '<title>Prompt2Test — Starting…</title>',
+      `<title>${tabTitle} | Starting…</title>`
+    )
+    const loadingBlob = new Blob([loadingHtmlWithTitle], { type: 'text/html' })
+    const loadingUrl = URL.createObjectURL(loadingBlob)
+    const tab = window.open(loadingUrl, '_blank')
+    popupRef.current = tab
+
     const derivedPlan = {
       summary: label,
       steps: planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected })),
@@ -208,7 +216,15 @@ export default function AgentPage() {
       if (session.error) throw new Error(session.error as string)
 
       URL.revokeObjectURL(loadingUrl)
-      if (popup) popup.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+
+      // Navigate tab to a wrapper page that keeps our title and embeds noVNC full-screen
+      const novncSrc = `${session.novnc_url}?autoconnect=true&resize=scale`
+      const wrapperHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${tabTitle} | Live Browser</title>
+<style>*{margin:0;padding:0}html,body,iframe{width:100%;height:100%;border:none;display:block}</style></head>
+<body><iframe src="${novncSrc}" allowfullscreen></iframe></body></html>`
+      const wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' })
+      const wrapperUrl = URL.createObjectURL(wrapperBlob)
+      if (tab) tab.location.href = wrapperUrl
       setAutomatePhase('running')
 
       const raw = await callAgent({
@@ -221,6 +237,7 @@ export default function AgentPage() {
         mcp_endpoint: session.mcp_endpoint,
       }, sessionId)
 
+      URL.revokeObjectURL(wrapperUrl)
       const result = JSON.parse(raw)
       if (result.error) throw new Error(result.error as string)
 

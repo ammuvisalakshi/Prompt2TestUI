@@ -55,11 +55,16 @@ export default function TestCasePage() {
     setRunResult(null)
     setRunError(null)
 
-    // Open loading page in popup immediately (user gesture)
-    const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+    // Open loading page in new tab immediately (user gesture)
+    const tabTitle = `${tc.id} — ${tc.title || tc.description}`
+    const loadingHtmlWithTitle = loadingHtml.replace(
+      '<title>Prompt2Test — Starting…</title>',
+      `<title>${tabTitle} | Starting…</title>`
+    )
+    const loadingBlob = new Blob([loadingHtmlWithTitle], { type: 'text/html' })
     const loadingUrl = URL.createObjectURL(loadingBlob)
-    const popup = window.open(loadingUrl, 'p2t-browser', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
-    popupRef.current = popup
+    const tab = window.open(loadingUrl, '_blank')
+    popupRef.current = tab
 
     try {
       const sessionRaw = await callAgent(
@@ -70,7 +75,15 @@ export default function TestCasePage() {
       if (session.error) throw new Error(session.error as string)
 
       URL.revokeObjectURL(loadingUrl)
-      if (popup) popup.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+
+      // Wrapper page keeps tab title and embeds noVNC full-screen
+      const novncSrc = `${session.novnc_url}?autoconnect=true&resize=scale`
+      const wrapperHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${tabTitle} | Live Browser</title>
+<style>*{margin:0;padding:0}html,body,iframe{width:100%;height:100%;border:none;display:block}</style></head>
+<body><iframe src="${novncSrc}" allowfullscreen></iframe></body></html>`
+      const wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' })
+      const wrapperUrl = URL.createObjectURL(wrapperBlob)
+      if (tab) tab.location.href = wrapperUrl
       setRunPhase('running')
 
       const plan = { summary: tc.title || tc.description, steps, mcpCalls: 0 }
@@ -85,6 +98,7 @@ export default function TestCasePage() {
       }, sessionId.current)
 
       const result = JSON.parse(raw)
+      URL.revokeObjectURL(wrapperUrl)
       if (result.error) throw new Error(result.error as string)
 
       const passed = result.result?.passed ?? result.passed
