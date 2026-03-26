@@ -9,6 +9,7 @@ import ConfigPage from './pages/ConfigPage'
 import ArchitecturePage from './pages/ArchitecturePage'
 import ConceptsPage from './pages/ConceptsPage'
 import MembersPage from './pages/MembersPage'
+import TestCasePage from './pages/TestCasePage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false)
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="concepts" element={<ConceptsPage />} />
           <Route path="members" element={<MembersPage />} />
         </Route>
+        <Route path="/test-case/:id" element={<RequireAuth><TestCasePage /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
