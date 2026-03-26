@@ -507,22 +507,68 @@ export default function AgentPage() {
                 </div>
               )}
 
-              <div className="flex-1 overflow-hidden flex flex-col items-center justify-center gap-4 bg-slate-900 text-slate-400">
+              <div className="flex-1 overflow-hidden flex flex-col bg-[#0D1117]">
                 {loading ? (
-                  <>
-                    <svg className="w-8 h-8 animate-spin text-[#7C3AED]" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    <span className="text-[13px]">{novncUrl ? 'Test running… watch it live in the browser popup' : 'Starting browser session…'}</span>
-                    <span className="text-[11px] text-slate-500">Takes 1–3 min depending on test complexity</span>
-                  </>
+                  <div className="flex-1 flex flex-col justify-center px-8 py-6 gap-6">
+                    {/* Header */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🎭</span>
+                      <div>
+                        <div className="text-[15px] font-semibold text-white">
+                          {novncUrl ? 'Running test…' : 'Launching test environment'}
+                        </div>
+                        <div className="text-[12px] text-slate-500 mt-0.5">
+                          {novncUrl ? 'Watch it live in the browser popup' : 'Spinning up a dedicated Fargate task'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="w-full h-1 bg-[#1E2A3A] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#7C3AED] to-[#A855F7]"
+                        style={{ width: novncUrl ? '90%' : '55%', transition: 'width 0.8s ease' }}
+                      />
+                    </div>
+
+                    {/* Activity log */}
+                    <div className="font-mono text-[12px] space-y-2.5">
+                      {[
+                        { label: 'ECS task scheduled', done: true, delay: '0s' },
+                        { label: 'Pulling container image', done: !novncUrl, active: !novncUrl, delay: '0.3s' },
+                        { label: 'Starting Chromium + Playwright MCP', done: !!novncUrl, active: !novncUrl, delay: '0.6s' },
+                        { label: novncUrl ? 'Executing test steps via MCP…' : 'noVNC server initializing', done: false, active: !!novncUrl, delay: '0.9s' },
+                      ].map((step, i) => (
+                        <div key={i} className="flex items-center gap-3" style={{ animationDelay: step.delay }}>
+                          {step.done ? (
+                            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-[#22C55E] fill-none stroke-2 flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                          ) : step.active ? (
+                            <span className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center">
+                              <span className="w-2 h-2 rounded-full bg-[#A855F7] animate-pulse" />
+                            </span>
+                          ) : (
+                            <span className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center">
+                              <span className="w-2 h-2 rounded-full bg-[#1E2A3A]" />
+                            </span>
+                          )}
+                          <span className={step.done ? 'text-slate-400' : step.active ? 'text-white' : 'text-slate-600'}>
+                            {step.label}
+                          </span>
+                          {step.active && (
+                            <span className="text-slate-600 animate-pulse">…</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="text-[11px] text-slate-600">Takes 1–3 min on cold start · container image is cached after first run</div>
+                  </div>
                 ) : novncUrl ? (
-                  <>
-                    <svg viewBox="0 0 24 24" className="w-8 h-8 stroke-current fill-none stroke-1.5 opacity-40">
-                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-400">
+                    <svg viewBox="0 0 24 24" className="w-10 h-10 stroke-[#22C55E] fill-none stroke-1.5">
+                      <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    <span className="text-[13px]">Browser session ready</span>
+                    <span className="text-[14px] font-semibold text-white">Browser session ready</span>
                     <button
                       onClick={() => {
                         popupRef.current = window.open(
@@ -531,11 +577,11 @@ export default function AgentPage() {
                           'width=1280,height=820,toolbar=0,menubar=0,location=0'
                         )
                       }}
-                      className="text-[13px] px-4 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] text-white rounded-lg cursor-pointer transition-colors"
+                      className="text-[13px] px-5 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] text-white rounded-lg cursor-pointer transition-colors"
                     >
                       Open browser view
                     </button>
-                  </>
+                  </div>
                 ) : null}
               </div>
             </>
