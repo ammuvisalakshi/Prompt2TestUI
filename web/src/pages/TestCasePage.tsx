@@ -33,11 +33,9 @@ export default function TestCasePage() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'plan' | 'automated'>('plan')
 
-  // Execution state
   const [runPhase, setRunPhase] = useState<RunPhase>('idle')
   const [runResult, setRunResult] = useState<{ passed: boolean; summary: string } | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
-  const [statusMsg, setStatusMsg] = useState('')
   const popupRef = useRef<Window | null>(null)
   const sessionId = useRef(crypto.randomUUID())
 
@@ -56,12 +54,11 @@ export default function TestCasePage() {
     setRunPhase('starting')
     setRunResult(null)
     setRunError(null)
-    setStatusMsg('Starting browser session… (~60s for Fargate task)')
-    setTab('automated')
 
+    // Open loading page in popup immediately (user gesture)
     const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
     const loadingUrl = URL.createObjectURL(loadingBlob)
-    const popup = window.open(loadingUrl, '_blank')
+    const popup = window.open(loadingUrl, 'p2t-browser', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
     popupRef.current = popup
 
     try {
@@ -74,9 +71,7 @@ export default function TestCasePage() {
 
       URL.revokeObjectURL(loadingUrl)
       if (popup) popup.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
-
       setRunPhase('running')
-      setStatusMsg('Browser is live — executing test steps…')
 
       const plan = { summary: tc.title || tc.description, steps, mcpCalls: 0 }
       const raw = await callAgent({
@@ -96,17 +91,16 @@ export default function TestCasePage() {
       const summary = result.result?.summary ?? result.summary ?? ''
 
       saveRunRecord({ testCaseId: tc.id, env: tc.env, result: passed ? 'PASS' : 'FAIL', summary }).catch(() => {})
-
       setRunResult({ passed, summary })
       setRunPhase('done')
-      setStatusMsg(passed ? 'Test passed' : 'Test failed')
-      popupRef.current?.close(); popupRef.current = null
+      popupRef.current?.close()
+      popupRef.current = null
     } catch (err) {
       URL.revokeObjectURL(loadingUrl)
-      popupRef.current?.close(); popupRef.current = null
+      popupRef.current?.close()
+      popupRef.current = null
       setRunError(err instanceof Error ? err.message : String(err))
       setRunPhase('error')
-      setStatusMsg('Execution failed')
     }
   }
 
@@ -131,10 +125,10 @@ export default function TestCasePage() {
   const isRunning = runPhase === 'starting' || runPhase === 'running'
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] flex flex-col font-sans">
+    <div className="h-screen bg-[#F5F7FA] flex flex-col font-sans overflow-hidden">
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4">
+      <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={() => window.close()}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors flex-shrink-0">
           <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
@@ -142,7 +136,7 @@ export default function TestCasePage() {
           </svg>
         </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             {tc.service && (
               <span className="text-[11px] px-2 py-0.5 bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE] rounded-full font-semibold flex-shrink-0">{tc.service}</span>
             )}
@@ -151,7 +145,7 @@ export default function TestCasePage() {
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[11px] text-slate-400 font-mono">{tc.id}</span>
             {tc.lastResult && (
-              <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold border ${tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                 {tc.lastResult}
               </span>
             )}
@@ -161,53 +155,45 @@ export default function TestCasePage() {
           </div>
         </div>
 
-        {/* Run button — always visible in header */}
         {isAutomated && (
-          <button
-            onClick={runTest}
-            disabled={isRunning}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white text-[13px] font-semibold cursor-pointer transition-colors flex-shrink-0"
-          >
+          <button onClick={runTest} disabled={isRunning}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white text-[13px] font-semibold cursor-pointer transition-colors flex-shrink-0">
             {isRunning ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                {runPhase === 'starting' ? 'Starting…' : 'Running…'}
-              </>
+              <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />{runPhase === 'starting' ? 'Starting…' : 'Running…'}</>
             ) : (
-              <>
-                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Run Test
-              </>
+              <><svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Run Test</>
             )}
           </button>
         )}
       </div>
 
-      {/* Run status bar */}
+      {/* Status bar — shown while running or after result */}
       {runPhase !== 'idle' && (
-        <div className={`px-6 py-2.5 flex items-center gap-3 text-[13px] font-medium border-b ${
+        <div className={`px-5 py-2.5 flex items-center gap-3 text-[13px] border-b flex-shrink-0 ${
           runPhase === 'done' && runResult?.passed ? 'bg-green-50 border-green-200 text-green-800' :
-          runPhase === 'done' && !runResult?.passed ? 'bg-red-50 border-red-200 text-red-800' :
+          runPhase === 'done' ? 'bg-red-50 border-red-200 text-red-800' :
           runPhase === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
           'bg-[#EDE9FE] border-purple-200 text-[#7C3AED]'
         }`}>
-          {isRunning && <div className="w-3.5 h-3.5 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin flex-shrink-0" />}
-          {runPhase === 'done' && runResult?.passed && <span>✅</span>}
-          {runPhase === 'done' && !runResult?.passed && <span>❌</span>}
-          {runPhase === 'error' && <span>⚠️</span>}
-          <span>{statusMsg}</span>
-          {runResult?.summary && <span className="text-[12px] font-normal opacity-80 ml-1">— {runResult.summary}</span>}
-          {runError && <span className="text-[12px] font-normal opacity-80 ml-1 font-mono truncate">— {runError}</span>}
+          {isRunning && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />}
+          <span className="font-medium">
+            {runPhase === 'starting' && 'Launching browser… (~60s for Fargate task)'}
+            {runPhase === 'running' && 'Test is running — watch it in the browser window'}
+            {runPhase === 'done' && (runResult?.passed ? '✅ Test Passed' : '❌ Test Failed')}
+            {runPhase === 'error' && '⚠️ Execution failed'}
+          </span>
+          {runResult?.summary && <span className="text-[12px] opacity-75 truncate">— {runResult.summary}</span>}
+          {runError && <span className="text-[12px] opacity-75 font-mono truncate">— {runError}</span>}
           <button onClick={() => { setRunPhase('idle'); setRunResult(null); setRunError(null) }}
-            className="ml-auto text-[11px] opacity-60 hover:opacity-100 cursor-pointer">✕</button>
+            className="ml-auto opacity-50 hover:opacity-100 cursor-pointer text-[12px]">✕</button>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="bg-white border-b border-slate-200 px-6 flex">
+      <div className="bg-white border-b border-slate-200 px-5 flex flex-shrink-0">
         {(['plan', 'automated'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-3 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer ${
+            className={`px-4 py-3 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer ${
               tab === t ? 'border-[#7C3AED] text-[#7C3AED]' : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}>
             {t === 'plan' ? '📋 Plan Steps' : `⚡ Automated Steps${autoSteps.length > 0 ? ` (${autoSteps.length})` : ''}`}
@@ -216,69 +202,71 @@ export default function TestCasePage() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-5">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-5 py-5">
 
-        {/* Plan Steps */}
-        {tab === 'plan' && (
-          planSteps.length > 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-10">#</th>
-                    <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-[46%]">Action</th>
-                    <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Expected Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planSteps.map((s, i) => (
-                    <tr key={s.step} className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                      <td className="py-3 px-3 text-center align-top">
-                        <span className="w-6 h-6 inline-flex items-center justify-center rounded-full bg-[#EDE9FE] text-[#7C3AED] text-[11px] font-bold">{s.step}</span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-700 leading-relaxed align-top">{s.action}</td>
-                      <td className="py-3 px-4 text-slate-500 leading-relaxed align-top">{s.expected}</td>
+          {/* Plan Steps */}
+          {tab === 'plan' && (
+            planSteps.length > 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-10">#</th>
+                      <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-[46%]">Action</th>
+                      <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Expected Result</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-sm">
-              <div className="text-[28px] mb-3">📋</div>
-              <div className="text-[14px] font-medium text-slate-600 mb-1">No plan steps yet</div>
-              <div className="text-[13px] text-slate-400">Go to Author Agent → Plan mode to generate them.</div>
-            </div>
-          )
-        )}
+                  </thead>
+                  <tbody>
+                    {planSteps.map((s, i) => (
+                      <tr key={s.step} className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                        <td className="py-3 px-3 text-center align-top">
+                          <span className="w-6 h-6 inline-flex items-center justify-center rounded-full bg-[#EDE9FE] text-[#7C3AED] text-[11px] font-bold">{s.step}</span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700 leading-relaxed align-top">{s.action}</td>
+                        <td className="py-3 px-4 text-slate-500 leading-relaxed align-top">{s.expected}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-sm">
+                <div className="text-[28px] mb-3">📋</div>
+                <div className="text-[14px] font-medium text-slate-600 mb-1">No plan steps yet</div>
+                <div className="text-[13px] text-slate-400">Go to Author Agent → Plan mode to generate them.</div>
+              </div>
+            )
+          )}
 
-        {/* Automated Steps */}
-        {tab === 'automated' && (
-          autoSteps.length > 0 ? (
-            <div className="space-y-2">
-              {autoSteps.map((step, i) => (
-                <div key={i} className="flex gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-                  <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                    {step.stepNumber ?? i + 1}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
-                    <div className="text-[12px] text-slate-500 mt-0.5 leading-relaxed">{step.detail}</div>
-                    <div className="text-[11px] text-[#7C3AED] mt-1 font-medium uppercase tracking-wide">
-                      {step.type}{step.tool ? ` · ${step.tool}` : ''}
+          {/* Automated Steps */}
+          {tab === 'automated' && (
+            autoSteps.length > 0 ? (
+              <div className="space-y-2">
+                {autoSteps.map((step, i) => (
+                  <div key={i} className="flex gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
+                    <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {step.stepNumber ?? i + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
+                      <div className="text-[12px] text-slate-500 mt-0.5 leading-relaxed">{step.detail}</div>
+                      <div className="text-[11px] text-[#7C3AED] mt-0.5 font-medium uppercase tracking-wide">
+                        {step.type}{step.tool ? ` · ${step.tool}` : ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-sm">
-              <div className="text-[28px] mb-3">⚡</div>
-              <div className="text-[14px] font-medium text-slate-600 mb-1">Not automated yet</div>
-              <div className="text-[13px] text-slate-400">Run this test case from the Author Agent to generate automated steps.</div>
-            </div>
-          )
-        )}
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-sm">
+                <div className="text-[28px] mb-3">⚡</div>
+                <div className="text-[14px] font-medium text-slate-600 mb-1">Not automated yet</div>
+                <div className="text-[13px] text-slate-400">Run this test case from the Author Agent to generate automated steps.</div>
+              </div>
+            )
+          )}
+        </div>
       </div>
     </div>
   )
