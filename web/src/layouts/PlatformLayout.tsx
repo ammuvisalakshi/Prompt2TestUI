@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
@@ -62,6 +62,28 @@ export default function PlatformLayout() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [runs,         setRuns]         = useState<RunEntry[]>([])
   const [env,          setEnv]          = useState<Env>('dev')
+  const [sidebarWidth, setSidebarWidth] = useState(220)
+  const dragging = useRef(false)
+
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = true
+    const startX = e.clientX
+    const startW = sidebarWidth
+
+    function onMove(ev: MouseEvent) {
+      if (!dragging.current) return
+      const next = Math.min(400, Math.max(160, startW + ev.clientX - startX))
+      setSidebarWidth(next)
+    }
+    function onUp() {
+      dragging.current = false
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [sidebarWidth])
 
   useEffect(() => {
     fetchUserAttributes().then(async attrs => {
@@ -103,7 +125,7 @@ export default function PlatformLayout() {
     <div className="flex h-screen overflow-hidden bg-[#F5F7FA]">
 
       {/* ── Left Sidebar ──────────────────────────────────────────────── */}
-      <div className="w-[220px] flex-shrink-0 bg-white border-r border-slate-200 flex flex-col">
+      <div style={{ width: sidebarWidth }} className="flex-shrink-0 bg-white flex flex-col">
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-[52px] border-b border-slate-100 flex-shrink-0">
@@ -225,6 +247,12 @@ export default function PlatformLayout() {
           </div>
         </div>
       </div>
+
+      {/* ── Drag handle ───────────────────────────────────────────────── */}
+      <div
+        onMouseDown={onDragStart}
+        className="w-1 flex-shrink-0 bg-slate-200 hover:bg-[#7C3AED] transition-colors cursor-col-resize"
+      />
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <EnvContext.Provider value={{ env, setEnv }}>

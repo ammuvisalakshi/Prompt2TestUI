@@ -340,7 +340,7 @@ export default function AgentPage() {
 
           {/* Input */}
           <div className="px-3 pt-3 pb-3 border-t border-slate-200 bg-white">
-            <div className="border border-slate-200 rounded-xl bg-white focus-within:border-[#7C3AED] transition-colors overflow-hidden">
+            <div className="border border-slate-200 rounded-xl bg-white focus-within:border-[#7C3AED] transition-colors">
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
