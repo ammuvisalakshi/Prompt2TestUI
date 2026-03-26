@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Prompt2Test — Lambda deployment pipeline (Prompt2TestLambda → zip → update-function-code)
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: ammuvisalakshi
+  GitHubConnectionArn:
+    Type: String
+    Default: arn:aws:codeconnections:us-east-1:590183962483:connection/b49882b2-aec0-4020-a219-fc3978a8cb89
+  WriterFunctionName:
+    Type: String
+    Default: p2t-testcase-writer
+  ReaderFunctionName:
+    Type: String
+    Default: p2t-testcase-reader
+
+Resources:
+
+  # ── CodeBuild IAM Role ──────────────────────────────────────────────────
+  LambdaBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: prompt2test-lambda-build-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaDeploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:UpdateFunctionCode
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${WriterFunctionName}
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ReaderFunctionName}
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                Resource:
+                  - !Sub arn:aws:s3:::prompt2test-lambda-pipeline-${AWS::AccountId}
+                  - !Sub arn:aws:s3:::prompt2test-lambda-pipeline-${AWS::AccountId}/*
+
+  # ── CodeBuild Project ───────────────────────────────────────────────────
+  LambdaBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: prompt2test-lambda-build
+      ServiceRole: !GetAtt LambdaBuildRole.Arn
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        EnvironmentVariables:
+          - Name: WRITER_FN
+            Value: !Ref WriterFunctionName
+          - Name: READER_FN
+            Value: !Ref ReaderFunctionName
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            build:
+              commands:
+                - cd testcase-writer && zip -r ../writer.zip . && cd ..
+                - cd testcase-reader && zip -r ../reader.zip . && cd ..
+                - aws lambda update-function-code --function-name $WRITER_FN --zip-file fileb://writer.zip
+                - aws lambda update-function-code --function-name $READER_FN --zip-file fileb://reader.zip
+      Artifacts:
+        Type: CODEPIPELINE
+
+  # ── CodePipeline Artifact Bucket ────────────────────────────────────────
+  PipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub prompt2test-lambda-pipeline-${AWS::AccountId}
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 7
+
+  # ── CodePipeline Role ───────────────────────────────────────────────────
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: prompt2test-lambda-pipeline-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PipelinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+                  - codeconnections:UseConnection
+                Resource: !Ref GitHubConnectionArn
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource: !GetAtt LambdaBuildProject.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                Resource:
+                  - !GetAtt PipelineArtifactBucket.Arn
+                  - !Sub ${PipelineArtifactBucket.Arn}/*
+
+  # ── CodePipeline ────────────────────────────────────────────────────────
+  LambdaPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: prompt2test-lambda
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub ${GitHubOwner}/Prompt2TestLambda
+                BranchName: main
+                DetectChanges: true
+              OutputArtifacts:
+                - Name: SourceOutput
+        - Name: Build
+          Actions:
+            - Name: DeployLambda
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref LambdaBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+
+Outputs:
+  PipelineName:
+    Value: prompt2test-lambda
+    Description: Trigger this pipeline after pushing to Prompt2TestLambda repo

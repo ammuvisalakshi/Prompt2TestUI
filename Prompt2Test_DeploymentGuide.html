@@ -186,6 +186,30 @@
   </div>
 
 
+  <!-- ══ BEFORE YOU BEGIN ═══════════════════════════════════════════════ -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-title">Before You Begin — What You Need</div>
+    </div>
+    <div class="step">
+      <div class="step-top">
+        <div class="step-body" style="padding-left:0;">
+          <p>Make sure all 4 GitHub repos exist under your account before starting. The CDK pipelines pull from them by name.</p>
+          <table class="res-table" style="margin-top:10px;">
+            <thead><tr><th>GitHub Repo</th><th>Branch</th><th>What it contains</th><th>Used by</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Prompt2TestUI</strong></td><td>master</td><td>React UI + CDK infrastructure</td><td>Amplify auto-deploy</td></tr>
+              <tr><td><strong>Prompt2TestLambda</strong></td><td>main</td><td>testcase-writer + testcase-reader Python functions</td><td>prompt2test-lambda pipeline</td></tr>
+              <tr><td><strong>Prompt2TestAgent</strong></td><td>main</td><td>AI agent container (Python + Strands)</td><td>prompt2test-agent pipeline → ECR → AgentCore</td></tr>
+              <tr><td><strong>Prompt2TestPlaywrightMCP</strong></td><td>main</td><td>Playwright browser automation + noVNC</td><td>prompt2test-playwright-mcp pipeline → ECR → ECS</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:10px;">You also need a <strong>new AWS account</strong> with admin IAM access and a credit card on file.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══════════════════════════════════════════════════════════════════════
        PHASE 1 — LOCAL MACHINE SETUP
   ════════════════════════════════════════════════════════════════════════ -->
@@ -280,7 +304,7 @@
           </div>
         </div>
         <div class="step-body">
-          <p>Do this in the <strong>new AWS account</strong> (in your browser):</p>
+          <p>Do this in the <strong>new AWS account</strong> in a browser:</p>
           <div class="console-steps">
             <div class="console-step"><div class="cs-num">1</div><p>Log into the new AWS account at <strong>console.aws.amazon.com</strong></p></div>
             <div class="console-step"><div class="cs-num">2</div><p>Click your account name (top-right) → <strong>Security credentials</strong></p></div>
@@ -342,13 +366,14 @@
         <div class="step-header">
           <div class="step-num">6</div>
           <div>
-            <div class="step-title">Clone the Prompt2Test repository</div>
-            <div class="step-subtitle">Gets the project code (including the CDK infrastructure code) onto your machine</div>
+            <div class="step-title">Clone the Prompt2TestUI repository</div>
+            <div class="step-subtitle">Only this repo needs to be on your local machine — the other 3 are pulled from GitHub directly by the AWS pipelines</div>
           </div>
         </div>
         <div class="step-body">
           <pre><span class="cmd">git clone https://github.com/YOUR_GITHUB_USERNAME/Prompt2TestUI</span>
 <span class="cmd">cd Prompt2TestUI</span></pre>
+          <p>You only need <code>Prompt2TestUI</code> locally because it contains the CDK infrastructure code (<code>infrastructure/</code> folder). The other 3 repos — <code>Prompt2TestLambda</code>, <code>Prompt2TestAgent</code>, <code>Prompt2TestPlaywrightMCP</code> — are pulled directly from GitHub by the CodePipelines running inside AWS. You do not need to clone them to your machine.</p>
         </div>
       </div>
       <div class="expect">
@@ -914,7 +939,8 @@ Prompt2TestStack: creating CloudFormation changeset...
     <div class="check-item"><div class="check-box"></div><div class="check-text">Node.js v18+ installed — <code>node --version</code> shows v18+ <span class="tag t-blue">Phase 1</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">CDK installed — <code>cdk --version</code> shows 2.x <span class="tag t-blue">Phase 1</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">AWS CLI configured — <code>aws sts get-caller-identity</code> shows the new account ID <span class="tag t-blue">Phase 1</span></div></div>
-    <div class="check-item"><div class="check-box"></div><div class="check-text">Prompt2TestUI repo cloned locally <span class="tag t-blue">Phase 1</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">All 4 GitHub repos exist: Prompt2TestUI, Prompt2TestLambda, Prompt2TestAgent, Prompt2TestPlaywrightMCP <span class="tag t-blue">Before You Begin</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Prompt2TestUI repo cloned locally (only this one needed on your machine) <span class="tag t-blue">Phase 1</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">Bedrock model access: Claude Sonnet 4.5 + Titan Embed Text v2 → both show "Access granted" <span class="tag t-purple">Phase 2 Manual</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">CDK bootstrapped — terminal shows "bootstrapped" <span class="tag t-blue">Phase 2</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">GitHub CodeStar connection created → status "Available" → ARN saved <span class="tag t-purple">Phase 2 Manual</span></div></div>
