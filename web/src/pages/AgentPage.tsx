@@ -316,8 +316,10 @@ export default function AgentPage() {
         role: 'agent',
         text: `Test ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}`,
       }])
+      popupRef.current?.close(); popupRef.current = null
     } catch (err) {
       setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Error: ${err instanceof Error ? err.message : String(err)}` }])
+      popupRef.current?.close(); popupRef.current = null
       setMode('plan')
     } finally {
       setLoading(false)
