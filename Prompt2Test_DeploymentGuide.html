@@ -170,8 +170,9 @@
             <tr><td>8</td><td>ECR repos: prompt2test-agent + prompt2test-playwright-mcp</td><td>ECR</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>9</td><td>ECS Fargate cluster + task definition (ARM64, 2vCPU/4GB)</td><td>ECS</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>10</td><td>SSM parameters — ECS config for agent</td><td>SSM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
-            <tr><td>11</td><td>CodePipeline: GitHub → ECR (Agent image)</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
-            <tr><td>12</td><td>CodePipeline: GitHub → ECR (Playwright MCP image)</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
+            <tr><td>11</td><td>CodePipeline: Prompt2TestLambda → zip → Lambda update-function-code</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
+            <tr><td>12</td><td>CodePipeline: GitHub → ECR (Agent image)</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
+            <tr><td>13</td><td>CodePipeline: GitHub → ECR (Playwright MCP image)</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>13</td><td>AgentCore IAM role (permissions for the agent)</td><td>IAM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>14</td><td>Cognito auth role (browser SDK permissions)</td><td>IAM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>15</td><td>Amplify app (React UI hosting skeleton)</td><td>Amplify</td><td><span class="auto-tag">CDK Auto</span></td></tr>
@@ -595,8 +596,8 @@ Prompt2TestStack: creating CloudFormation changeset...
     <div class="phase-header">
       <div class="phase-badge bg-blue">Phase 4</div>
       <div>
-        <div class="phase-title">Build &amp; Push Docker Images via CodePipeline</div>
-        <div class="phase-desc">CDK created the pipelines but they haven't run yet — trigger them now</div>
+        <div class="phase-title">Deploy Lambda Code &amp; Build Docker Images via CodePipeline</div>
+        <div class="phase-desc">CDK created all 3 pipelines but they haven't run yet — trigger them now</div>
       </div>
     </div>
 
@@ -606,12 +607,13 @@ Prompt2TestStack: creating CloudFormation changeset...
         <div class="step-header">
           <div class="step-num">12</div>
           <div>
-            <div class="step-title">Trigger both CodePipelines</div>
-            <div class="step-subtitle">Builds the Agent and Playwright MCP Docker images and pushes them to ECR</div>
+            <div class="step-title">Trigger all 3 CodePipelines</div>
+            <div class="step-subtitle">Deploys Lambda functions + builds Agent and Playwright MCP Docker images → ECR</div>
           </div>
         </div>
         <div class="step-body">
-          <pre><span class="cmd">aws codepipeline start-pipeline-execution --name prompt2test-playwright-mcp</span>
+          <pre><span class="cmd">aws codepipeline start-pipeline-execution --name prompt2test-lambda</span>
+<span class="cmd">aws codepipeline start-pipeline-execution --name prompt2test-playwright-mcp</span>
 <span class="cmd">aws codepipeline start-pipeline-execution --name prompt2test-agent</span></pre>
           <p>Then monitor progress in the console:</p>
           <div class="console-steps">
@@ -625,9 +627,10 @@ Prompt2TestStack: creating CloudFormation changeset...
         <div class="expect-header"><div class="expect-icon">✅</div><div class="expect-title">What you should see when complete</div></div>
         <div class="expect-body">
           <p>In the CodePipeline console, both pipelines should show:</p>
-          <div class="terminal"><span class="t-label">prompt2test-playwright-mcp</span>   Source ✅ → Build <span class="t-ok">✅ Succeeded</span>
+          <div class="terminal"><span class="t-label">prompt2test-lambda</span>           Source ✅ → Build <span class="t-ok">✅ Succeeded</span>
+<span class="t-label">prompt2test-playwright-mcp</span>   Source ✅ → Build <span class="t-ok">✅ Succeeded</span>
 <span class="t-label">prompt2test-agent</span>             Source ✅ → Build <span class="t-ok">✅ Succeeded</span></div>
-          <p>You can also verify the images exist in ECR: <strong>AWS Console → ECR → Repositories</strong> — you should see <code>prompt2test-agent</code> and <code>prompt2test-playwright-mcp</code> each with a <code>latest</code> image tag.</p>
+          <p>You can also verify in ECR: <strong>AWS Console → ECR → Repositories</strong> — both <code>prompt2test-agent</code> and <code>prompt2test-playwright-mcp</code> should have a <code>latest</code> image tag. For Lambda, go to <strong>AWS Console → Lambda → p2t-testcase-writer</strong> and check the last modified time.</p>
         </div>
       </div>
       <div class="warn-panel">
@@ -917,7 +920,7 @@ Prompt2TestStack: creating CloudFormation changeset...
     <div class="check-item"><div class="check-box"></div><div class="check-text">GitHub CodeStar connection created → status "Available" → ARN saved <span class="tag t-purple">Phase 2 Manual</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text"><code>cdk.json</code> updated with real githubOwner + githubConnectionArn <span class="tag t-blue">Phase 3</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text"><code>cdk deploy</code> completed — terminal shows ✅ Prompt2TestStack → all outputs saved <span class="tag t-green">Phase 3 Auto</span></div></div>
-    <div class="check-item"><div class="check-box"></div><div class="check-text">Both CodePipelines triggered and show "Succeeded" — ECR has images <span class="tag t-blue">Phase 4</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">All 3 CodePipelines triggered and show "Succeeded" — Lambda deployed, ECR has images <span class="tag t-blue">Phase 4</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">AgentCore runtime created via CLI → agentRuntimeArn saved <span class="tag t-purple">Phase 5 Manual</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">Amplify connected to GitHub master branch + VITE_AGENT_RUNTIME_ARN set + build succeeded → app URL working <span class="tag t-purple">Phase 6 Manual</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">SSM parameters added for your services and environments <span class="tag t-blue">Phase 7</span></div></div>

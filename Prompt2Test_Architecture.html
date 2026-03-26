@@ -736,6 +736,31 @@
   <div class="section-label">⑦ CI/CD Pipelines</div>
   <div class="row">
 
+    <!-- Lambda Pipeline -->
+    <div class="card theme-indigo medium">
+      <div class="card-title"><span class="icon">λ</span> Lambda Pipeline</div>
+      <div class="card-body">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <div class="flow-box" style="background:#eef2ff;">GitHub<br><small>Prompt2TestLambda</small></div>
+          <div class="flow-arrow indigo">──▶</div>
+          <div class="flow-box" style="background:#eef2ff;">CodePipeline<br><small>Source</small></div>
+          <div class="flow-arrow indigo">──▶</div>
+          <div class="flow-box" style="background:#eef2ff; border-color:#4f46e5;">CodeBuild<br><small>zip + update-function-code</small></div>
+        </div>
+        <div class="sub-box" style="margin-top:10px;">
+          <div class="sub-box-title">Build Steps</div>
+          zip testcase-writer/ → writer.zip<br>
+          zip testcase-reader/ → reader.zip<br>
+          <code>aws lambda update-function-code --function-name p2t-testcase-writer</code><br>
+          <code>aws lambda update-function-code --function-name p2t-testcase-reader</code>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Trigger</div>
+          Any push to <b>Prompt2TestLambda / main</b> auto-deploys both Lambda functions
+        </div>
+      </div>
+    </div>
+
     <!-- Playwright MCP Pipeline -->
     <div class="card theme-purple wide">
       <div class="card-title"><span class="icon">🔧</span> Playwright MCP Pipeline</div>
@@ -826,9 +851,10 @@
           <div class="flow-box" style="border-color:#16a34a; color:#15803d;">Live at Amplify URL<br><small>~2 min total</small></div>
         </div>
         <div class="sub-box" style="margin-top:10px;">
-          <div class="sub-box-title">Lambda Deploy (manual — no pipeline)</div>
-          PowerShell: <code>Compress-Archive index.py → zip</code> → <code>aws lambda update-function-code --zip-file</code><br>
-          Functions: <b>p2t-testcase-writer</b> · <b>p2t-testcase-reader</b>
+          <div class="sub-box-title">Lambda Deploy</div>
+          Automated via <b>prompt2test-lambda</b> CodePipeline<br>
+          Source: <b>Prompt2TestLambda</b> repo (separate repo, <code>main</code> branch)<br>
+          Push to that repo → both functions auto-update
         </div>
       </div>
     </div>
@@ -969,13 +995,22 @@
           <div class="sub-box">
             <div class="sub-box-title">Prompt2TestUI</div>
             React + TypeScript + Vite<br>
-            Amplify auto-deploy<br>
+            Amplify auto-deploy on push to <b>master</b><br>
             <div class="tag tag-blue">AgentPage.tsx</div>
             <div class="tag tag-purple">InventoryPage.tsx</div>
             <div class="tag tag-teal">ConfigPage.tsx</div>
             <div class="tag tag-green">MembersPage.tsx</div>
             <div class="tag tag-indigo">lib/lambdaClient.ts</div>
             <div class="tag tag-indigo">lib/agentClient.ts</div>
+            <div class="tag tag-gray">infrastructure/ (CDK)</div>
+          </div>
+          <div class="sub-box">
+            <div class="sub-box-title">Prompt2TestLambda</div>
+            Python 3.12<br>
+            CodePipeline → <b>lambda update-function-code</b><br>
+            <div class="tag tag-indigo">testcase-writer/index.py</div>
+            <div class="tag tag-indigo">testcase-reader/index.py</div>
+            <span style="font-size:12px; color:#64748b;">Saves/reads test cases + run records · Titan Embed v2 · Aurora RDS Data API</span>
           </div>
           <div class="sub-box">
             <div class="sub-box-title">Prompt2TestAgent</div>
@@ -985,13 +1020,12 @@
             <div class="tag tag-orange">ecs_session.py</div>
             <div class="tag tag-orange">main.py</div>
           </div>
-          <div class="sub-box">
+          <div class="sub-box" style="margin-top:8px;">
             <div class="sub-box-title">Prompt2TestPlaywrightMCP</div>
-            Docker + CDK infra<br>
-            CodePipeline → ECR → ECS<br>
+            Docker + Node.js ARM64<br>
+            CodePipeline → ECR → ECS Fargate<br>
             <div class="tag tag-teal">Dockerfile</div>
             <div class="tag tag-teal">entrypoint.sh</div>
-            <div class="tag tag-teal">playwright-mcp-stack.ts</div>
           </div>
         </div>
       </div>
@@ -1029,9 +1063,9 @@
           <div class="tag tag-teal">SSM Parameter Store</div>
           <div class="tag tag-green">ECS Fargate</div>
           <div class="tag tag-green">ECR (×2)</div>
-          <div class="tag tag-green">CodePipeline (×2)</div>
+          <div class="tag tag-green">CodePipeline (×3)</div>
         </div>
-        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">15 AWS services total</div>
+        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">15 AWS services · 4 GitHub repos</div>
       </div>
     </div>
   </div>
