@@ -1021,8 +1021,372 @@
   </div>
 
 
+  <!-- ═══════════════════════════════════════════════════════════════════
+       CONCURRENT USER CAPACITY
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="capacity" style="border-color:#c7d2fe;">
+    <div class="adr-header" style="background:#eef2ff;">
+      <div class="adr-num" style="background:#4338ca;">CAPACITY</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Concurrent User Capacity — Per Component</div>
+        <div class="adr-subtitle">How many users each layer can handle simultaneously · Where the bottlenecks are · How to scale</div>
+      </div>
+      <div class="adr-status" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;">📊 Analysis</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Component-by-component breakdown</div>
+        <table class="alt-table">
+          <thead><tr><th>Component</th><th>Concurrent Capacity</th><th>Bottleneck?</th><th>How to scale beyond limit</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Amplify / CloudFront</strong><br><span style="font-size:11px;color:#64748b;">React UI serving</span></td>
+              <td>Effectively <strong>unlimited</strong> — static files served from CDN edge nodes worldwide</td>
+              <td><span class="tag tag-green">Not a bottleneck</span></td>
+              <td>Already at global CDN scale. No action needed.</td>
+            </tr>
+            <tr>
+              <td><strong>Cognito</strong><br><span style="font-size:11px;color:#64748b;">Auth &amp; session tokens</span></td>
+              <td>Handles <strong>thousands of concurrent logins</strong> — fully managed, AWS-scaled</td>
+              <td><span class="tag tag-green">Not a bottleneck</span></td>
+              <td>No action needed.</td>
+            </tr>
+            <tr>
+              <td><strong>Lambda</strong><br><span style="font-size:11px;color:#64748b;">testcase-writer / reader</span></td>
+              <td><strong>1,000 concurrent invocations</strong> per account (AWS default). Each invocation handles one user request in ~100–500ms.</td>
+              <td><span class="tag tag-green">Not a bottleneck</span></td>
+              <td>Request a concurrency limit increase via AWS Support (up to 10,000+).</td>
+            </tr>
+            <tr>
+              <td><strong>Aurora Serverless v2</strong><br><span style="font-size:11px;color:#64748b;">PostgreSQL + pgvector</span></td>
+              <td>RDS Data API limit: <strong>1,000 requests/second</strong>. Aurora scales ACU automatically up to max (default 16 ACU). Each ACU handles ~50–100 Data API calls/sec.</td>
+              <td><span class="tag tag-yellow">Light bottleneck at scale</span></td>
+              <td>Increase max ACU in CDK stack. Request Data API RPS increase via AWS Support.</td>
+            </tr>
+            <tr style="background:#fef2f2;">
+              <td><strong>Bedrock AgentCore</strong><br><span style="font-size:11px;color:#64748b;">AI agent sessions</span></td>
+              <td><strong>~5–10 concurrent agent sessions</strong> by default (new service, conservative initial quota). Each session is one active user chatting with the agent.</td>
+              <td><span class="tag tag-red">Primary bottleneck for AI</span></td>
+              <td>Request a quota increase in <strong>AWS Console → Service Quotas → Bedrock AgentCore</strong>. Can be raised to 50–100+ with approval.</td>
+            </tr>
+            <tr style="background:#fef2f2;">
+              <td><strong>Bedrock — Claude Sonnet 4.5</strong><br><span style="font-size:11px;color:#64748b;">AI model inference</span></td>
+              <td>Cross-region inference profile default: ~<strong>50 RPM</strong> (requests per minute) and <strong>200,000 TPM</strong> (tokens per minute). A typical agent turn uses ~2,000–4,000 tokens. That's ~50–100 turns/minute across all users.</td>
+              <td><span class="tag tag-red">Primary bottleneck for AI</span></td>
+              <td>Request a Bedrock quota increase. Enterprise tiers support much higher TPM. Use cross-region inference (already configured) to spread load.</td>
+            </tr>
+            <tr>
+              <td><strong>ECS Fargate</strong><br><span style="font-size:11px;color:#64748b;">Playwright test runs</span></td>
+              <td>Default Fargate limit: <strong>1,000 concurrent tasks</strong> per account. Practically, <strong>cost</strong> is the real cap — each concurrent test run is a live 2vCPU/4GB container costing ~$0.008/min.</td>
+              <td><span class="tag tag-yellow">Cost-limited in practice</span></td>
+              <td>Add a max-concurrency guard in the UI (e.g. limit 10 simultaneous runs). Fargate limits can be raised via AWS Support.</td>
+            </tr>
+            <tr>
+              <td><strong>Titan Embed Text v2</strong><br><span style="font-size:11px;color:#64748b;">Vector embeddings</span></td>
+              <td>Default: <strong>100,000 TPM</strong>. Embeddings are generated only on test case save and on semantic search — low frequency.</td>
+              <td><span class="tag tag-green">Not a bottleneck</span></td>
+              <td>Request a TPM increase if embedding frequency grows.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="adr-section" style="margin-top:20px;">
+        <div class="adr-section-title col-purple">Practical concurrent user summary</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:32px; font-weight:800; color:#166534;">50–100</div>
+            <div style="font-size:13px; font-weight:700; color:#166534; margin:4px 0;">Concurrent users browsing</div>
+            <div style="font-size:12px; color:#14532d;">Viewing inventory, reading test cases, checking run history — no AI, no test runs</div>
+          </div>
+          <div style="background:#fef9c3; border:1px solid #fde047; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:32px; font-weight:800; color:#854d0e;">5–10</div>
+            <div style="font-size:13px; font-weight:700; color:#854d0e; margin:4px 0;">Concurrent AI sessions</div>
+            <div style="font-size:12px; color:#713f12;">Users actively chatting with the agent — limited by AgentCore quota and Claude TPM. Raiseable via quota increase.</div>
+          </div>
+          <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:32px; font-weight:800; color:#9a3412;">10–20</div>
+            <div style="font-size:13px; font-weight:700; color:#9a3412; margin:4px 0;">Concurrent test runs</div>
+            <div style="font-size:12px; color:#7c2d12;">Practical cap is cost, not infrastructure. 20 simultaneous Fargate tasks = ~$0.16/min.</div>
+          </div>
+        </div>
+        <div class="tradeoff-box" style="margin-top:14px;">
+          <ul>
+            <li><strong>For a team of up to 20 people</strong> — the platform works as-is with no quota changes. 20 people rarely all chat with the AI simultaneously.</li>
+            <li><strong>For a team of 20–100 people</strong> — request AgentCore and Claude quota increases. Everything else scales automatically.</li>
+            <li><strong>For 100+ people</strong> — consider Aurora always-on (disable auto-pause), increase Lambda concurrency, and negotiate enterprise Bedrock quotas.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       COST MODEL
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="cost" style="border-color:#c7d2fe;">
+    <div class="adr-header" style="background:#eef2ff;">
+      <div class="adr-num" style="background:#4338ca;">COST</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Monthly Cost Model — Four Usage Tiers</div>
+        <div class="adr-subtitle">Estimated AWS costs at different usage levels · Dominant cost drivers · What to watch</div>
+      </div>
+      <div class="adr-status" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;">💰 Estimates</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Pricing assumptions (us-east-1, 2026)</div>
+        <div class="context-box" style="font-size:13px; line-height:1.9;">
+          Aurora Serverless v2: <strong>$0.12/ACU-hr</strong> &nbsp;·&nbsp;
+          Fargate: <strong>$0.04048/vCPU-hr + $0.004445/GB-hr</strong> &nbsp;·&nbsp;
+          Claude Sonnet 4.5: <strong>$3/M input tokens, $15/M output tokens</strong> &nbsp;·&nbsp;
+          Titan Embed v2: <strong>$0.02/M tokens</strong> &nbsp;·&nbsp;
+          Lambda: <strong>$0.20/M requests + $0.0000166667/GB-s</strong> &nbsp;·&nbsp;
+          Secrets Manager: <strong>$0.40/secret/month</strong> &nbsp;·&nbsp;
+          ECR: <strong>$0.10/GB/month</strong> &nbsp;·&nbsp;
+          AgentCore: <em>new service, estimated ~$0.005–0.02/session</em>
+        </div>
+      </div>
+
+      <!-- TIER: IDLE -->
+      <div class="adr-section" style="margin-top:20px;">
+        <div class="adr-section-title col-gray">Tier 0 — Idle (deployed but nobody using it)</div>
+        <table class="alt-table">
+          <thead><tr><th>Service</th><th>Usage</th><th>Monthly Cost</th></tr></thead>
+          <tbody>
+            <tr><td>Aurora Serverless v2</td><td>Auto-paused — 0 ACU hours</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Lambda</td><td>0 invocations</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>ECS Fargate</td><td>0 tasks running</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Bedrock (Claude + Titan)</td><td>0 calls</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>AgentCore</td><td>0 sessions</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Amplify Hosting</td><td>Free tier (1,000 build min/month)</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Cognito</td><td>Free tier (50,000 MAU)</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Secrets Manager</td><td>1 secret</td><td>$0.40</td></tr>
+            <tr><td>ECR (2 repos, ~4GB total)</td><td>Storage only</td><td>$0.40</td></tr>
+            <tr><td>S3 (3 buckets, minimal data)</td><td>Storage only</td><td>$0.10</td></tr>
+            <tr><td>CloudWatch Logs</td><td>Minimal log retention</td><td>$0.10</td></tr>
+            <tr><td>SSM, CloudFormation, IAM</td><td>Standard params free</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr style="background:#f0fdf4; font-weight:700;">
+              <td colspan="2"><strong>Total — Idle</strong></td>
+              <td style="color:#166534; font-size:15px;">~$1/month</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TIER: LIGHT -->
+      <div class="adr-section" style="margin-top:24px;">
+        <div class="adr-section-title col-green">Tier 1 — Light (5 users · 10 AI sessions/day · 5 test runs/day)</div>
+        <table class="alt-table">
+          <thead><tr><th>Service</th><th>Usage</th><th>Monthly Cost</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Aurora Serverless v2</td>
+              <td>Resumes ~15×/day. Active ~30 min/day → ~15 hrs/month at 0.5 ACU</td>
+              <td>$0.90</td>
+            </tr>
+            <tr>
+              <td>Lambda</td>
+              <td>~200 invocations/day × 30 days, avg 300ms, 512MB</td>
+              <td>$0.05</td>
+            </tr>
+            <tr>
+              <td><strong>Bedrock — Claude Sonnet 4.5</strong></td>
+              <td>10 sessions × 6 turns × 1,500 input + 500 output tokens × 30 days = 2.7M input / 0.9M output tokens</td>
+              <td><strong>$8.10 + $13.50 = $21.60</strong></td>
+            </tr>
+            <tr>
+              <td>Bedrock — Titan Embed v2</td>
+              <td>~50 embeddings/day × 300 tokens × 30 days = 450K tokens</td>
+              <td>$0.01</td>
+            </tr>
+            <tr>
+              <td>AgentCore</td>
+              <td>300 sessions/month (estimated)</td>
+              <td>~$1.50</td>
+            </tr>
+            <tr>
+              <td>ECS Fargate</td>
+              <td>5 runs/day × 5 min × (2vCPU + 4GB) × 30 days</td>
+              <td>$1.25</td>
+            </tr>
+            <tr><td>Amplify, Cognito</td><td>Free tier</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Secrets Manager, ECR, S3, CloudWatch</td><td>Same as idle</td><td>$1.00</td></tr>
+            <tr style="background:#f0fdf4; font-weight:700;">
+              <td colspan="2"><strong>Total — Light</strong></td>
+              <td style="color:#166534; font-size:15px;">~$26/month</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-top:8px; font-size:13px; color:#14532d;">
+          💡 <strong>Dominant cost: Bedrock Claude (~83% of total).</strong> AI inference is the primary cost driver even at light usage. The rest of the infrastructure is nearly free at this scale.
+        </div>
+      </div>
+
+      <!-- TIER: MEDIUM -->
+      <div class="adr-section" style="margin-top:24px;">
+        <div class="adr-section-title" style="color:#9a3412; border-color:#fed7aa;">Tier 2 — Medium (20 users · 50 AI sessions/day · 20 test runs/day)</div>
+        <table class="alt-table">
+          <thead><tr><th>Service</th><th>Usage</th><th>Monthly Cost</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Aurora Serverless v2</td>
+              <td>Active ~3 hrs/day → ~90 hrs/month, scaling to 1–2 ACU under load</td>
+              <td>$16.20</td>
+            </tr>
+            <tr>
+              <td>Lambda</td>
+              <td>~1,000 invocations/day × 30 days</td>
+              <td>$0.20</td>
+            </tr>
+            <tr>
+              <td><strong>Bedrock — Claude Sonnet 4.5</strong></td>
+              <td>50 sessions × 8 turns × 2,000 input + 800 output tokens × 30 days = 24M input / 9.6M output tokens</td>
+              <td><strong>$72 + $144 = $216</strong></td>
+            </tr>
+            <tr>
+              <td>Bedrock — Titan Embed v2</td>
+              <td>~200 embeddings/day × 300 tokens × 30 days = 1.8M tokens</td>
+              <td>$0.04</td>
+            </tr>
+            <tr>
+              <td>AgentCore</td>
+              <td>1,500 sessions/month</td>
+              <td>~$7.50</td>
+            </tr>
+            <tr>
+              <td>ECS Fargate</td>
+              <td>20 runs/day × 5 min × 30 days</td>
+              <td>$5.00</td>
+            </tr>
+            <tr>
+              <td>CodePipeline (3 pipelines)</td>
+              <td>~5 executions/pipeline/month</td>
+              <td>$1.00</td>
+            </tr>
+            <tr><td>Amplify, Cognito</td><td>Free tier</td><td class="free" style="color:#166534; font-weight:600;">$0.00</td></tr>
+            <tr><td>Secrets Manager, ECR, S3, CloudWatch</td><td>Slightly more log volume</td><td>$2.00</td></tr>
+            <tr style="background:#fff7ed; font-weight:700;">
+              <td colspan="2"><strong>Total — Medium</strong></td>
+              <td style="color:#9a3412; font-size:15px;">~$248/month</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:10px 14px; margin-top:8px; font-size:13px; color:#92400e;">
+          ⚠️ <strong>Dominant cost: Bedrock Claude (~87% of total).</strong> Aurora cost grows significantly as it stays active longer. At this tier, consider disabling Aurora auto-pause and setting a minimum ACU to avoid resume latency.
+        </div>
+      </div>
+
+      <!-- TIER: HEAVY -->
+      <div class="adr-section" style="margin-top:24px;">
+        <div class="adr-section-title col-red">Tier 3 — Heavy (50+ users · 200 AI sessions/day · 50 test runs/day)</div>
+        <table class="alt-table">
+          <thead><tr><th>Service</th><th>Usage</th><th>Monthly Cost</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Aurora Serverless v2</td>
+              <td>Mostly active — disable auto-pause. Average 2–4 ACU → ~$175–350/month</td>
+              <td>$262</td>
+            </tr>
+            <tr>
+              <td>Lambda</td>
+              <td>~5,000 invocations/day × 30 days</td>
+              <td>$0.80</td>
+            </tr>
+            <tr>
+              <td><strong>Bedrock — Claude Sonnet 4.5</strong></td>
+              <td>200 sessions × 8 turns × 2,500 input + 1,000 output tokens × 30 days = 120M input / 48M output tokens</td>
+              <td><strong>$360 + $720 = $1,080</strong></td>
+            </tr>
+            <tr>
+              <td>Bedrock — Titan Embed v2</td>
+              <td>~1,000 embeddings/day × 30 days = 9M tokens</td>
+              <td>$0.18</td>
+            </tr>
+            <tr>
+              <td>AgentCore</td>
+              <td>6,000 sessions/month</td>
+              <td>~$30</td>
+            </tr>
+            <tr>
+              <td>ECS Fargate</td>
+              <td>50 runs/day × 5 min × 30 days</td>
+              <td>$12.50</td>
+            </tr>
+            <tr>
+              <td>CloudWatch Logs + Metrics</td>
+              <td>Higher log volume</td>
+              <td>$5.00</td>
+            </tr>
+            <tr><td>Secrets Manager, ECR, S3, CodePipeline</td><td>Same scale</td><td>$3.00</td></tr>
+            <tr style="background:#fee2e2; font-weight:700;">
+              <td colspan="2"><strong>Total — Heavy</strong></td>
+              <td style="color:#b91c1c; font-size:15px;">~$1,393/month</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="background:#fee2e2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; margin-top:8px; font-size:13px; color:#991b1b;">
+          🔴 <strong>Dominant cost: Bedrock Claude (~78% of total).</strong> At this scale, negotiate an enterprise Bedrock agreement with AWS for volume pricing. Also consider prompt caching (Bedrock prompt caching can reduce token costs by 50–90% for repeated context). Aurora becomes the second-largest cost — should be right-sized with a fixed ACU minimum.
+        </div>
+      </div>
+
+      <!-- Summary bar -->
+      <div class="adr-section" style="margin-top:24px;">
+        <div class="adr-section-title col-gray">Summary — Cost at a glance</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px;">
+          <div style="background:#0f172a; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Idle</div>
+            <div style="font-size:26px; font-weight:800; color:#6ee7b7;">~$1</div>
+            <div style="font-size:11px; color:#64748b; margin-top:4px;">per month</div>
+            <div style="font-size:11px; color:#475569; margin-top:8px;">Deployed, nobody using it</div>
+          </div>
+          <div style="background:#0f172a; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Light · 5 users</div>
+            <div style="font-size:26px; font-weight:800; color:#86efac;">~$26</div>
+            <div style="font-size:11px; color:#64748b; margin-top:4px;">per month</div>
+            <div style="font-size:11px; color:#475569; margin-top:8px;">10 AI sessions/day · 5 runs/day</div>
+          </div>
+          <div style="background:#0f172a; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Medium · 20 users</div>
+            <div style="font-size:26px; font-weight:800; color:#fbbf24;">~$248</div>
+            <div style="font-size:11px; color:#64748b; margin-top:4px;">per month</div>
+            <div style="font-size:11px; color:#475569; margin-top:8px;">50 AI sessions/day · 20 runs/day</div>
+          </div>
+          <div style="background:#0f172a; border-radius:10px; padding:16px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Heavy · 50+ users</div>
+            <div style="font-size:26px; font-weight:800; color:#fca5a5;">~$1,393</div>
+            <div style="font-size:11px; color:#64748b; margin-top:4px;">per month</div>
+            <div style="font-size:11px; color:#475569; margin-top:8px;">200 AI sessions/day · 50 runs/day</div>
+          </div>
+        </div>
+
+        <div class="why-box" style="margin-top:14px;">
+          <ul>
+            <li><strong>Bedrock Claude is always the dominant cost</strong> — at every tier above idle, AI inference (Claude Sonnet 4.5) makes up 75–87% of the total bill. Optimising prompt length and using prompt caching is the highest-leverage cost reduction.</li>
+            <li><strong>Aurora scales from $0 to ~$262/month</strong> — auto-pause keeps it at $0 when idle. At heavy usage it becomes the second-largest cost. The transition point is around 20 users.</li>
+            <li><strong>ECS Fargate cost is linear and predictable</strong> — each test run costs approximately $0.008–0.01 regardless of scale. Easy to budget per-run.</li>
+            <li><strong>Everything else is nearly free</strong> — Lambda, Cognito, Amplify, SSM, S3, CodePipeline combined are under $5/month even at heavy usage. The serverless architecture achieves its goal.</li>
+          </ul>
+        </div>
+
+        <div class="tradeoff-box" style="margin-top:12px;">
+          <ul>
+            <li><strong>These are estimates</strong> — actual costs vary based on prompt length, conversation depth, test complexity, and AWS pricing changes. Monitor with <strong>AWS Cost Explorer → Service breakdown</strong> monthly.</li>
+            <li><strong>AgentCore pricing</strong> is based on estimates as the service is new and pricing details may evolve. Check the <strong>AWS Pricing Calculator</strong> for the latest AgentCore rates.</li>
+            <li><strong>Set a billing alarm</strong> — AWS Console → Billing → Budgets → create an alert at your expected monthly budget. Bedrock costs can grow quickly if AI session usage spikes.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <div class="footer">
-    Prompt2Test Architecture Decision Records · AWS us-east-1 · Updated 2026-03-25
+    Prompt2Test Architecture Decision Records · AWS us-east-1 · Updated 2026-03-26
   </div>
 
 </div>
