@@ -37,7 +37,9 @@ export type TestCase = {
   id: string
   env: string
   service: string
+  title: string
   description: string
+  scenario?: string
   tags: string[]
   createdBy: string
   createdAt: string
@@ -58,7 +60,10 @@ export type RunRecord = {
 }
 
 export async function saveTestCase(params: {
+  id?: string
+  title?: string
   description: string
+  scenario?: string
   env: string
   service?: string
   steps?: object[]

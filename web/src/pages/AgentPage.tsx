@@ -74,6 +74,11 @@ export default function AgentPage() {
   const [availableServices, setAvailableServices] = useState<string[]>([])
   const [servicesLoading, setServicesLoading] = useState(false)
   const [autoRunReady, setAutoRunReady] = useState(false)
+  // Plan Scenario mode state
+  const [planScenario, setPlanScenario] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [saveTitleInput, setSaveTitleInput] = useState('')
+  const [saveTcIdInput, setSaveTcIdInput] = useState('')
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -89,6 +94,12 @@ export default function AgentPage() {
       setUserName(name)
     }).catch(() => {})
   }, [])
+
+  // Pre-load service list whenever env changes
+  useEffect(() => {
+    setServicesLoading(true)
+    loadServiceNames(env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
+  }, [env])
 
   // Pre-load test case from inventory "Run" button
   useEffect(() => {
@@ -158,142 +169,105 @@ export default function AgentPage() {
 
     try {
       if (mode === 'plan') {
-        // If a plan exists and user is confirming execution — run it
-        if (plan && /^(yes|run|execute|go|ok|sure|start|do it)/i.test(text)) {
-          setMode('auto')
-
-          // Save test case to Aurora (fire-and-forget, don't block execution)
-          saveTestCase({
-            description: plan.summary ?? messages.find(m => m.role === 'user')?.text ?? text,
-            env,
-            steps: plan.steps ?? [],
-            createdBy: userName,
-          }).then(id => { savedTcId.current = id }).catch(() => {})
-
-          // Open popup immediately within user gesture — shows progress bar while task boots
-          const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
-          const loadingUrl = URL.createObjectURL(loadingBlob)
-          const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
-
-          setMessages(prev => [...prev, { role: 'agent', text: 'Launching dedicated browser… (~60s to start Fargate task)' }])
-
-          // ── Step 1: RunTask + wait for RUNNING (~60s) ─────────────────────
-          const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
-          const resolvedSession = JSON.parse(sessionRaw)
-          if (resolvedSession.error) throw new Error(resolvedSession.error as string)
-
-          URL.revokeObjectURL(loadingUrl)
-          setNovncUrl(resolvedSession.novnc_url as string)
-          if (popup) {
-            popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`
-            popupRef.current = popup
-          }
+        // Plan Scenario mode — enrich scenario with real SSM config, conversational refinement
+        if (!tcService) {
           setMessages(prev => [
-            ...prev.slice(0, -1),
-            { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' },
+            ...prev,
+            { role: 'user', text },
+            { role: 'agent', text: 'Please select a service from the toolbar below before enriching your scenario.' },
           ])
-
-          // ── Step 2: run the test against the live session ─────────────────
-          const raw = await callAgent({
-            inputText: text,
-            mode: 'automate',
-            plan,
-            sessionId,
-            task_arn: resolvedSession.task_arn,
-            cluster: resolvedSession.cluster,
-            mcp_endpoint: resolvedSession.mcp_endpoint,
-          }, sessionId)
-
-          const result = JSON.parse(raw)
-          if (result.error) throw new Error(result.error as string)
-          const passed = result.result?.passed ?? result.passed
-          const summary = result.result?.summary ?? result.summary ?? ''
-          saveRun({ description: text, passed, timestamp: new Date().toISOString() })
-          if (savedTcId.current) saveRunRecord({ testCaseId: savedTcId.current, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
-          setMessages(prev => [
-            ...prev.slice(0, -1),
-            { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` },
-          ])
-          window.open('', 'novnc-popup')?.close()
-          popupRef.current = null
-        } else {
-          // Generate / refine the plan
-          setMessages(prev => [...prev, { role: 'agent', text: 'Generating test plan…' }])
-          const raw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history, env }, sessionId)
-          const result = JSON.parse(raw)
-
-          // Surface agent-side errors immediately
-          if (result.error) {
-            setMessages(prev => [
-              ...prev.slice(0, -1),
-              { role: 'agent', text: `Agent error: ${result.error}` },
-            ])
-            return
-          }
-
-          const agentPlan: Plan = result.plan ?? result
-
-          if (!agentPlan.steps || agentPlan.steps.length === 0) {
-            // Conversational response (clarifying question) — show as chat
-            const conversationalText = agentPlan.raw?.trim()
-              || (agentPlan.summary !== 'Plan generated' ? agentPlan.summary : '')
-              || 'What would you like to test? Describe the feature, the URL, and what the expected result should be.'
-            setMessages(prev => [
-              ...prev.slice(0, -1),
-              { role: 'agent', text: conversationalText },
-            ])
-            return
-          }
-
-          setPlan(agentPlan)
-          setTcSaved('idle')
-          setTcService('')
-          setAvailableServices([])
-          setServicesLoading(true)
-          loadServiceNames(env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
-
-          // Show confirmationMessage (what was agreed) + plan-ready prompt as separate messages
-          const confirmMsg = agentPlan.confirmationMessage
-          const planReadyMsg = `Plan ready! ${agentPlan.summary ?? ''}\n\n${agentPlan.steps?.length ?? 0} steps · ${agentPlan.mcpCalls ?? 0} MCP calls\n\nWould you like me to execute this test? Reply **yes** to run it, or keep chatting to refine the plan.`
-          setMessages(prev => [
-            ...prev.slice(0, -1),
-            ...(confirmMsg ? [{ role: 'agent' as const, text: confirmMsg }] : []),
-            { role: 'agent', text: planReadyMsg },
-          ])
-        }
-      } else {
-        if (!plan) {
-          setMessages(prev => [...prev, { role: 'agent', text: 'Please generate a plan first in Plan mode.' }])
+          setInput('')
           return
         }
-        const loadingBlob2 = new Blob([loadingHtml], { type: 'text/html' })
-        const loadingUrl2 = URL.createObjectURL(loadingBlob2)
-        const popup2 = window.open(loadingUrl2, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
-        setMessages(prev => [...prev, { role: 'agent', text: 'Starting browser session… opening live view shortly' }])
-        const sessionRaw2 = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
-        const sessionResult2 = JSON.parse(sessionRaw2)
-        if (sessionResult2.error) throw new Error(sessionResult2.error as string)
-        const novncUrl2 = sessionResult2.novnc_url as string
-        setNovncUrl(novncUrl2)
-        URL.revokeObjectURL(loadingUrl2)
-        if (popup2) {
-          popup2.location.href = `${novncUrl2}?autoconnect=true&resize=scale`
-          popupRef.current = popup2
-        }
-        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
+
+        setMessages(prev => [...prev, { role: 'user', text }, { role: 'agent', text: 'Enriching scenario…' }])
+        setInput('')
+
         const raw = await callAgent({
-          inputText: text, mode: 'automate', plan, sessionId,
-          task_arn: sessionResult2.task_arn, cluster: sessionResult2.cluster, mcp_endpoint: sessionResult2.mcp_endpoint,
+          inputText: text,
+          mode: 'plan_scenario',
+          service: tcService,
+          env,
+          sessionId,
+          conversationHistory: history,
         }, sessionId)
+
         const result = JSON.parse(raw)
+        if (result.error) {
+          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Error: ${result.error}` }])
+          return
+        }
+
+        const responseText: string = result.text ?? ''
+
+        // Detect final generation (SUMMARY: on first line)
+        if (responseText.trimStart().startsWith('SUMMARY:')) {
+          const lines = responseText.trim().split('\n')
+          const summary = lines[0].replace(/^SUMMARY:\s*/i, '').trim()
+          const scenario = lines.slice(1).join('\n').trim()
+          setPlanScenario(scenario)
+          setSaveTitleInput(summary)
+          setSaveTcIdInput('TC-' + Date.now().toString(36).toUpperCase().slice(-6))
+          setShowSaveDialog(true)
+          setTcSaved('idle')
+          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Final test case ready — fill in the details on the right to save it.' }])
+        } else {
+          setPlanScenario(responseText)
+          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: responseText }])
+        }
+      } else {
+        // Automate mode — generate plan silently then execute immediately
+        setMessages(prev => [...prev, { role: 'user', text }, { role: 'agent', text: 'Generating test plan…' }])
+        setInput('')
+
+        const planRaw = await callAgent({ inputText: text, mode: 'plan', sessionId, conversationHistory: history, env }, sessionId)
+        const planResult = JSON.parse(planRaw)
+        if (planResult.error) throw new Error(planResult.error as string)
+        const autoPlan: Plan = planResult.plan ?? planResult
+
+        if (!autoPlan.steps?.length) {
+          // Agent needs clarification before it can generate steps
+          const msg = autoPlan.raw?.trim() || (autoPlan.summary !== 'Plan generated' ? autoPlan.summary : '') || 'What would you like to test?'
+          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: msg ?? '' }])
+          return
+        }
+
+        setPlan(autoPlan)
+
+        // Open loading popup within user-gesture context
+        const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+        const loadingUrl = URL.createObjectURL(loadingBlob)
+        const popup = window.open(loadingUrl, 'novnc-popup', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Launching dedicated browser… (~60s to start Fargate task)' }])
+
+        const sessionRaw = await callAgent({ inputText: text, mode: 'start_session', sessionId }, sessionId)
+        const resolvedSession = JSON.parse(sessionRaw)
+        if (resolvedSession.error) throw new Error(resolvedSession.error as string)
+
+        URL.revokeObjectURL(loadingUrl)
+        setNovncUrl(resolvedSession.novnc_url as string)
+        if (popup) { popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`; popupRef.current = popup }
+        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
+
+        const raw = await callAgent({
+          inputText: text, mode: 'automate', plan: autoPlan, sessionId,
+          task_arn: resolvedSession.task_arn, cluster: resolvedSession.cluster, mcp_endpoint: resolvedSession.mcp_endpoint,
+        }, sessionId)
+
+        const result = JSON.parse(raw)
+        if (result.error) throw new Error(result.error as string)
         const passed = result.result?.passed ?? result.passed
-        const summary2 = result.result?.summary ?? result.summary ?? ''
+        const summary = result.result?.summary ?? result.summary ?? ''
         saveRun({ description: text, passed, timestamp: new Date().toISOString() })
-        if (savedTcId.current) saveRunRecord({ testCaseId: savedTcId.current, env, result: passed ? 'PASS' : 'FAIL', summary: summary2, runBy: userName }).catch(() => {})
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary2}` },
-        ])
+
+        // Save test case + run record
+        saveTestCase({ description: autoPlan.summary ?? text, env, service: tcService || undefined, steps: autoPlan.steps ?? [], createdBy: userName })
+          .then(id => {
+            savedTcId.current = id
+            saveRunRecord({ testCaseId: id, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
+          }).catch(() => {})
+
+        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Execution ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}` }])
         window.open('', 'novnc-popup')?.close()
         popupRef.current = null
       }
@@ -353,7 +327,7 @@ export default function AgentPage() {
 
               {/* Bottom toolbar — Copilot style */}
               <div className="flex items-center justify-between px-3 pb-2 pt-1">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   {/* Mode dropdown */}
                   <div className="relative">
                     <button
@@ -397,6 +371,22 @@ export default function AgentPage() {
                       </>
                     )}
                   </div>
+
+                  {/* Service selector — Plan mode only */}
+                  {mode === 'plan' && (
+                    <div className="relative">
+                      <select
+                        value={tcService}
+                        onChange={e => setTcService(e.target.value)}
+                        disabled={loading || servicesLoading}
+                        className="appearance-none pl-2.5 pr-6 py-1 rounded-md text-[13px] font-medium text-slate-600 bg-slate-100 border border-transparent hover:border-slate-200 outline-none cursor-pointer transition-colors disabled:opacity-50"
+                      >
+                        <option value="">Service…</option>
+                        {availableServices.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <svg viewBox="0 0 24 24" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 stroke-slate-400 fill-none stroke-2 pointer-events-none"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                  )}
                 </div>
 
                 {/* Send button */}
@@ -477,10 +467,114 @@ export default function AgentPage() {
             </>
           ) : (
             <>
-              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
-                <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Execution Plan</div>
+              <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
+                <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {mode === 'plan' ? 'Scenario' : 'Execution Plan'}
+                </div>
+                {mode === 'plan' && planScenario && !showSaveDialog && (
+                  <button
+                    onClick={async () => {
+                      if (loading) return
+                      setLoading(true)
+                      try {
+                        const h = messages.map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`).join('\n')
+                        const raw = await callAgent({ inputText: 'generate_final', mode: 'plan_scenario', service: tcService, env, sessionId, conversationHistory: h }, sessionId)
+                        const result = JSON.parse(raw)
+                        const responseText: string = result.text ?? ''
+                        const lines = responseText.trim().split('\n')
+                        const summary = lines[0].replace(/^SUMMARY:\s*/i, '').trim()
+                        const scenario = lines.slice(1).join('\n').trim()
+                        setPlanScenario(scenario || responseText)
+                        setSaveTitleInput(summary || '')
+                        setSaveTcIdInput('TC-' + Date.now().toString(36).toUpperCase().slice(-6))
+                        setShowSaveDialog(true)
+                        setTcSaved('idle')
+                        setMessages(prev => [...prev, { role: 'agent', text: 'Final test case ready — fill in the details on the right to save it.' }])
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE] hover:bg-[#DDD6FE] transition-colors cursor-pointer disabled:opacity-40"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                    Generate Final
+                  </button>
+                )}
               </div>
-              {plan ? (
+
+              {/* Plan Scenario panel */}
+              {mode === 'plan' ? (
+                <>
+                  {planScenario ? (
+                    <div className="flex-1 overflow-y-auto p-4">
+                      <pre className="text-[13px] text-slate-700 whitespace-pre-wrap leading-relaxed font-mono bg-white border border-slate-200 rounded-xl p-4">{planScenario}</pre>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-[14px] text-slate-400 px-6 text-center">
+                      Paste a scenario in the chat → select a service → the enriched scenario will appear here.
+                    </div>
+                  )}
+
+                  {/* Save dialog */}
+                  {showSaveDialog && (
+                    <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0 space-y-2">
+                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Save Test Case</div>
+                      <input
+                        value={saveTitleInput}
+                        onChange={e => setSaveTitleInput(e.target.value)}
+                        placeholder="Title"
+                        disabled={tcSaved === 'saved'}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] transition-colors disabled:opacity-50 disabled:bg-slate-50"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          value={saveTcIdInput}
+                          onChange={e => setSaveTcIdInput(e.target.value)}
+                          placeholder="Test Case ID (e.g. TC-001)"
+                          disabled={tcSaved === 'saved'}
+                          className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] font-mono transition-colors disabled:opacity-50 disabled:bg-slate-50"
+                        />
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (tcSaved !== 'idle' || !saveTitleInput.trim()) return
+                          setTcSaved('saving')
+                          try {
+                            const id = await saveTestCase({
+                              id: saveTcIdInput.trim() || undefined,
+                              title: saveTitleInput.trim(),
+                              description: saveTitleInput.trim(),
+                              scenario: planScenario,
+                              env,
+                              service: tcService || undefined,
+                              steps: [],
+                              createdBy: userName,
+                            })
+                            savedTcId.current = id
+                            setTcSaved('saved')
+                          } catch { setTcSaved('idle') }
+                        }}
+                        disabled={tcSaved !== 'idle' || !saveTitleInput.trim()}
+                        className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors cursor-pointer ${
+                          tcSaved === 'saved'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-[#EDE9FE] text-[#7C3AED] border-[#DDD6FE] hover:bg-[#DDD6FE] disabled:opacity-40 disabled:cursor-not-allowed'
+                        }`}
+                      >
+                        {tcSaved === 'saving' ? (
+                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                        ) : tcSaved === 'saved' ? (
+                          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polyline points="20 6 9 17 4 12"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        )}
+                        {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved to Test Inventory' : 'Save Test Case'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : plan ? (
                 <>
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {plan.summary && (
