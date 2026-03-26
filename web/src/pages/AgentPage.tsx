@@ -5,7 +5,7 @@ import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
-import { saveTestCase, saveRunRecord, getTestCase, updateTestCasePlanSteps } from '../lib/lambdaClient'
+import { saveTestCase, saveRunRecord, getTestCase, updateTestCasePlanSteps, updateTestCaseSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -105,6 +105,10 @@ export default function AgentPage() {
   const [planSteps, setPlanSteps] = useState<StepItem[]>([])
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
+  const [automatePhase, setAutomatePhase] = useState<'idle' | 'starting' | 'running' | 'done' | 'error'>('idle')
+  const [automateResult, setAutomateResult] = useState<{ passed: boolean; summary: string } | null>(null)
+  const [automateError, setAutomateError] = useState<string | null>(null)
+  const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const chatRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -178,6 +182,66 @@ export default function AgentPage() {
 <div class="step"><div class="dot active"></div>Pulling container image &amp; starting Chromium</div>
 <div class="step"><div class="dot"></div>noVNC ready — connecting live view</div>
 </div></body></html>`
+
+  async function automateTest() {
+    if (!savedTcId.current || automatePhase === 'starting' || automatePhase === 'running') return
+    setAutomatePhase('starting')
+    setAutomateResult(null)
+    setAutomateError(null)
+    setStepsSaveState('idle')
+
+    const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
+    const loadingUrl = URL.createObjectURL(loadingBlob)
+    const popup = window.open(loadingUrl, 'p2t-browser', 'width=1280,height=820,toolbar=0,menubar=0,location=0')
+    popupRef.current = popup
+
+    const label = saveTitleInput || 'Test case'
+    const derivedPlan = {
+      summary: label,
+      steps: planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected })),
+      mcpCalls: planSteps.length,
+    }
+
+    try {
+      const sessionRaw = await callAgent({ inputText: label, mode: 'start_session', sessionId }, sessionId)
+      const session = JSON.parse(sessionRaw)
+      if (session.error) throw new Error(session.error as string)
+
+      URL.revokeObjectURL(loadingUrl)
+      if (popup) popup.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+      setAutomatePhase('running')
+
+      const raw = await callAgent({
+        inputText: label,
+        mode: 'automate',
+        plan: derivedPlan,
+        sessionId,
+        task_arn: session.task_arn,
+        cluster: session.cluster,
+        mcp_endpoint: session.mcp_endpoint,
+      }, sessionId)
+
+      const result = JSON.parse(raw)
+      if (result.error) throw new Error(result.error as string)
+
+      const passed = result.result?.passed ?? result.passed
+      const summary = result.result?.summary ?? result.summary ?? ''
+
+      saveRunRecord({ testCaseId: savedTcId.current!, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
+      saveRun({ description: label, passed, timestamp: new Date().toISOString() })
+
+      setAutomateResult({ passed, summary })
+      setAutomatePhase('done')
+      popupRef.current?.close()
+      popupRef.current = null
+    } catch (err) {
+      URL.revokeObjectURL(loadingUrl)
+      popupRef.current?.close()
+      popupRef.current = null
+      setAutomateError(err instanceof Error ? err.message : String(err))
+      setAutomatePhase('error')
+    }
+  }
 
   async function send() {
     const text = input.trim()
@@ -657,16 +721,75 @@ export default function AgentPage() {
                         {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved to Test Inventory' : 'Save Test Case'}
                       </button>
 
-                      {/* Run this test now */}
-                      {tcSaved === 'saved' && savedTcId.current && (
+                      {/* Automate button */}
+                      {tcSaved === 'saved' && savedTcId.current && automatePhase === 'idle' && (
                         <button
-                          onClick={() => window.open(`/test-case/${savedTcId.current}`, '_blank')}
+                          onClick={automateTest}
                           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold bg-[#7C3AED] hover:bg-[#5B21B6] text-white transition-colors cursor-pointer"
                         >
                           <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                          View &amp; Run
+                          Automate
                         </button>
                       )}
+
+                      {/* Running indicator */}
+                      {(automatePhase === 'starting' || automatePhase === 'running') && (
+                        <div className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE]">
+                          <div className="w-3.5 h-3.5 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin" />
+                          {automatePhase === 'starting' ? 'Launching browser… (~60s)' : 'Running test…'}
+                        </div>
+                      )}
+
+                      {/* Result banner — pass */}
+                      {automatePhase === 'done' && automateResult?.passed && stepsSaveState !== 'saved' && (
+                        <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 space-y-2">
+                          <div className="text-[13px] font-semibold text-green-700">✅ Test Passed — save automated steps?</div>
+                          {automateResult.summary && <div className="text-[12px] text-green-600 opacity-80">{automateResult.summary}</div>}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                if (!savedTcId.current || stepsSaveState !== 'idle') return
+                                setStepsSaveState('saving')
+                                try {
+                                  const autoSteps = planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected }))
+                                  await updateTestCaseSteps(savedTcId.current, autoSteps)
+                                  setStepsSaveState('saved')
+                                } catch { setStepsSaveState('idle') }
+                              }}
+                              disabled={stepsSaveState !== 'idle'}
+                              className="flex-1 py-1.5 rounded-lg text-[12px] font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {stepsSaveState === 'saving' ? 'Saving…' : 'Save Steps'}
+                            </button>
+                            <button
+                              onClick={() => setAutomatePhase('idle')}
+                              className="px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer"
+                            >
+                              Discard
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Saved confirmation */}
+                      {stepsSaveState === 'saved' && (
+                        <div className="text-[12px] text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 font-semibold">
+                          ✅ Automated steps saved — test case is now ⚡ Automated
+                        </div>
+                      )}
+
+                      {/* Result banner — fail or error */}
+                      {(automatePhase === 'done' && !automateResult?.passed) || automatePhase === 'error' ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 space-y-1.5">
+                          <div className="text-[13px] font-semibold text-red-700">
+                            {automatePhase === 'error' ? '⚠️ Execution failed' : '❌ Test Failed'}
+                          </div>
+                          {(automateResult?.summary || automateError) && (
+                            <div className="text-[12px] text-red-600 opacity-80 font-mono">{automateResult?.summary || automateError}</div>
+                          )}
+                          <button onClick={() => setAutomatePhase('idle')} className="text-[12px] text-red-500 hover:text-red-700 cursor-pointer underline">Dismiss</button>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </>
