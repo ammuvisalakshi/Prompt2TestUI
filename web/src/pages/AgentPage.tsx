@@ -41,6 +41,28 @@ function saveRun(entry: Omit<RunEntry, 'id'>) {
 }
 
 type Message = { role: 'user' | 'agent'; text: string }
+type StepItem = { step: number; action: string; expected: string }
+
+function parseAgentResponse(text: string): { steps: StepItem[]; note: string; isFinal: boolean; summary: string } {
+  const trimmed = text.trim()
+  // Final generation: starts with SUMMARY:
+  if (trimmed.startsWith('SUMMARY:')) {
+    const summaryMatch = trimmed.match(/^SUMMARY:\s*(.+)/m)
+    const stepsMatch = trimmed.match(/STEPS:\s*(\[[\s\S]*\])/)
+    return {
+      isFinal: true,
+      summary: summaryMatch?.[1]?.trim() ?? '',
+      steps: stepsMatch ? (() => { try { return JSON.parse(stepsMatch[1]) } catch { return [] } })() : [],
+      note: '',
+    }
+  }
+  // Regular turn: NOTE: ... STEPS: [...]
+  const noteMatch = trimmed.match(/NOTE:\s*([\s\S]*?)(?=\nSTEPS:|\nsteps:)/i)
+  const stepsMatch = trimmed.match(/STEPS:\s*(\[[\s\S]*\])/i)
+  const steps = stepsMatch ? (() => { try { return JSON.parse(stepsMatch[1]) } catch { return [] } })() : []
+  const note = noteMatch?.[1]?.trim() ?? (steps.length === 0 ? trimmed : '')
+  return { isFinal: false, summary: '', steps, note }
+}
 
 type Plan = {
   confirmationMessage?: string
@@ -83,6 +105,7 @@ export default function AgentPage() {
   const [postRunPlan, setPostRunPlan] = useState<Plan | null>(null)
   const [postRunPassed, setPostRunPassed] = useState<boolean | null>(null)
   const [stepsSaved, setStepsSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [planSteps, setPlanSteps] = useState<StepItem[]>([])
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -175,17 +198,12 @@ export default function AgentPage() {
       if (mode === 'plan') {
         // Plan Scenario mode — enrich scenario with real SSM config, conversational refinement
         if (!tcService) {
-          setMessages(prev => [
-            ...prev,
-            { role: 'user', text },
-            { role: 'agent', text: 'Please select a service from the toolbar below before enriching your scenario.' },
-          ])
-          setInput('')
+          setMessages(prev => [...prev, { role: 'agent', text: 'Please pick a service from the panel on the right before sending your scenario.' }])
+          setLoading(false)
           return
         }
 
-        setMessages(prev => [...prev, { role: 'user', text }, { role: 'agent', text: 'Enriching scenario…' }])
-        setInput('')
+        setMessages(prev => [...prev, { role: 'agent', text: 'Enriching scenario…' }])
 
         const raw = await callAgent({
           inputText: text,
@@ -203,21 +221,23 @@ export default function AgentPage() {
         }
 
         const responseText: string = result.text ?? ''
+        const parsed = parseAgentResponse(responseText)
 
-        // Detect final generation (SUMMARY: on first line)
-        if (responseText.trimStart().startsWith('SUMMARY:')) {
-          const lines = responseText.trim().split('\n')
-          const summary = lines[0].replace(/^SUMMARY:\s*/i, '').trim()
-          const scenario = lines.slice(1).join('\n').trim()
-          setPlanScenario(scenario)
-          setSaveTitleInput(summary)
+        if (parsed.isFinal) {
+          if (parsed.steps.length > 0) setPlanSteps(parsed.steps)
+          setPlanScenario(responseText)
+          setSaveTitleInput(parsed.summary)
           setSaveTcIdInput('TC-' + Date.now().toString(36).toUpperCase().slice(-6))
           setShowSaveDialog(true)
           setTcSaved('idle')
           setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Final test case ready — fill in the details on the right to save it.' }])
         } else {
+          if (parsed.steps.length > 0) setPlanSteps(parsed.steps)
           setPlanScenario(responseText)
-          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: responseText }])
+          const displayText = parsed.note || (parsed.steps.length > 0
+            ? `I've mapped out ${parsed.steps.length} steps — check the panel on the right. Let me know if you'd like to refine anything.`
+            : responseText)
+          setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: displayText }])
         }
       } else {
         // Automate mode — only runs test cases loaded from Test Inventory
@@ -395,21 +415,17 @@ export default function AgentPage() {
                     )}
                   </div>
 
-                  {/* Service selector — Plan mode only */}
-                  {mode === 'plan' && (
-                    <div className="relative">
-                      <select
-                        value={tcService}
-                        onChange={e => setTcService(e.target.value)}
-                        disabled={loading || servicesLoading}
-                        className="appearance-none pl-2.5 pr-6 py-1 rounded-md text-[13px] font-medium text-slate-600 bg-slate-100 border border-transparent hover:border-slate-200 outline-none cursor-pointer transition-colors disabled:opacity-50"
-                      >
-                        <option value="">Service…</option>
-                        <option value="exploratory">Exploratory</option>
-                        {availableServices.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <svg viewBox="0 0 24 24" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 stroke-slate-400 fill-none stroke-2 pointer-events-none"><polyline points="6 9 12 15 18 9"/></svg>
-                    </div>
+                  {/* Service indicator — Plan mode only */}
+                  {mode === 'plan' && tcService && (
+                    <button
+                      onClick={() => { if (!loading) setTcService('') }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[13px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] hover:bg-[#DDD6FE] transition-colors cursor-pointer"
+                      title="Change service"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+                      {tcService}
+                      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 stroke-current fill-none stroke-2 opacity-50"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   )}
                 </div>
 
@@ -527,9 +543,9 @@ export default function AgentPage() {
             <>
               <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
                 <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">
-                  {mode === 'plan' ? 'Scenario' : 'Execution Plan'}
+                  {mode === 'plan' ? 'Test Steps' : 'Execution Plan'}
                 </div>
-                {mode === 'plan' && planScenario && !showSaveDialog && (
+                {mode === 'plan' && planSteps.length > 0 && !showSaveDialog && (
                   <button
                     onClick={async () => {
                       if (loading) return
@@ -539,11 +555,10 @@ export default function AgentPage() {
                         const raw = await callAgent({ inputText: 'generate_final', mode: 'plan_scenario', service: tcService, env, sessionId, conversationHistory: h }, sessionId)
                         const result = JSON.parse(raw)
                         const responseText: string = result.text ?? ''
-                        const lines = responseText.trim().split('\n')
-                        const summary = lines[0].replace(/^SUMMARY:\s*/i, '').trim()
-                        const scenario = lines.slice(1).join('\n').trim()
-                        setPlanScenario(scenario || responseText)
-                        setSaveTitleInput(summary || '')
+                        const parsed = parseAgentResponse(responseText)
+                        if (parsed.steps.length > 0) setPlanSteps(parsed.steps)
+                        setPlanScenario(responseText)
+                        setSaveTitleInput(parsed.summary || responseText.split('\n')[0].replace(/^SUMMARY:\s*/i, '').trim())
                         setSaveTcIdInput('TC-' + Date.now().toString(36).toUpperCase().slice(-6))
                         setShowSaveDialog(true)
                         setTcSaved('idle')
@@ -564,13 +579,69 @@ export default function AgentPage() {
               {/* Plan Scenario panel */}
               {mode === 'plan' ? (
                 <>
-                  {planScenario ? (
+                  {/* State 1: No service selected — show service picker chips */}
+                  {!tcService ? (
                     <div className="flex-1 overflow-y-auto p-4">
-                      <pre className="text-[13px] text-slate-700 whitespace-pre-wrap leading-relaxed font-mono bg-white border border-slate-200 rounded-xl p-4">{planScenario}</pre>
+                      <div className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Pick a Service</div>
+                      {servicesLoading ? (
+                        <div className="text-[13px] text-slate-400">Loading services…</div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => setTcService('exploratory')}
+                            className="px-3 py-1.5 rounded-full text-[13px] font-semibold border cursor-pointer transition-colors bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]"
+                          >
+                            Exploratory
+                          </button>
+                          {availableServices.map(svc => (
+                            <button key={svc} onClick={() => setTcService(svc)}
+                              className="px-3 py-1.5 rounded-full text-[13px] font-semibold border cursor-pointer transition-colors bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]"
+                            >
+                              {svc}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <p className="mt-4 text-[13px] text-slate-400 leading-relaxed">
+                        Select a service, then paste your scenario in the chat to start enriching it.
+                      </p>
+                    </div>
+                  ) : planSteps.length > 0 ? (
+                    /* State 2: Steps exist — show MTM-style step table */
+                    <div className="flex-1 overflow-y-auto p-4">
+                      <div className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                        Test Steps &nbsp;·&nbsp; <span className="text-[#7C3AED] normal-case font-semibold">{tcService}</span>
+                      </div>
+                      <table className="w-full border-collapse text-[13px]">
+                        <thead>
+                          <tr className="bg-slate-50 border border-slate-200 rounded-lg">
+                            <th className="py-2 px-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-8 border-b border-slate-200">#</th>
+                            <th className="py-2 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Action</th>
+                            <th className="py-2 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Expected Result</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {planSteps.map((s, i) => (
+                            <tr key={s.step} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                              <td className="py-2.5 px-2.5 text-center align-top">
+                                <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-[#EDE9FE] text-[#7C3AED] text-[10px] font-bold">{s.step}</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-700 leading-relaxed align-top">{s.action}</td>
+                              <td className="py-2.5 px-3 text-slate-500 leading-relaxed align-top">{s.expected}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center text-[14px] text-slate-400 px-6 text-center">
-                      Paste a scenario in the chat → select a service → the enriched scenario will appear here.
+                    /* State 2 empty: service selected, no steps yet */
+                    <div className="flex-1 flex flex-col items-center justify-center text-center px-6 gap-2">
+                      <div className="text-[13px] font-semibold text-slate-600">
+                        Service: <span className="text-[#7C3AED]">{tcService}</span>
+                      </div>
+                      <div className="text-[13px] text-slate-400 leading-relaxed">
+                        Paste your scenario in the chat.<br />Steps will appear here as I refine them.
+                      </div>
                     </div>
                   )}
 
