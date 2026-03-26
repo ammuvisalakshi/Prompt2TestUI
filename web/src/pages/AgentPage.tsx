@@ -5,7 +5,7 @@ import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
-import { saveTestCase, saveRunRecord, getTestCase, updateTestCaseSteps, updateTestCasePlanSteps } from '../lib/lambdaClient'
+import { saveTestCase, saveRunRecord, getTestCase, updateTestCasePlanSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -102,10 +102,6 @@ export default function AgentPage() {
   const [saveTitleInput, setSaveTitleInput] = useState('')
   const [saveTcIdInput, setSaveTcIdInput] = useState('')
   const [saveService, setSaveService] = useState('')  // locked-in service at dialog-open time
-  // Post-run state
-  const [postRunPlan, setPostRunPlan] = useState<Plan | null>(null)
-  const [postRunPassed, setPostRunPassed] = useState<boolean | null>(null)
-  const [stepsSaved, setStepsSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [planSteps, setPlanSteps] = useState<StepItem[]>([])
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
@@ -260,82 +256,6 @@ export default function AgentPage() {
     }
   }
 
-  async function runSavedTestCase() {
-    if (!savedTcId.current || !planScenario) return
-    setLoading(true)
-    setMode('auto')
-    setPostRunPlan(null)
-    setPostRunPassed(null)
-    setStepsSaved('idle')
-
-    try {
-      // Step 1: silently convert scenario → Playwright steps
-      setMessages(prev => [...prev, { role: 'agent', text: 'Generating execution steps from scenario…' }])
-      const planRaw = await callAgent({ inputText: planScenario, mode: 'plan', sessionId, conversationHistory: '', env }, sessionId)
-      const planResult = JSON.parse(planRaw)
-      if (planResult.error) throw new Error(planResult.error as string)
-      const execPlan: Plan = planResult.plan ?? planResult
-
-      if (!execPlan.steps?.length) {
-        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Could not generate execution steps — try refining the scenario further in Plan mode.' }])
-        setMode('plan')
-        return
-      }
-      setPlan(execPlan)
-
-      // Step 2: open browser
-      const loadingBlob = new Blob([loadingHtml], { type: 'text/html' })
-      const loadingUrl = URL.createObjectURL(loadingBlob)
-      const popup = window.open(loadingUrl, '_blank')
-      setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Launching browser… (~60s to start Fargate task)' }])
-
-      const sessionRaw = await callAgent({ inputText: saveTitleInput, mode: 'start_session', sessionId }, sessionId)
-      const resolvedSession = JSON.parse(sessionRaw)
-      if (resolvedSession.error) throw new Error(resolvedSession.error as string)
-
-      URL.revokeObjectURL(loadingUrl)
-      setNovncUrl(resolvedSession.novnc_url as string)
-      if (popup) { popup.location.href = `${resolvedSession.novnc_url}?autoconnect=true&resize=scale`; popupRef.current = popup }
-      setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'Browser is live! Running test now… watch it in the popup' }])
-
-      // Step 3: execute
-      const raw = await callAgent({
-        inputText: saveTitleInput, mode: 'automate', plan: execPlan, sessionId,
-        task_arn: resolvedSession.task_arn, cluster: resolvedSession.cluster, mcp_endpoint: resolvedSession.mcp_endpoint,
-      }, sessionId)
-
-      const result = JSON.parse(raw)
-      if (result.error) throw new Error(result.error as string)
-      const passed = result.result?.passed ?? result.passed
-      const summary = result.result?.summary ?? result.summary ?? ''
-
-      saveRun({ description: saveTitleInput, passed, timestamp: new Date().toISOString() })
-      saveRunRecord({ testCaseId: savedTcId.current!, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
-
-      setPostRunPlan(execPlan)
-      setPostRunPassed(passed)
-
-      // Auto-save resolved steps on pass so the test case becomes "Automated"
-      if (passed && savedTcId.current && execPlan.steps?.length) {
-        setStepsSaved('saving')
-        updateTestCaseSteps(savedTcId.current, execPlan.steps)
-          .then(() => setStepsSaved('saved'))
-          .catch(() => setStepsSaved('idle'))
-      }
-
-      setMessages(prev => [...prev.slice(0, -1), {
-        role: 'agent',
-        text: `Test ${passed ? '✅ Passed' : '❌ Failed'}\n\n${summary}`,
-      }])
-      popupRef.current?.close(); popupRef.current = null
-    } catch (err) {
-      setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Error: ${err instanceof Error ? err.message : String(err)}` }])
-      popupRef.current?.close(); popupRef.current = null
-      setMode('plan')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="flex flex-col h-full bg-[#F5F7FA]">
@@ -486,39 +406,6 @@ export default function AgentPage() {
                   </button>
                 )}
               </div>
-              {/* Save resolved steps banner — shown after runSavedTestCase completes */}
-              {!loading && postRunPlan && stepsSaved !== 'saved' && (
-                <div className="px-4 py-3 border-b border-slate-700 bg-slate-800 flex-shrink-0 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[12px] font-semibold text-white">
-                      {postRunPassed ? '✅ Test passed' : '❌ Test failed'} — save resolved steps?
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">Future runs will replay these exact steps without using the LLM.</div>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => setStepsSaved('saved')}
-                      className="px-2.5 py-1 text-[12px] text-slate-400 hover:text-white border border-slate-600 rounded-lg cursor-pointer transition-colors"
-                    >
-                      Dismiss
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!savedTcId.current || !postRunPlan?.steps) return
-                        setStepsSaved('saving')
-                        try {
-                          await updateTestCaseSteps(savedTcId.current, postRunPlan.steps)
-                          setStepsSaved('saved')
-                        } catch { setStepsSaved('idle') }
-                      }}
-                      disabled={stepsSaved === 'saving'}
-                      className="px-2.5 py-1 text-[12px] font-semibold bg-[#7C3AED] hover:bg-[#5B21B6] text-white rounded-lg cursor-pointer transition-colors disabled:opacity-50"
-                    >
-                      {stepsSaved === 'saving' ? 'Saving…' : 'Save Steps'}
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div className="flex-1 overflow-hidden flex flex-col bg-[#0D1117]">
                 {loading ? (
@@ -771,13 +658,13 @@ export default function AgentPage() {
                       </button>
 
                       {/* Run this test now */}
-                      {tcSaved === 'saved' && (
+                      {tcSaved === 'saved' && savedTcId.current && (
                         <button
-                          onClick={runSavedTestCase}
+                          onClick={() => window.open(`/test-case/${savedTcId.current}`, '_blank')}
                           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold bg-[#7C3AED] hover:bg-[#5B21B6] text-white transition-colors cursor-pointer"
                         >
                           <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                          Run this test now
+                          View &amp; Run
                         </button>
                       )}
                     </div>
