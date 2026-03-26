@@ -117,3 +117,7 @@ export async function deleteTestCase(id: string): Promise<void> {
 export async function searchTestCases(query: string, env: string, threshold = 0.75): Promise<(TestCase & { similarity: number })[]> {
   return invokeLambda('p2t-testcase-reader', { action: 'search', query, env, threshold }) as Promise<(TestCase & { similarity: number })[]>
 }
+
+export async function updateReplayScript(id: string, replayScript: object[]): Promise<void> {
+  await invokeLambda('p2t-testcase-reader', { action: 'update_replay_script', id, replay_script: replayScript })
+}

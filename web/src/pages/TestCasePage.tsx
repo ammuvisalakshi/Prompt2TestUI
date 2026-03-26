@@ -38,6 +38,7 @@ export default function TestCasePage() {
   const [runError, setRunError] = useState<string | null>(null)
   const tabRef = useRef<Window | null>(null)
   const sessionId = useRef(crypto.randomUUID())
+  const isReplayMode = useRef(false)
 
   useEffect(() => {
     if (!id) return
@@ -84,16 +85,37 @@ export default function TestCasePage() {
       if (newTab) newTab.location.href = wrapperUrl
       setRunPhase('running')
 
+      const replayScript = (tc as any).replayScript
+      const useReplay = Array.isArray(replayScript) && replayScript.length > 0
+      isReplayMode.current = useReplay
+
+      if (useReplay) {
+        setRunPhase('running')
+      }
+
       const plan = { summary: tc.title || tc.description, steps, mcpCalls: 0 }
-      const raw = await callAgent({
-        inputText: tc.title || tc.description,
-        mode: 'automate',
-        plan,
-        sessionId: sessionId.current,
-        task_arn: session.task_arn,
-        cluster: session.cluster,
-        mcp_endpoint: session.mcp_endpoint,
-      }, sessionId.current)
+      const raw = await callAgent(
+        useReplay
+          ? {
+              inputText: tc.title || tc.description,
+              mode: 'replay',
+              replay_script: replayScript,
+              sessionId: sessionId.current,
+              task_arn: session.task_arn,
+              cluster: session.cluster,
+              mcp_endpoint: session.mcp_endpoint,
+            }
+          : {
+              inputText: tc.title || tc.description,
+              mode: 'automate',
+              plan,
+              sessionId: sessionId.current,
+              task_arn: session.task_arn,
+              cluster: session.cluster,
+              mcp_endpoint: session.mcp_endpoint,
+            },
+        sessionId.current
+      )
 
       const result = JSON.parse(raw)
       URL.revokeObjectURL(wrapperUrl)
@@ -241,7 +263,7 @@ export default function TestCasePage() {
           {isRunning && <div style={{ width: 13, height: 13, border: `2px solid ${statusColor}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />}
           <span style={{ fontWeight: 600 }}>
             {runPhase === 'starting' && 'Launching browser… (~60s for Fargate cold start)'}
-            {runPhase === 'running' && 'Test is running — watch it in the browser tab'}
+            {runPhase === 'running' && (isReplayMode.current ? 'Test is running (no LLM — direct replay)' : 'Test is running — watch it in the browser tab')}
             {runPhase === 'done' && (runResult?.passed ? '✅ Test Passed' : '❌ Test Failed')}
             {runPhase === 'error' && '⚠️ Execution failed'}
           </span>

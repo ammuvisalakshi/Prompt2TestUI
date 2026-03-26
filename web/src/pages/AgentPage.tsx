@@ -5,7 +5,7 @@ import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
-import { saveTestCase, saveRunRecord, getTestCase, updateTestCasePlanSteps, updateTestCaseSteps } from '../lib/lambdaClient'
+import { saveTestCase, saveRunRecord, getTestCase, updateTestCasePlanSteps, updateTestCaseSteps, updateReplayScript } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -109,6 +109,7 @@ export default function AgentPage() {
   const [automateResult, setAutomateResult] = useState<{ passed: boolean; summary: string } | null>(null)
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const replayScriptRef = useRef<object[]>([])
   const chatRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -243,6 +244,8 @@ export default function AgentPage() {
 
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
+      const replayScript = result.result?.replay_script ?? result.replay_script ?? []
+      replayScriptRef.current = replayScript
 
       saveRunRecord({ testCaseId: savedTcId.current!, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
       saveRun({ description: label, passed, timestamp: new Date().toISOString() })
@@ -770,6 +773,9 @@ export default function AgentPage() {
                                 try {
                                   const autoSteps = planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected }))
                                   await updateTestCaseSteps(savedTcId.current, autoSteps)
+                                  if (replayScriptRef.current.length > 0) {
+                                    await updateReplayScript(savedTcId.current, replayScriptRef.current)
+                                  }
                                   setStepsSaveState('saved')
                                 } catch { setStepsSaveState('idle') }
                               }}
