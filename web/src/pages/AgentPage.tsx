@@ -230,7 +230,6 @@ export default function AgentPage() {
         mcp_endpoint: session.mcp_endpoint,
       }, sessionId)
 
-      URL.revokeObjectURL(wrapperUrl)
       const result = JSON.parse(raw)
       if (result.error) throw new Error(result.error as string)
 
