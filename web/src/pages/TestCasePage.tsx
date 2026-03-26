@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { getTestCase, saveRunRecord, updateTestCaseSteps, updateReplayScript } from '../lib/lambdaClient'
+import { getTestCase, saveRunRecord, updateReplayScript } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 type PlanStep = { step: number; action: string; expected: string }
@@ -225,7 +225,8 @@ export default function TestCasePage() {
 
   const planSteps = (tc.planSteps ?? []) as PlanStep[]
   const autoSteps = (tc.steps ?? []) as AutoStep[]
-  const isAutomated = autoSteps.length > 0
+  const replaySteps = ((tc as any).replayScript ?? []) as { tool: string; params: Record<string, unknown> }[]
+  const isAutomated = autoSteps.length > 0 || replaySteps.length > 0
   const isRunning = runPhase === 'starting' || runPhase === 'running'
 
   // Status bar colors
@@ -347,10 +348,9 @@ export default function TestCasePage() {
                       if (!tc || stepsSaveState === 'saving') return
                       setStepsSaveState('saving')
                       try {
-                        await updateTestCaseSteps(tc.id, replayScriptRef.current as any)
                         await updateReplayScript(tc.id, replayScriptRef.current)
                         setStepsSaveState('saved')
-                        setTc(prev => prev ? { ...prev, steps: replayScriptRef.current as any, replayScript: replayScriptRef.current } : prev)
+                        setTc(prev => prev ? { ...prev, replayScript: replayScriptRef.current } as any : prev)
                       } catch {
                         setStepsSaveState('idle')
                       }
@@ -453,7 +453,7 @@ export default function TestCasePage() {
 
           {/* Automated Steps */}
           {activeTab === 'automated' && (
-            autoSteps.length > 0 ? (
+            (autoSteps.length > 0 || replaySteps.length > 0) ? (
               <>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
                 <button onClick={runTest} disabled={isRunning}
@@ -468,27 +468,48 @@ export default function TestCasePage() {
                   )}
                 </button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {autoSteps.map((step, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#7C3AED', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                      {step.stepNumber ?? i + 1}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 3 }}>{step.action}</div>
-                      <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 4 }}>{step.detail}</div>
-                      <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {step.type}{step.tool ? ` · ${step.tool}` : ''}
+              {autoSteps.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {autoSteps.map((step, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#7C3AED', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                        {step.stepNumber ?? i + 1}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 3 }}>{step.action}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 4 }}>{step.detail}</div>
+                        <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {step.type}{step.tool ? ` · ${step.tool}` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {replaySteps.map((step, i) => {
+                    const tool = step.tool.replace('playwright_', '')
+                    const params = step.params ?? {}
+                    const detail = Object.entries(params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(' · ')
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 12, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#7C3AED', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                          {i + 1}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 3, textTransform: 'capitalize' }}>{tool.replace(/_/g, ' ')}</div>
+                          <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, fontFamily: 'monospace', wordBreak: 'break-all' }}>{detail}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </>) : (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Not automated yet</div>
-                <div style={{ fontSize: 13, color: '#94A3B8' }}>Run this test case from the Author Agent to generate automated steps.</div>
+                <div style={{ fontSize: 13, color: '#94A3B8' }}>Switch to Plan Steps tab and click Automate to record and save automation steps.</div>
               </div>
             )
           )}
