@@ -58,6 +58,7 @@ async function loadServiceNames(env: string): Promise<string[]> {
 
 type Tab = 'cases' | 'runs'
 type Step = { stepNumber: number; type: string; tool?: string; action: string; detail: string }
+type PlanStep = { step: number; action: string; expected: string }
 type RunPhase = 'idle' | 'loading-tc' | 'starting-session' | 'automating' | 'done' | 'error'
 
 export default function InventoryPage() {
@@ -69,9 +70,11 @@ export default function InventoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [viewTc, setViewTc] = useState<(TestCase & { steps: Step[] }) | null>(null)
+  const [viewTc, setViewTc] = useState<(TestCase & { steps: Step[]; planSteps: PlanStep[] }) | null>(null)
+  const [viewTab, setViewTab] = useState<'plan' | 'automated'>('plan')
   const [viewLoading, setViewLoading] = useState(false)
   const [assignTc, setAssignTc] = useState<TestCase | null>(null)
+  const [openKebab, setOpenKebab] = useState<string | null>(null)
   const [assignService, setAssignService] = useState('')
   const [assignSaving, setAssignSaving] = useState(false)
   const [availableServices, setAvailableServices] = useState<string[]>([])
@@ -123,9 +126,10 @@ export default function InventoryPage() {
 
   async function handleView(tc: TestCase) {
     setViewLoading(true)
+    setViewTab('plan')
     try {
       const full = await getTestCase(tc.id)
-      setViewTc(full as TestCase & { steps: Step[] })
+      setViewTc(full as TestCase & { steps: Step[]; planSteps: PlanStep[] })
     } catch {
       setError('Failed to load test case details')
     } finally {
@@ -332,35 +336,90 @@ export default function InventoryPage() {
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setViewTc(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-6">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col pointer-events-auto">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto">
+              {/* Header */}
               <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100">
                 <div>
-                  <div className="text-[15px] font-semibold text-slate-800">{viewTc?.description ?? 'Loading…'}</div>
-                  {viewTc?.service && (
-                    <span className="text-[12px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-medium mt-1 inline-block">{viewTc.service}</span>
-                  )}
+                  <div className="text-[15px] font-semibold text-slate-800">{viewTc?.title ?? viewTc?.description ?? 'Loading…'}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    {viewTc?.service && (
+                      <span className="text-[11px] px-2 py-0.5 bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE] rounded-full font-semibold">{viewTc.service}</span>
+                    )}
+                    {viewTc?.id && (
+                      <span className="text-[11px] text-slate-400 font-mono">{viewTc.id}</span>
+                    )}
+                  </div>
                 </div>
                 <button onClick={() => setViewTc(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer ml-4 flex-shrink-0">
                   <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-current fill-none stroke-2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {viewLoading && <div className="text-[14px] text-slate-400 text-center py-8">Loading steps…</div>}
-                {viewTc?.steps?.length === 0 && (
-                  <div className="text-[13px] text-slate-400 text-center py-4">No steps recorded for this test case.</div>
-                )}
-                {viewTc?.steps?.map((step, i) => (
-                  <div key={i} className="flex gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
-                    <div className="w-5 h-5 rounded-full bg-[#7C3AED] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {step.stepNumber ?? i + 1}
-                    </div>
-                    <div>
-                      <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
-                      <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
-                      <div className="text-[11px] text-[#7C3AED] mt-0.5 font-medium uppercase tracking-wide">{step.type} {step.tool ? `· ${step.tool}` : ''}</div>
-                    </div>
-                  </div>
+
+              {/* Tabs */}
+              <div className="flex border-b border-slate-100 px-5 gap-0">
+                {(['plan', 'automated'] as const).map(t => (
+                  <button key={t} onClick={() => setViewTab(t)}
+                    className={`px-4 py-2.5 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer ${
+                      viewTab === t ? 'border-[#7C3AED] text-[#7C3AED]' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}>
+                    {t === 'plan' ? '📋 Plan Steps' : '⚡ Automated Steps'}
+                  </button>
                 ))}
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {viewLoading && <div className="text-[14px] text-slate-400 text-center py-8">Loading…</div>}
+
+                {/* Plan Steps — MTM table */}
+                {!viewLoading && viewTab === 'plan' && (
+                  viewTc?.planSteps?.length ? (
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead>
+                        <tr className="bg-slate-50">
+                          <th className="py-2 px-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-8 border-b border-slate-200">#</th>
+                          <th className="py-2 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Action</th>
+                          <th className="py-2 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Expected Result</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {viewTc.planSteps.map((s, i) => (
+                          <tr key={s.step} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                            <td className="py-2.5 px-2.5 text-center align-top">
+                              <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-[#EDE9FE] text-[#7C3AED] text-[10px] font-bold">{s.step}</span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-700 leading-relaxed align-top">{s.action}</td>
+                            <td className="py-2.5 px-3 text-slate-500 leading-relaxed align-top">{s.expected}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-[13px] text-slate-400 text-center py-8">No plan steps saved yet.</div>
+                  )
+                )}
+
+                {/* Automated Steps */}
+                {!viewLoading && viewTab === 'automated' && (
+                  viewTc?.steps?.length ? (
+                    <div className="space-y-2">
+                      {viewTc.steps.map((step, i) => (
+                        <div key={i} className="flex gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                          <div className="w-5 h-5 rounded-full bg-[#7C3AED] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                            {step.stepNumber ?? i + 1}
+                          </div>
+                          <div>
+                            <div className="text-[13px] font-semibold text-slate-800">{step.action}</div>
+                            <div className="text-[12px] text-slate-500 mt-0.5">{step.detail}</div>
+                            <div className="text-[11px] text-[#7C3AED] mt-0.5 font-medium uppercase tracking-wide">{step.type}{step.tool ? ` · ${step.tool}` : ''}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[13px] text-slate-400 text-center py-8">Not automated yet — run this test case to generate automated steps.</div>
+                  )
+                )}
               </div>
             </div>
           </div>
@@ -559,17 +618,8 @@ export default function InventoryPage() {
 
                           {/* Actions */}
                           <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {/* Assign service */}
-                            <button onClick={() => openAssign(tc)}
-                              title="Assign service"
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer">
-                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                              {tc.service || 'Assign'}
-                            </button>
-
                             {/* View */}
                             <button onClick={() => handleView(tc)} disabled={viewLoading}
-                              title="View test case steps"
                               className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer disabled:opacity-40">
                               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                               View
@@ -578,21 +628,41 @@ export default function InventoryPage() {
                             {/* Run (only if automated) */}
                             {isAutomated && (
                               <button onClick={() => handleRun(tc)} disabled={runIsActive}
-                                title="Run this test"
                                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer disabled:opacity-40">
                                 <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                 Run
                               </button>
                             )}
 
-                            {/* Delete */}
-                            <button onClick={() => setConfirmDeleteId(tc.id)}
-                              title="Delete test case"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
-                              <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-                              </svg>
-                            </button>
+                            {/* Kebab menu */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenKebab(openKebab === tc.id ? null : tc.id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                              >
+                                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                              </button>
+                              {openKebab === tc.id && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={() => setOpenKebab(null)} />
+                                  <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1 overflow-hidden">
+                                    <button
+                                      onClick={() => { openAssign(tc); setOpenKebab(null) }}
+                                      className="w-full text-left px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer">
+                                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                      Move to service
+                                    </button>
+                                    <div className="h-px bg-slate-100 mx-2 my-1" />
+                                    <button
+                                      onClick={() => { setConfirmDeleteId(tc.id); setOpenKebab(null) }}
+                                      className="w-full text-left px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer">
+                                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                      Delete
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )

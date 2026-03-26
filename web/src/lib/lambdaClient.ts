@@ -67,6 +67,7 @@ export async function saveTestCase(params: {
   env: string
   service?: string
   steps?: object[]
+  planSteps?: object[]
   tags?: string[]
   createdBy?: string
 }): Promise<string> {
@@ -93,8 +94,12 @@ export async function listRunRecords(env: string): Promise<RunRecord[]> {
   return invokeLambda('p2t-testcase-reader', { action: 'list_run_records', env }) as Promise<RunRecord[]>
 }
 
-export async function getTestCase(id: string): Promise<TestCase & { steps: object[] }> {
-  return invokeLambda('p2t-testcase-reader', { action: 'get_test_case', id }) as Promise<TestCase & { steps: object[] }>
+export async function getTestCase(id: string): Promise<TestCase & { steps: object[]; planSteps: object[] }> {
+  return invokeLambda('p2t-testcase-reader', { action: 'get_test_case', id }) as Promise<TestCase & { steps: object[]; planSteps: object[] }>
+}
+
+export async function updateTestCasePlanSteps(id: string, planSteps: object[]): Promise<void> {
+  await invokeLambda('p2t-testcase-writer', { action: 'update_test_case', id, planSteps })
 }
 
 export async function updateTestCaseService(id: string, service: string): Promise<void> {

@@ -5,7 +5,7 @@ import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
 import type { RunEntry } from '../layouts/PlatformLayout'
 import { useEnv } from '../context/EnvContext'
-import { saveTestCase, saveRunRecord, getTestCase, updateTestCaseSteps } from '../lib/lambdaClient'
+import { saveTestCase, saveRunRecord, getTestCase, updateTestCaseSteps, updateTestCasePlanSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -744,10 +744,13 @@ export default function AgentPage() {
                               env,
                               service: saveService || tcService || undefined,
                               steps: [],
+                              planSteps,
                               createdBy: userName,
                             })
                             savedTcId.current = id
                             setTcSaved('saved')
+                            // Keep plan steps in sync if user refines further after saving
+                            if (id && planSteps.length) updateTestCasePlanSteps(id, planSteps).catch(() => {})
                           } catch { setTcSaved('idle') }
                         }}
                         disabled={tcSaved !== 'idle' || !saveTitleInput.trim()}
