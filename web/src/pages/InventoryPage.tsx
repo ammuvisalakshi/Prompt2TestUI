@@ -554,7 +554,7 @@ export default function InventoryPage() {
                               ? 'bg-purple-50 text-[#7C3AED] border-purple-200'
                               : 'bg-slate-50 text-slate-400 border-slate-200'
                           }`}>
-                            {isAutomated ? '⚡ Automated' : 'Manual'}
+                            {isAutomated ? '⚡ Automated' : 'Not automated yet'}
                           </span>
 
                           {/* Actions */}
