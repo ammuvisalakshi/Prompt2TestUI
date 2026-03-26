@@ -359,6 +359,18 @@ export default function AgentPage() {
                 }`}>
                   {msg.text}
                 </div>
+                {msg.role === 'user' && (
+                  <button
+                    onClick={() => setInput(msg.text)}
+                    title="Edit & resend"
+                    className="mt-1 flex items-center gap-1 text-[11px] text-slate-400 hover:text-[#7C3AED] cursor-pointer transition-colors"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2">
+                      <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
+                    </svg>
+                    resend
+                  </button>
+                )}
               </div>
             ))}
           </div>
