@@ -260,7 +260,7 @@ export default function TestCasePage() {
         </div>
 
         {/* Run Test button (automated) */}
-        {isAutomated && (
+        {isAutomated && activeTab === 'automated' && (
           <button onClick={runTest} disabled={isRunning}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#7C3AED', color: 'white', border: 'none', cursor: isRunning ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: isRunning ? 0.75 : 1 }}
             onMouseEnter={e => { if (!isRunning) (e.currentTarget as HTMLButtonElement).style.background = '#5B21B6' }}
@@ -275,7 +275,7 @@ export default function TestCasePage() {
         )}
 
         {/* Automate button (not yet automated) */}
-        {!isAutomated && planSteps.length > 0 && (
+        {!isAutomated && planSteps.length > 0 && activeTab === 'plan' && (
           <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1 }}
             onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.background = '#B45309' }}
