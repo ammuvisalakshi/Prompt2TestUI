@@ -174,7 +174,7 @@ export default function InventoryPage() {
         </>
       )}
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="flex-1 overflow-y-auto p-5 pb-8">
         {/* Stats */}
         {tab === 'cases' && (
           <div className="grid grid-cols-4 gap-3 mb-5">
@@ -192,7 +192,7 @@ export default function InventoryPage() {
           </div>
         )}
 
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-visible">
           {/* Tab bar */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <div className="flex gap-1">
