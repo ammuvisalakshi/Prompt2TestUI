@@ -217,15 +217,7 @@ export default function AgentPage() {
       if (session.error) throw new Error(session.error as string)
 
       URL.revokeObjectURL(loadingUrl)
-
-      // Navigate tab to a wrapper page that keeps our title and embeds noVNC full-screen
-      const novncSrc = `${session.novnc_url}?autoconnect=true&resize=scale`
-      const wrapperHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${tabTitle} | Live Browser</title>
-<style>*{margin:0;padding:0}html,body,iframe{width:100%;height:100%;border:none;display:block}</style></head>
-<body><iframe src="${novncSrc}" allowfullscreen></iframe></body></html>`
-      const wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' })
-      const wrapperUrl = URL.createObjectURL(wrapperBlob)
-      if (tab) tab.location.href = wrapperUrl
+      if (tab) tab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       setAutomatePhase('running')
 
       const raw = await callAgent({

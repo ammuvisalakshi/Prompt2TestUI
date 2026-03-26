@@ -75,14 +75,7 @@ export default function TestCasePage() {
       if (session.error) throw new Error(session.error as string)
 
       URL.revokeObjectURL(loadingUrl)
-
-      const novncSrc = `${session.novnc_url}?autoconnect=true&resize=scale`
-      const wrapperHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${tabTitle} | Live Browser</title>
-<style>*{margin:0;padding:0}html,body,iframe{width:100%;height:100%;border:none;display:block}</style></head>
-<body><iframe src="${novncSrc}" allowfullscreen></iframe></body></html>`
-      const wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' })
-      const wrapperUrl = URL.createObjectURL(wrapperBlob)
-      if (newTab) newTab.location.href = wrapperUrl
+      if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       setRunPhase('running')
 
       const replayScript = (tc as any).replayScript
@@ -118,7 +111,6 @@ export default function TestCasePage() {
       )
 
       const result = JSON.parse(raw)
-      URL.revokeObjectURL(wrapperUrl)
       if (result.error) throw new Error(result.error as string)
 
       const passed = result.result?.passed ?? result.passed
