@@ -260,11 +260,19 @@ export default function InventoryPage() {
                           {/* Actions */}
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {/* View & Run */}
-                            <button onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
-                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                              View &amp; Run
-                            </button>
+                            {isAutomated ? (
+                              <button onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
+                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                View &amp; Run
+                              </button>
+                            ) : (
+                              <button onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer">
+                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                View &amp; Automate
+                              </button>
+                            )}
 
                             {/* Kebab menu */}
                             <div className="relative">

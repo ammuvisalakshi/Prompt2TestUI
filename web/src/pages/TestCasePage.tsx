@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { getTestCase, saveRunRecord } from '../lib/lambdaClient'
+import { getTestCase, saveRunRecord, updateTestCaseSteps, updateReplayScript } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 type PlanStep = { step: number; action: string; expected: string }
@@ -39,6 +39,13 @@ export default function TestCasePage() {
   const tabRef = useRef<Window | null>(null)
   const sessionId = useRef(crypto.randomUUID())
   const isReplayMode = useRef(false)
+
+  // Automate flow (for non-automated test cases)
+  const [automatePhase, setAutomatePhase] = useState<RunPhase>('idle')
+  const [automateResult, setAutomateResult] = useState<{ passed: boolean; summary: string } | null>(null)
+  const [automateError, setAutomateError] = useState<string | null>(null)
+  const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const replayScriptRef = useRef<object[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -130,6 +137,77 @@ export default function TestCasePage() {
     }
   }
 
+  async function automateTest() {
+    if (!tc || automatePhase === 'starting' || automatePhase === 'running') return
+    const planSteps = (tc.planSteps ?? []) as PlanStep[]
+    if (!planSteps.length) return
+
+    setAutomatePhase('starting')
+    setAutomateResult(null)
+    setAutomateError(null)
+    setStepsSaveState('idle')
+    replayScriptRef.current = []
+
+    const label = tc.title || tc.description
+    const tabTitle = `${tc.id} — ${label}`
+    const loadingHtmlWithTitle = loadingHtml.replace(
+      '<title>Prompt2Test — Starting…</title>',
+      `<title>${tabTitle} | Automating…</title>`
+    )
+    const loadingBlob = new Blob([loadingHtmlWithTitle], { type: 'text/html' })
+    const loadingUrl = URL.createObjectURL(loadingBlob)
+    const newTab = window.open(loadingUrl, '_blank')
+    tabRef.current = newTab
+
+    const derivedPlan = {
+      summary: label,
+      steps: planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected })),
+      mcpCalls: planSteps.length,
+    }
+
+    try {
+      const sessionRaw = await callAgent(
+        { inputText: label, mode: 'start_session', sessionId: sessionId.current },
+        sessionId.current
+      )
+      const session = JSON.parse(sessionRaw)
+      if (session.error) throw new Error(session.error as string)
+
+      URL.revokeObjectURL(loadingUrl)
+      if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+      setAutomatePhase('running')
+
+      const raw = await callAgent({
+        inputText: label,
+        mode: 'automate',
+        plan: derivedPlan,
+        sessionId: sessionId.current,
+        task_arn: session.task_arn,
+        cluster: session.cluster,
+        mcp_endpoint: session.mcp_endpoint,
+      }, sessionId.current)
+
+      const result = JSON.parse(raw)
+      if (result.error) throw new Error(result.error as string)
+
+      const passed = result.result?.passed ?? result.passed
+      const summary = result.result?.summary ?? result.summary ?? ''
+      replayScriptRef.current = result.result?.replay_script ?? result.replay_script ?? []
+
+      saveRunRecord({ testCaseId: tc.id, env: tc.env, result: passed ? 'PASS' : 'FAIL', summary }).catch(() => {})
+      setAutomateResult({ passed, summary })
+      setAutomatePhase('done')
+      tabRef.current?.close()
+      tabRef.current = null
+    } catch (err) {
+      URL.revokeObjectURL(loadingUrl)
+      tabRef.current?.close()
+      tabRef.current = null
+      setAutomateError(err instanceof Error ? err.message : String(err))
+      setAutomatePhase('error')
+    }
+  }
+
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94A3B8' }}>
@@ -181,32 +259,32 @@ export default function TestCasePage() {
           <span style={{ fontSize: 13, color: '#64748B' }}>Test Case</span>
         </div>
 
-        {/* Run button */}
+        {/* Run Test button (automated) */}
         {isAutomated && (
-          <button
-            onClick={runTest}
-            disabled={isRunning}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '7px 16px', borderRadius: 8,
-              background: isRunning ? '#7C3AED' : '#7C3AED',
-              color: 'white', border: 'none', cursor: isRunning ? 'default' : 'pointer',
-              fontSize: 13, fontWeight: 600, opacity: isRunning ? 0.75 : 1,
-              transition: 'all 0.15s',
-            }}
+          <button onClick={runTest} disabled={isRunning}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#7C3AED', color: 'white', border: 'none', cursor: isRunning ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: isRunning ? 0.75 : 1 }}
             onMouseEnter={e => { if (!isRunning) (e.currentTarget as HTMLButtonElement).style.background = '#5B21B6' }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#7C3AED' }}
           >
             {isRunning ? (
-              <>
-                <div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                {runPhase === 'starting' ? 'Starting…' : 'Running…'}
-              </>
+              <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{runPhase === 'starting' ? 'Starting…' : 'Running…'}</>
             ) : (
-              <>
-                <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'white' }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Run Test
-              </>
+              <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'white' }}><polygon points="5 3 19 12 5 21 5 3"/></svg>Run Test</>
+            )}
+          </button>
+        )}
+
+        {/* Automate button (not yet automated) */}
+        {!isAutomated && planSteps.length > 0 && (
+          <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1 }}
+            onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.background = '#B45309' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#D97706' }}
+          >
+            {automatePhase === 'starting' || automatePhase === 'running' ? (
+              <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{automatePhase === 'starting' ? 'Starting…' : 'Automating…'}</>
+            ) : (
+              <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automate</>
             )}
           </button>
         )}
@@ -265,6 +343,68 @@ export default function TestCasePage() {
             onClick={() => { setRunPhase('idle'); setRunResult(null); setRunError(null) }}
             style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: statusColor, opacity: 0.5, fontSize: 16, padding: '0 2px', lineHeight: 1 }}
           >×</button>
+        </div>
+      )}
+
+      {/* Automate status bar */}
+      {automatePhase !== 'idle' && (
+        <div style={{
+          padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, flexShrink: 0,
+          background: automatePhase === 'done' && automateResult?.passed ? '#FFFBEB' : automatePhase === 'done' ? '#FEF2F2' : automatePhase === 'error' ? '#FEF2F2' : '#FFFBEB',
+          borderBottom: `1px solid ${automatePhase === 'done' && automateResult?.passed ? '#FDE68A' : automatePhase === 'done' ? '#FECACA' : automatePhase === 'error' ? '#FECACA' : '#FDE68A'}`,
+          color: automatePhase === 'done' && automateResult?.passed ? '#92400E' : automatePhase === 'done' ? '#991B1B' : automatePhase === 'error' ? '#991B1B' : '#92400E',
+        }}>
+          {(automatePhase === 'starting' || automatePhase === 'running') && (
+            <div style={{ width: 13, height: 13, border: '2px solid #D97706', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+          )}
+          <span style={{ fontWeight: 600 }}>
+            {automatePhase === 'starting' && 'Launching browser… (~60s for Fargate cold start)'}
+            {automatePhase === 'running' && 'Automating test — watch it live in the browser tab'}
+            {automatePhase === 'done' && (automateResult?.passed ? '✅ Test Passed — save automated steps?' : '❌ Test Failed')}
+            {automatePhase === 'error' && '⚠️ Automation failed'}
+          </span>
+          {automateResult?.summary && <span style={{ fontSize: 12, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {automateResult.summary}</span>}
+          {automateError && <span style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {automateError}</span>}
+          {automatePhase === 'done' && automateResult?.passed && (
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+              {stepsSaveState === 'saved' ? (
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#16A34A' }}>✓ Steps saved</span>
+              ) : (
+                <>
+                  <button
+                    onClick={async () => {
+                      if (!tc || stepsSaveState === 'saving') return
+                      setStepsSaveState('saving')
+                      try {
+                        await updateTestCaseSteps(tc.id, replayScriptRef.current as any)
+                        await updateReplayScript(tc.id, replayScriptRef.current)
+                        setStepsSaveState('saved')
+                        setTc(prev => prev ? { ...prev, steps: replayScriptRef.current as any, replayScript: replayScriptRef.current } : prev)
+                      } catch {
+                        setStepsSaveState('idle')
+                      }
+                    }}
+                    disabled={stepsSaveState === 'saving'}
+                    style={{ padding: '4px 12px', borderRadius: 6, background: '#D97706', color: 'white', border: 'none', cursor: stepsSaveState === 'saving' ? 'default' : 'pointer', fontSize: 12, fontWeight: 600, opacity: stepsSaveState === 'saving' ? 0.7 : 1 }}
+                  >
+                    {stepsSaveState === 'saving' ? 'Saving…' : 'Save Steps'}
+                  </button>
+                  <button
+                    onClick={() => setAutomatePhase('idle')}
+                    style={{ padding: '4px 10px', borderRadius: 6, background: 'none', color: '#92400E', border: '1px solid #FCD34D', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                  >
+                    Discard
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          {(automatePhase === 'done' && !automateResult?.passed || automatePhase === 'error') && (
+            <button
+              onClick={() => { setAutomatePhase('idle'); setAutomateResult(null); setAutomateError(null) }}
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B', opacity: 0.5, fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+            >×</button>
+          )}
         </div>
       )}
 
