@@ -49,6 +49,7 @@ export default function TestCasePage() {
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
   const automateAbortedRef = useRef(false)
+  const sessionInfoRef = useRef<{ task_arn?: string; cluster?: string }>({})
 
   useEffect(() => {
     if (!id) return
@@ -169,6 +170,7 @@ export default function TestCasePage() {
       mcpCalls: planSteps.length,
     }
 
+    let sessionInfo: { task_arn?: string; cluster?: string } = {}
     try {
       const sessionRaw = await callAgent(
         { inputText: label, mode: 'start_session', sessionId: sessionId.current },
@@ -176,6 +178,8 @@ export default function TestCasePage() {
       )
       const session = JSON.parse(sessionRaw)
       if (session.error) throw new Error(session.error as string)
+      sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
+      sessionInfoRef.current = sessionInfo
 
       URL.revokeObjectURL(loadingUrl)
       if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
@@ -218,6 +222,11 @@ export default function TestCasePage() {
       tabRef.current = null
       setAutomateError(err instanceof Error ? err.message : String(err))
       setAutomatePhase('error')
+    } finally {
+      // Always stop the ECS task — prevents zombie tasks on failure, abort, or error
+      if (sessionInfo.task_arn && sessionInfo.cluster) {
+        callAgent({ inputText: '', mode: 'stop_session', task_arn: sessionInfo.task_arn, cluster: sessionInfo.cluster }, sessionId.current).catch(() => {})
+      }
     }
   }
 
@@ -357,6 +366,10 @@ export default function TestCasePage() {
                 setAutomatePhase('idle')
                 setAutomateResult(null)
                 setAutomateError(null)
+                const si = sessionInfoRef.current
+                if (si.task_arn && si.cluster) {
+                  callAgent({ inputText: '', mode: 'stop_session', task_arn: si.task_arn, cluster: si.cluster }, sessionId.current).catch(() => {})
+                }
               }}
               style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 6, background: 'none', border: '1px solid #FCD34D', color: '#92400E', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
             >Stop</button>

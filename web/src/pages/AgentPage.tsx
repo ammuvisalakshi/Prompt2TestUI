@@ -213,10 +213,12 @@ export default function AgentPage() {
       mcpCalls: planSteps.length,
     }
 
+    let sessionInfo: { task_arn?: string; cluster?: string } = {}
     try {
       const sessionRaw = await callAgent({ inputText: label, mode: 'start_session', sessionId }, sessionId)
       const session = JSON.parse(sessionRaw)
       if (session.error) throw new Error(session.error as string)
+      sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
 
       URL.revokeObjectURL(loadingUrl)
       if (tab) tab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
@@ -255,6 +257,11 @@ export default function AgentPage() {
       popupRef.current = null
       setAutomateError(err instanceof Error ? err.message : String(err))
       setAutomatePhase('error')
+    } finally {
+      // Always stop the ECS task — prevents zombie tasks on failure, abort, or error
+      if (sessionInfo.task_arn && sessionInfo.cluster) {
+        callAgent({ inputText: '', mode: 'stop_session', task_arn: sessionInfo.task_arn, cluster: sessionInfo.cluster }, sessionId).catch(() => {})
+      }
     }
   }
 
@@ -772,6 +779,7 @@ export default function AgentPage() {
                               setAutomatePhase('idle')
                               setAutomateResult(null)
                               setAutomateError(null)
+                              // stop_session is also called in the automateTest finally block
                             }}
                             style={{ padding: '2px 10px', borderRadius: 6, background: 'none', border: '1px solid #7C3AED', color: '#7C3AED', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
                           >Stop</button>
