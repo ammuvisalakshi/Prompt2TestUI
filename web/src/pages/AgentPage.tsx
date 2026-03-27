@@ -110,6 +110,7 @@ export default function AgentPage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const replayScriptRef = useRef<object[]>([])
+  const automateAbortedRef = useRef(false)
   const chatRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -190,6 +191,7 @@ export default function AgentPage() {
     setAutomateResult(null)
     setAutomateError(null)
     setStepsSaveState('idle')
+    automateAbortedRef.current = false
 
     const tcId = saveTcIdInput || savedTcId.current || ''
     const label = saveTitleInput || 'Test case'
@@ -229,6 +231,8 @@ export default function AgentPage() {
         cluster: session.cluster,
         mcp_endpoint: session.mcp_endpoint,
       }, sessionId)
+
+      if (automateAbortedRef.current) return
 
       const result = JSON.parse(raw)
       if (result.error) throw new Error(result.error as string)
@@ -755,11 +759,22 @@ export default function AgentPage() {
                         </button>
                       )}
 
-                      {/* Running indicator */}
+                      {/* Running indicator + Stop button */}
                       {(automatePhase === 'starting' || automatePhase === 'running') && (
-                        <div className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE]">
-                          <div className="w-3.5 h-3.5 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin" />
-                          {automatePhase === 'starting' ? 'Launching browser… (~60s)' : 'Running test…'}
+                        <div className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-[13px] font-semibold bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE]">
+                          <div className="w-3.5 h-3.5 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                          <span className="flex-1">{automatePhase === 'starting' ? 'Launching browser… (~60s)' : 'Running test…'}</span>
+                          <button
+                            onClick={() => {
+                              automateAbortedRef.current = true
+                              popupRef.current?.close()
+                              popupRef.current = null
+                              setAutomatePhase('idle')
+                              setAutomateResult(null)
+                              setAutomateError(null)
+                            }}
+                            style={{ padding: '2px 10px', borderRadius: 6, background: 'none', border: '1px solid #7C3AED', color: '#7C3AED', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                          >Stop</button>
                         </div>
                       )}
 
