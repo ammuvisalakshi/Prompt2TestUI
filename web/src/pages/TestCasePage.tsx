@@ -504,28 +504,61 @@ export default function TestCasePage() {
                   )}
                 </button>
               </div>
-              <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
-                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '46%' }}>Action</th>
-                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {autoSteps.map((step, i) => (
-                      <tr key={i} style={{ borderBottom: i < autoSteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
-                        <td style={{ padding: '12px', textAlign: 'center', verticalAlign: 'top' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{step.stepNumber ?? i + 1}</span>
-                        </td>
-                        <td style={{ padding: '12px 16px', color: '#334155', lineHeight: 1.6, verticalAlign: 'top' }}>{step.action}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>{step.detail}</td>
+              {replaySteps.length > 0 ? (
+                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
+                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '30%' }}>Tool</th>
+                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Parameters</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {replaySteps.map((step, i) => {
+                        const tool = step.tool.replace('playwright_', '').replace(/_/g, ' ')
+                        const mainParam = (step.params as any).url ?? (step.params as any).value ?? (step.params as any).selector ?? (step.params as any).text ?? ''
+                        return (
+                          <tr key={i} style={{ borderBottom: i < replaySteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                            <td style={{ padding: '10px 12px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{i + 1}</span>
+                            </td>
+                            <td style={{ padding: '10px 16px', verticalAlign: 'middle' }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#7C3AED', textTransform: 'capitalize' }}>{tool}</span>
+                            </td>
+                            <td style={{ padding: '10px 16px', color: '#475569', fontSize: 12, fontFamily: 'monospace', verticalAlign: 'middle', wordBreak: 'break-all' }}>
+                              {String(mainParam)}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
+                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '46%' }}>Action</th>
+                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {autoSteps.map((step, i) => (
+                        <tr key={i} style={{ borderBottom: i < autoSteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', verticalAlign: 'top' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{step.stepNumber ?? i + 1}</span>
+                          </td>
+                          <td style={{ padding: '10px 16px', color: '#334155', lineHeight: 1.6, verticalAlign: 'top' }}>{step.action}</td>
+                          <td style={{ padding: '10px 16px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>{step.detail}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>) : (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
