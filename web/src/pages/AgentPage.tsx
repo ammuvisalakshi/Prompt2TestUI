@@ -238,6 +238,7 @@ export default function AgentPage() {
 
       const result = JSON.parse(raw)
       if (result.error) throw new Error(result.error as string)
+      if (result.result?.error) throw new Error(result.result.error as string)
 
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
@@ -902,6 +903,7 @@ export default function AgentPage() {
                               const raw = await callAgent({ inputText: label, mode: 'automate', plan: activePlan, sessionId, task_arn: resolvedSession.task_arn, cluster: resolvedSession.cluster, mcp_endpoint: resolvedSession.mcp_endpoint }, sessionId)
                               const result = JSON.parse(raw)
                               if (result.error) throw new Error(result.error as string)
+                              if (result.result?.error) throw new Error(result.result.error as string)
                               const passed = result.result?.passed ?? result.passed
                               const summary = result.result?.summary ?? result.summary ?? ''
                               saveRun({ description: label, passed, timestamp: new Date().toISOString() })
