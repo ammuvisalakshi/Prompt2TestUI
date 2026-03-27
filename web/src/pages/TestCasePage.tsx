@@ -510,24 +510,37 @@ export default function TestCasePage() {
                     <thead>
                       <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                         <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
-                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '30%' }}>Tool</th>
+                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '32%' }}>MCP Tool</th>
                         <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Parameters</th>
                       </tr>
                     </thead>
                     <tbody>
                       {replaySteps.map((step, i) => {
-                        const tool = step.tool.replace('playwright_', '').replace(/_/g, ' ')
-                        const mainParam = (step.params as any).url ?? (step.params as any).value ?? (step.params as any).selector ?? (step.params as any).text ?? ''
+                        const friendlyName = step.tool.replace('playwright_', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                        const params = step.params as Record<string, unknown>
+                        const paramEntries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
                         return (
                           <tr key={i} style={{ borderBottom: i < replaySteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
-                            <td style={{ padding: '10px 12px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <td style={{ padding: '12px 12px', textAlign: 'center', verticalAlign: 'top', paddingTop: 14 }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{i + 1}</span>
                             </td>
-                            <td style={{ padding: '10px 16px', verticalAlign: 'middle' }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#7C3AED', textTransform: 'capitalize' }}>{tool}</span>
+                            <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 13, marginBottom: 4 }}>{friendlyName}</div>
+                              <code style={{ fontSize: 10, color: '#7C3AED', background: '#EDE9FE', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', letterSpacing: '0.01em' }}>{step.tool}</code>
                             </td>
-                            <td style={{ padding: '10px 16px', color: '#475569', fontSize: 12, fontFamily: 'monospace', verticalAlign: 'middle', wordBreak: 'break-all' }}>
-                              {String(mainParam)}
+                            <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                              {paramEntries.length === 0 ? (
+                                <span style={{ color: '#94A3B8', fontSize: 12, fontStyle: 'italic' }}>no parameters</span>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {paramEntries.map(([key, val]) => (
+                                    <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                      <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', minWidth: 72, paddingTop: 1, flexShrink: 0 }}>{key}</span>
+                                      <span style={{ fontSize: 12, color: '#1E293B', fontFamily: typeof val === 'string' ? 'monospace' : 'inherit', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 4, padding: '1px 6px', wordBreak: 'break-all', lineHeight: 1.5 }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )
