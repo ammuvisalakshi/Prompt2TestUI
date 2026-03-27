@@ -212,7 +212,8 @@ export default function InventoryPage() {
 
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-visible">
           {/* Tab bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 gap-3">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+            {/* Tabs */}
             <div className="flex gap-1 flex-shrink-0">
               {(['cases', 'runs'] as Tab[]).map(t => (
                 <button key={t} onClick={() => setTab(t)}
@@ -223,38 +224,44 @@ export default function InventoryPage() {
                 </button>
               ))}
             </div>
+
+            {/* Search */}
             {tab === 'cases' && (
-              <div className="flex items-center gap-2 flex-1">
-                <div className="relative flex-1 max-w-sm">
-                  <svg viewBox="0 0 24 24" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-400 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input
-                    type="text"
-                    placeholder="Search by ID, title…"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-[13px] border border-slate-200 rounded-lg bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#7C3AED] focus:bg-white transition-colors"
-                  />
-                </div>
-                {search && (
-                  <button onClick={() => setSearch('')} className="text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0">Clear</button>
-                )}
-                {services.length > 0 && (
-                  <button
-                    onClick={() => {
-                      const allCollapsed = services.every(s => collapsedServices.has(s))
-                      setCollapsedServices(allCollapsed ? new Set() : new Set(services))
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer flex-shrink-0"
-                  >
-                    {services.every(s => collapsedServices.has(s)) ? (
-                      <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
-                    ) : (
-                      <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
-                    )}
-                  </button>
-                )}
+              <div className="relative flex-1 max-w-xs">
+                <svg viewBox="0 0 24 24" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-400 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  type="text"
+                  placeholder="Search by ID, title…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-[13px] border border-slate-200 rounded-lg bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#7C3AED] focus:bg-white transition-colors"
+                />
               </div>
             )}
+            {search && (
+              <button onClick={() => setSearch('')} className="text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0">Clear</button>
+            )}
+
+            <div className="flex-1" />
+
+            {/* Collapse all / Expand all */}
+            {tab === 'cases' && services.length > 0 && (
+              <button
+                onClick={() => {
+                  const allCollapsed = services.every(s => collapsedServices.has(s))
+                  setCollapsedServices(allCollapsed ? new Set() : new Set(services))
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer flex-shrink-0"
+              >
+                {services.every(s => collapsedServices.has(s)) ? (
+                  <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
+                ) : (
+                  <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
+                )}
+              </button>
+            )}
+
+            {/* Refresh */}
             <button onClick={load} disabled={loading}
               className="text-[12px] text-slate-400 hover:text-[#7C3AED] transition-colors cursor-pointer disabled:opacity-40 flex-shrink-0">
               {loading ? 'Loading…' : '↻ Refresh'}
@@ -270,16 +277,16 @@ export default function InventoryPage() {
               <div className="px-4 py-8 text-center text-[14px] text-slate-400">No test cases yet for {env.toUpperCase()}</div>
             ) : (
               <table className="w-full border-collapse">
-                {/* Table header */}
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50">
-                    <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">ID</th>
-                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Title</th>
-                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Created By</th>
-                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Last Run By</th>
-                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Last Run</th>
-                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-24 text-center">State</th>
-                    <th className="px-3 py-2.5 w-16"></th>
+                {/* Sticky header */}
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-50 border-b-2 border-slate-200">
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-28">ID</th>
+                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Title</th>
+                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-32">Created By</th>
+                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-32">Last Run By</th>
+                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-24">Result</th>
+                    <th className="text-center px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-widest w-20">State</th>
+                    <th className="w-12"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -287,64 +294,64 @@ export default function InventoryPage() {
                     <>
                       {/* Service group header */}
                       <tr key={`hdr-${svc}`}>
-                        <td colSpan={7}>
+                        <td colSpan={7} className="p-0">
                           <button
                             onClick={() => toggleService(svc)}
-                            className="w-full flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer text-left border-y border-slate-100"
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-slate-100 to-slate-50 border-y border-slate-200 hover:from-purple-50 hover:to-slate-50 transition-colors cursor-pointer text-left group/hdr"
                           >
-                            <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 text-slate-400 transition-transform flex-shrink-0 ${collapsedServices.has(svc) ? '-rotate-90' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{svc}</span>
-                            <span className="text-[11px] text-slate-400">({grouped[svc].length})</span>
+                            <svg viewBox="0 0 24 24" className={`w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-400 group-hover/hdr:text-[#7C3AED] transition-all flex-shrink-0 ${collapsedServices.has(svc) ? '-rotate-90' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest group-hover/hdr:text-[#7C3AED] transition-colors">{svc}</span>
+                            <span className="text-[11px] text-slate-400 font-medium">{grouped[svc].length} test{grouped[svc].length !== 1 ? 's' : ''}</span>
                           </button>
                         </td>
                       </tr>
 
                       {/* Test case rows */}
-                      {!collapsedServices.has(svc) && grouped[svc].map((tc) => {
+                      {!collapsedServices.has(svc) && grouped[svc].map((tc, idx) => {
                         const isAutomated = (tc as TestCase & { stepCount?: number }).stepCount ?? 0 > 0
+                        const lastRunBy = tc.runs?.[tc.runs.length - 1]?.runBy
                         return (
                           <tr
                             key={tc.id}
                             onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
-                            className="border-b border-slate-50 hover:bg-[#F5F3FF] cursor-pointer transition-colors group"
+                            className={`border-b border-slate-100 hover:bg-[#F5F3FF] cursor-pointer transition-colors group ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}
                           >
                             {/* ID */}
-                            <td className="px-4 py-3 align-middle">
-                              <span className="font-mono text-[11px] text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 group-hover:border-purple-200 group-hover:bg-purple-50 group-hover:text-[#7C3AED] transition-colors">{tc.id}</span>
+                            <td className="px-4 py-3.5 align-middle">
+                              <span className="font-mono text-[11px] text-slate-400 bg-slate-100 border border-slate-200 rounded-md px-1.5 py-0.5 group-hover:border-purple-200 group-hover:bg-purple-50 group-hover:text-[#7C3AED] transition-colors whitespace-nowrap">{tc.id}</span>
                             </td>
 
                             {/* Title */}
-                            <td className="px-3 py-3 align-middle">
-                              <div className="text-[13.5px] text-slate-700 font-medium truncate max-w-lg group-hover:text-[#5B21B6] transition-colors" title={tc.title || tc.description}>
+                            <td className="px-3 py-3.5 align-middle">
+                              <div className="text-[13px] text-slate-700 font-semibold truncate max-w-lg group-hover:text-[#5B21B6] transition-colors leading-snug" title={tc.title || tc.description}>
                                 {tc.title || tc.description}
                               </div>
                               {tc.tags.length > 0 && (
-                                <div className="flex items-center gap-1.5 mt-1">
+                                <div className="flex items-center gap-1 mt-1">
                                   {tc.tags.map(tag => (
-                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium">{tag}</span>
+                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-medium">{tag}</span>
                                   ))}
                                 </div>
                               )}
                             </td>
 
                             {/* Created By */}
-                            <td className="px-3 py-3 align-middle">
-                              <span className="text-[12px] text-slate-500 truncate block max-w-[96px]" title={tc.createdBy}>{tc.createdBy || '—'}</span>
+                            <td className="px-3 py-3.5 align-middle">
+                              <span className="text-[12px] text-slate-500 truncate block max-w-[110px]" title={tc.createdBy}>{tc.createdBy || <span className="text-slate-300">—</span>}</span>
                             </td>
 
                             {/* Last Run By */}
-                            <td className="px-3 py-3 align-middle">
-                              {(() => {
-                                const lastRunBy = tc.runs?.[tc.runs.length - 1]?.runBy
-                                return <span className="text-[12px] text-slate-500 truncate block max-w-[96px]" title={lastRunBy}>{lastRunBy || '—'}</span>
-                              })()}
+                            <td className="px-3 py-3.5 align-middle">
+                              <span className="text-[12px] text-slate-500 truncate block max-w-[110px]" title={lastRunBy}>{lastRunBy || <span className="text-slate-300">—</span>}</span>
                             </td>
 
-                            {/* Last Run */}
-                            <td className="px-3 py-3 align-middle">
+                            {/* Result */}
+                            <td className="px-3 py-3.5 align-middle">
                               {tc.lastResult ? (
-                                <span className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2 py-0.5 rounded-full ${
-                                  tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full ${
+                                  tc.lastResult === 'PASS'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-red-50 text-red-600 border border-red-200'
                                 }`}>
                                   {tc.lastResult === 'PASS' ? '✓' : '✕'} {tc.lastResult}
                                 </span>
@@ -354,20 +361,20 @@ export default function InventoryPage() {
                             </td>
 
                             {/* State icon */}
-                            <td className="px-3 py-3 align-middle text-center">
+                            <td className="px-3 py-3.5 align-middle text-center">
                               {isAutomated ? (
                                 <span title="Automated" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-purple-50 text-[#7C3AED] border border-purple-200">
                                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                                 </span>
                               ) : (
-                                <span title="Not automated — click to automate" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 border border-slate-200 opacity-50">
+                                <span title="Not automated — click to automate" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 border border-slate-200 opacity-40">
                                   <img src="/favicon.svg" width="16" height="16" alt="Not automated" />
                                 </span>
                               )}
                             </td>
 
                             {/* Kebab */}
-                            <td className="px-3 py-3 align-middle" onClick={e => e.stopPropagation()}>
+                            <td className="px-2 py-3.5 align-middle" onClick={e => e.stopPropagation()}>
                               <div className="relative flex justify-end">
                                 <button
                                   onClick={() => setOpenKebab(openKebab === tc.id ? null : tc.id)}
