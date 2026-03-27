@@ -214,14 +214,14 @@
           <div class="sub-box-title">All Pages</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <div class="tag tag-gray">LoginPage</div>
-            <div class="tag tag-blue">AgentPage — Author tests, generate plan, execute</div>
+            <div class="tag tag-blue">AgentPage — Author tests, generate plan, save</div>
             <div class="tag tag-purple">InventoryPage — Browse, run, manage TCs</div>
             <div class="tag tag-teal">ConfigPage — Env config, SSM params</div>
             <div class="tag tag-green">MembersPage — Team RBAC</div>
             <div class="tag tag-gray">noVNC Popup — Live browser view</div>
           </div>
           <div style="margin-top:6px; font-size:12px; color:#64748b;">
-            AgentPage: describe test → plan → save TC → execute inline or from Inventory
+            AgentPage: describe test → plan → save TC → open TestCasePage | TestCasePage: automate (LLM) → save steps → run test (deterministic replay)
           </div>
         </div>
       </div>
@@ -310,7 +310,9 @@
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <div class="tag tag-orange">plan — generate test plan from prompt + env SSM params</div>
             <div class="tag tag-blue">start_session — RunTask → poll RUNNING → get public IP via ENI</div>
-            <div class="tag tag-teal">automate — run Playwright test via MCP tools → StopTask</div>
+            <div class="tag tag-teal">automate — LLM drives Playwright via MCP tools → captures playwright_calls per step → StopTask</div>
+            <div class="tag tag-green">replay — deterministic re-run using saved playwright_calls (raw ClientSession.call_tool, no LLM)</div>
+            <div class="tag tag-gray">stop_session — explicit ECS StopTask cleanup (called on Stop, success, or failure)</div>
           </div>
           <div style="margin-top:6px; font-size:12px; color:#64748b;">
             plan mode receives <b>env</b> in payload → agent reads SSM params for that environment when generating the plan
@@ -534,7 +536,7 @@
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <div class="step-text">User clicks <b>Run</b> (AgentPage or InventoryPage) → popup opens instantly with <b>progress bar</b></div>
+          <div class="step-text">User opens <b>TestCasePage</b> → clicks <b>Automate</b> → popup opens instantly with <b>progress bar</b></div>
         </div>
         <div class="step">
           <div class="step-num">4</div>
@@ -550,7 +552,15 @@
         </div>
         <div class="step">
           <div class="step-num">7</div>
-          <div class="step-text">Agent runs test steps → <b>StopTask</b> → Lambda saves <b>run record</b> (PASS/FAIL)</div>
+          <div class="step-text"><b>automate:</b> LLM drives Playwright via MCP → captures <b>playwright_calls per step</b> → streams results</div>
+        </div>
+        <div class="step">
+          <div class="step-num">8</div>
+          <div class="step-text">User saves steps → <b>Save Steps</b> persists playwright_calls to Aurora via Lambda</div>
+        </div>
+        <div class="step">
+          <div class="step-num">9</div>
+          <div class="step-text"><b>Run Test:</b> replay mode → raw ClientSession.call_tool() (no LLM) → StopTask → PASS/FAIL recorded</div>
         </div>
       </div>
     </div>
@@ -906,7 +916,7 @@
     </div>
 
     <!-- Execution flow -->
-    <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Execute Test (from AgentPage or InventoryPage)</div>
+    <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Execute Test (from TestCasePage)</div>
     <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; justify-content:center;">
 
       <div style="text-align:center; min-width:80px;">

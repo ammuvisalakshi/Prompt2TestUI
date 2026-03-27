@@ -927,9 +927,11 @@ Prompt2TestStack: creating CloudFormation changeset...
             <li style="margin-bottom:10px;"><strong>Set a new password</strong> when prompted — choose something permanent</li>
             <li style="margin-bottom:10px;"><strong>Go to Config tab</strong> — your services from Step 15 should appear as chips</li>
             <li style="margin-bottom:10px;"><strong>Go to Agent tab</strong> → select environment and a service → type a test prompt like <em>"test that the login page loads"</em> → the agent should respond and generate a test plan</li>
-            <li style="margin-bottom:10px;"><strong>Save the test case</strong> → click Save → fill in the form → click Confirm</li>
-            <li style="margin-bottom:10px;"><strong>Go to Inventory tab</strong> → your saved test case should appear in the list</li>
-            <li style="margin-bottom:10px;"><strong>Click Run</strong> on the test case → a browser window should open showing the automation live → after it finishes, a PASS or FAIL result should be recorded</li>
+            <li style="margin-bottom:10px;"><strong>Save the test case</strong> → click Save → fill in the form → click Confirm → click <strong>View Test Case →</strong> to open the test case page</li>
+            <li style="margin-bottom:10px;"><strong>Click Automate</strong> on the test case page → a live browser window should open showing the agent automating the test → after it finishes, review the captured steps</li>
+            <li style="margin-bottom:10px;"><strong>Click Save Steps</strong> to persist the captured Playwright MCP calls for deterministic replay</li>
+            <li style="margin-bottom:10px;"><strong>Click Run Test</strong> → the test replays deterministically (no LLM) → after it finishes, a PASS or FAIL result should be recorded</li>
+            <li style="margin-bottom:10px;"><strong>Go to Inventory tab</strong> → your saved test case should appear in the list with the run result</li>
           </ol>
         </div>
       </div>
@@ -941,8 +943,9 @@ Prompt2TestStack: creating CloudFormation changeset...
 <span class="t-ok">✅  Services appear in Config</span>    → SSM Parameter Store is working
 <span class="t-ok">✅  Agent responds to prompt</span>     → AgentCore runtime is active, IAM roles correct
 <span class="t-ok">✅  Test case saves to Inventory</span> → Lambda + Aurora is working
-<span class="t-ok">✅  Run opens live browser</span>       → ECS Fargate + noVNC is working
-<span class="t-ok">✅  PASS/FAIL result recorded</span>    → Full end-to-end flow complete</div>
+<span class="t-ok">✅  Automate opens live browser</span>  → ECS Fargate + noVNC is working
+<span class="t-ok">✅  Steps captured and saved</span>     → playwright_calls persisted to Aurora
+<span class="t-ok">✅  PASS/FAIL result recorded</span>    → Full end-to-end flow complete (LLM automate + deterministic replay)</div>
         </div>
       </div>
       <div class="warn-panel">

@@ -479,7 +479,7 @@
       <div class="adr-section">
         <div class="adr-section-title col-blue">Decision</div>
         <div class="decision-box">
-          Playwright runs in an <strong>ECS Fargate task launched on-demand per test execution</strong> (ARM64, 2 vCPU, 4GB RAM). The task starts when a user clicks Run, serves a live browser view via <strong>noVNC over WebSocket</strong>, executes the test, records the result, then terminates. The UI embeds the noVNC stream in an iframe during execution.
+          Playwright runs in an <strong>ECS Fargate task launched on-demand per test execution</strong> (ARM64, 2 vCPU, 4GB RAM). The task starts when a user clicks <strong>Automate</strong> (LLM-driven first run) or <strong>Run Test</strong> (deterministic replay) on the TestCasePage, serves a live browser view via <strong>noVNC over WebSocket</strong>, executes the test, records the result, then terminates. The UI embeds the noVNC stream in an iframe during execution.
         </div>
       </div>
 
