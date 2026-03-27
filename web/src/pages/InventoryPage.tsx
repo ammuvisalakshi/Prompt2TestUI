@@ -254,104 +254,127 @@ export default function InventoryPage() {
             cases.length === 0 && !loading ? (
               <div className="px-4 py-8 text-center text-[14px] text-slate-400">No test cases yet for {env.toUpperCase()}</div>
             ) : (
-              <div>
-                {services.map(svc => (
-                  <div key={svc}>
-                    {/* Service group header — click to collapse */}
-                    <button
-                      onClick={() => toggleService(svc)}
-                      className="w-full flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors cursor-pointer text-left"
-                    >
-                      <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 text-slate-400 transition-transform flex-shrink-0 ${collapsedServices.has(svc) ? '-rotate-90' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{svc}</span>
-                      <span className="text-[11px] text-slate-400">({grouped[svc].length})</span>
-                    </button>
+              <table className="w-full border-collapse">
+                {/* Table header */}
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50">
+                    <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">ID</th>
+                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Title</th>
+                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Last Run</th>
+                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-24 text-center">State</th>
+                    <th className="px-3 py-2.5 w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.map(svc => (
+                    <>
+                      {/* Service group header */}
+                      <tr key={`hdr-${svc}`}>
+                        <td colSpan={5}>
+                          <button
+                            onClick={() => toggleService(svc)}
+                            className="w-full flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer text-left border-y border-slate-100"
+                          >
+                            <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 text-slate-400 transition-transform flex-shrink-0 ${collapsedServices.has(svc) ? '-rotate-90' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{svc}</span>
+                            <span className="text-[11px] text-slate-400">({grouped[svc].length})</span>
+                          </button>
+                        </td>
+                      </tr>
 
-                    {/* Rows */}
-                    {!collapsedServices.has(svc) && grouped[svc].map((tc) => {
-                      const isAutomated = (tc as TestCase & { stepCount?: number }).stepCount ?? 0 > 0
-                      return (
-                        <div key={tc.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                          {/* ID + Description */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-[11px] font-mono text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 flex-shrink-0">{tc.id}</span>
-                            </div>
-                            <div className="text-[14px] text-slate-700 font-medium truncate" title={tc.title || tc.description}>{tc.title || tc.description}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              {tc.tags.map(tag => (
-                                <span key={tag} className="text-[11px] px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium">{tag}</span>
-                              ))}
-                              {tc.lastResult && (
-                                <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      {/* Test case rows */}
+                      {!collapsedServices.has(svc) && grouped[svc].map((tc) => {
+                        const isAutomated = (tc as TestCase & { stepCount?: number }).stepCount ?? 0 > 0
+                        return (
+                          <tr
+                            key={tc.id}
+                            onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
+                            className="border-b border-slate-50 hover:bg-[#F5F3FF] cursor-pointer transition-colors group"
+                          >
+                            {/* ID */}
+                            <td className="px-4 py-3 align-middle">
+                              <span className="font-mono text-[11px] text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 group-hover:border-purple-200 group-hover:bg-purple-50 group-hover:text-[#7C3AED] transition-colors">{tc.id}</span>
+                            </td>
+
+                            {/* Title */}
+                            <td className="px-3 py-3 align-middle">
+                              <div className="text-[13.5px] text-slate-700 font-medium truncate max-w-lg group-hover:text-[#5B21B6] transition-colors" title={tc.title || tc.description}>
+                                {tc.title || tc.description}
+                              </div>
+                              {tc.tags.length > 0 && (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  {tc.tags.map(tag => (
+                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium">{tag}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Last Run */}
+                            <td className="px-3 py-3 align-middle">
+                              {tc.lastResult ? (
+                                <span className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2 py-0.5 rounded-full ${
+                                  tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+                                }`}>
                                   {tc.lastResult === 'PASS' ? '✓' : '✕'} {tc.lastResult}
                                 </span>
+                              ) : (
+                                <span className="text-[12px] text-slate-300">—</span>
                               )}
-                            </div>
-                          </div>
+                            </td>
 
-                          {/* Automation status */}
-                          <span className={`flex-shrink-0 text-[11px] px-2 py-1 rounded-full font-semibold border ${
-                            isAutomated
-                              ? 'bg-purple-50 text-[#7C3AED] border-purple-200'
-                              : 'bg-slate-50 text-slate-400 border-slate-200'
-                          }`}>
-                            {isAutomated ? '⚡ Automated' : 'Not automated yet'}
-                          </span>
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {/* View & Run */}
-                            {isAutomated ? (
-                              <button onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] border border-[#DDD6FE] transition-colors cursor-pointer">
-                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                View &amp; Run
-                              </button>
-                            ) : (
-                              <button onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer">
-                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                                View &amp; Automate
-                              </button>
-                            )}
-
-                            {/* Kebab menu */}
-                            <div className="relative">
-                              <button
-                                onClick={() => setOpenKebab(openKebab === tc.id ? null : tc.id)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                              >
-                                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
-                              </button>
-                              {openKebab === tc.id && (
-                                <>
-                                  <div className="fixed inset-0 z-40" onClick={() => setOpenKebab(null)} />
-                                  <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1 overflow-hidden">
-                                    <button
-                                      onClick={() => { openAssign(tc); setOpenKebab(null) }}
-                                      className="w-full text-left px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer">
-                                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                      Move to service
-                                    </button>
-                                    <div className="h-px bg-slate-100 mx-2 my-1" />
-                                    <button
-                                      onClick={() => { setConfirmDeleteId(tc.id); setOpenKebab(null) }}
-                                      className="w-full text-left px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer">
-                                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                                      Delete
-                                    </button>
-                                  </div>
-                                </>
+                            {/* State icon */}
+                            <td className="px-3 py-3 align-middle text-center">
+                              {isAutomated ? (
+                                <span title="Automated" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-purple-50 text-[#7C3AED] border border-purple-200">
+                                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                </span>
+                              ) : (
+                                <span title="Not automated — click to automate" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-50 text-amber-500 border border-amber-200">
+                                  {/* Magic wand */}
+                                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M15 4V2m0 2v2m0-2h-2m2 0h2M3 8l9 9M9.5 2.5l12 12"/><circle cx="19" cy="5" r="1"/></svg>
+                                </span>
                               )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
+                            </td>
+
+                            {/* Kebab */}
+                            <td className="px-3 py-3 align-middle" onClick={e => e.stopPropagation()}>
+                              <div className="relative flex justify-end">
+                                <button
+                                  onClick={() => setOpenKebab(openKebab === tc.id ? null : tc.id)}
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                                >
+                                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                                </button>
+                                {openKebab === tc.id && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setOpenKebab(null)} />
+                                    <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1 overflow-hidden">
+                                      <button
+                                        onClick={() => { openAssign(tc); setOpenKebab(null) }}
+                                        className="w-full text-left px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer">
+                                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        Move to service
+                                      </button>
+                                      <div className="h-px bg-slate-100 mx-2 my-1" />
+                                      <button
+                                        onClick={() => { setConfirmDeleteId(tc.id); setOpenKebab(null) }}
+                                        className="w-full text-left px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer">
+                                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                        Delete
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </>
+                  ))}
+                </tbody>
+              </table>
             )
           ) : (
             <table className="w-full">
