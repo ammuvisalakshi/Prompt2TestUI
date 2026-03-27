@@ -4,7 +4,8 @@ import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps } f
 import { callAgent } from '../lib/agentClient'
 
 type PlanStep = { step: number; action: string; expected: string }
-type AutoStep = { stepNumber: number; type: string; tool?: string; action: string; detail: string }
+type PlaywrightCall = { tool: string; params: Record<string, unknown> }
+type AutoStep = { stepNumber: number; type: string; tool?: string; action: string; detail: string; status?: string; playwright_calls?: PlaywrightCall[] }
 type RunPhase = 'idle' | 'starting' | 'running' | 'done' | 'error'
 
 const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
@@ -46,6 +47,7 @@ export default function TestCasePage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const replayScriptRef = useRef<object[]>([])
+  const resultStepsRef = useRef<AutoStep[]>([])
   const automateAbortedRef = useRef(false)
 
   useEffect(() => {
@@ -196,6 +198,14 @@ export default function TestCasePage() {
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
       replayScriptRef.current = result.result?.replay_script ?? result.replay_script ?? []
+      resultStepsRef.current = (result.result?.steps ?? result.steps ?? []).map((s: any, i: number) => ({
+        stepNumber: s.stepNumber ?? i + 1,
+        type: 'browser',
+        action: s.action ?? '',
+        detail: s.detail ?? '',
+        status: s.status ?? 'passed',
+        playwright_calls: s.playwright_calls ?? [],
+      }))
 
       saveRunRecord({ testCaseId: tc.id, env: tc.env, result: passed ? 'PASS' : 'FAIL', summary }).catch(() => {})
       setAutomateResult({ passed, summary })
@@ -364,14 +374,15 @@ export default function TestCasePage() {
                       if (!tc || stepsSaveState === 'saving') return
                       setStepsSaveState('saving')
                       try {
-                        const planStepsLocal = (tc.planSteps ?? []) as PlanStep[]
-                        const autoSteps = planStepsLocal.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected }))
-                        await updateTestCaseSteps(tc.id, autoSteps)
+                        const stepsToSave = resultStepsRef.current.length > 0
+                          ? resultStepsRef.current
+                          : (tc.planSteps ?? [] as PlanStep[]).map((s: PlanStep) => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected, playwright_calls: [] }))
+                        await updateTestCaseSteps(tc.id, stepsToSave)
                         if (replayScriptRef.current.length > 0) {
                           await updateReplayScript(tc.id, replayScriptRef.current)
                         }
                         setStepsSaveState('saved')
-                        setTc(prev => prev ? { ...prev, autoSteps, replayScript: replayScriptRef.current } as any : prev)
+                        setTc(prev => prev ? { ...prev, steps: stepsToSave, replayScript: replayScriptRef.current } as any : prev)
                       } catch {
                         setStepsSaveState('idle')
                       }
@@ -504,72 +515,58 @@ export default function TestCasePage() {
                   )}
                 </button>
               </div>
-              {replaySteps.length > 0 ? (
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
-                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '32%' }}>MCP Tool</th>
-                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Parameters</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {replaySteps.map((step, i) => {
-                        const friendlyName = step.tool.replace('playwright_', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                        const params = step.params as Record<string, unknown>
-                        const paramEntries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
-                        return (
-                          <tr key={i} style={{ borderBottom: i < replaySteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
-                            <td style={{ padding: '12px 12px', textAlign: 'center', verticalAlign: 'top', paddingTop: 14 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{i + 1}</span>
-                            </td>
-                            <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
-                              <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 13, marginBottom: 4 }}>{friendlyName}</div>
-                              <code style={{ fontSize: 10, color: '#7C3AED', background: '#EDE9FE', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', letterSpacing: '0.01em' }}>{step.tool}</code>
-                            </td>
-                            <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
-                              {paramEntries.length === 0 ? (
-                                <span style={{ color: '#94A3B8', fontSize: 12, fontStyle: 'italic' }}>no parameters</span>
-                              ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                  {paramEntries.map(([key, val]) => (
-                                    <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                                      <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', minWidth: 72, paddingTop: 1, flexShrink: 0 }}>{key}</span>
-                                      <span style={{ fontSize: 12, color: '#1E293B', fontFamily: typeof val === 'string' ? 'monospace' : 'inherit', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 4, padding: '1px 6px', wordBreak: 'break-all', lineHeight: 1.5 }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+              {autoSteps.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {autoSteps.map((step, i) => {
+                    const statusColor = step.status === 'failed' ? '#EF4444' : step.status === 'skipped' ? '#F59E0B' : '#16A34A'
+                    const statusBadgeBg = step.status === 'failed' ? '#FEF2F2' : step.status === 'skipped' ? '#FFFBEB' : '#F0FDF4'
+                    const calls = step.playwright_calls ?? []
+                    return (
+                      <div key={i} style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                        {/* Step header */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px', borderBottom: calls.length > 0 ? '1px solid #F1F5F9' : 'none', background: '#FAFBFF' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{step.stepNumber}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: step.detail ? 4 : 0 }}>{step.action}</div>
+                            {step.detail && <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>{step.detail}</div>}
+                          </div>
+                          {step.status && (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, background: statusBadgeBg, border: `1px solid ${statusColor}22`, borderRadius: 6, padding: '2px 8px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{step.status}</span>
+                          )}
+                        </div>
+                        {/* Playwright MCP calls for this step */}
+                        {calls.length > 0 && (
+                          <div style={{ padding: '10px 18px 12px 18px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Playwright MCP Calls</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {calls.map((call, j) => {
+                                const friendlyName = call.tool.replace(/^(playwright_|browser_)/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                                const paramEntries = Object.entries(call.params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+                                return (
+                                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                                    <div style={{ minWidth: 180, flexShrink: 0 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 3 }}>{friendlyName}</div>
+                                      <code style={{ fontSize: 10, color: '#7C3AED', background: '#EDE9FE', padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace' }}>{call.tool}</code>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
-                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '46%' }}>Action</th>
-                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {autoSteps.map((step, i) => (
-                        <tr key={i} style={{ borderBottom: i < autoSteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
-                          <td style={{ padding: '10px 12px', textAlign: 'center', verticalAlign: 'top' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{step.stepNumber ?? i + 1}</span>
-                          </td>
-                          <td style={{ padding: '10px 16px', color: '#334155', lineHeight: 1.6, verticalAlign: 'top' }}>{step.action}</td>
-                          <td style={{ padding: '10px 16px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>{step.detail}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                      {paramEntries.length === 0 ? (
+                                        <span style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>no parameters</span>
+                                      ) : paramEntries.map(([key, val]) => (
+                                        <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', minWidth: 64, flexShrink: 0, paddingTop: 1 }}>{key}</span>
+                                          <span style={{ fontSize: 11, color: '#1E293B', fontFamily: 'monospace', background: 'white', border: '1px solid #E2E8F0', borderRadius: 4, padding: '1px 6px', wordBreak: 'break-all', lineHeight: 1.5 }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </>) : (
