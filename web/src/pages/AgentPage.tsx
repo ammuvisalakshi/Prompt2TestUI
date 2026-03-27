@@ -110,6 +110,7 @@ export default function AgentPage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const replayScriptRef = useRef<object[]>([])
+  const resultStepsRef = useRef<{ stepNumber: number; type: string; action: string; detail: string; status: string; playwright_calls: object[] }[]>([])
   const automateAbortedRef = useRef(false)
   const chatRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -244,6 +245,14 @@ export default function AgentPage() {
       const summary = result.result?.summary ?? result.summary ?? ''
       const replayScript = result.result?.replay_script ?? result.replay_script ?? []
       replayScriptRef.current = replayScript
+      resultStepsRef.current = (result.result?.steps ?? result.steps ?? []).map((s: any, i: number) => ({
+        stepNumber: s.stepNumber ?? i + 1,
+        type: 'browser',
+        action: s.action ?? '',
+        detail: s.detail ?? '',
+        status: s.status ?? 'passed',
+        playwright_calls: s.playwright_calls ?? [],
+      }))
 
       saveRunRecord({ testCaseId: savedTcId.current!, env, result: passed ? 'PASS' : 'FAIL', summary, runBy: userName }).catch(() => {})
       saveRun({ description: label, passed, timestamp: new Date().toISOString() })
@@ -798,7 +807,9 @@ export default function AgentPage() {
                                 if (!savedTcId.current || stepsSaveState !== 'idle') return
                                 setStepsSaveState('saving')
                                 try {
-                                  const autoSteps = planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected }))
+                                  const autoSteps = resultStepsRef.current.length > 0
+                                    ? resultStepsRef.current
+                                    : planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected, playwright_calls: [] }))
                                   await updateTestCaseSteps(savedTcId.current, autoSteps)
                                   if (replayScriptRef.current.length > 0) {
                                     await updateReplayScript(savedTcId.current, replayScriptRef.current)
