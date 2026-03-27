@@ -224,8 +224,8 @@ export default function InventoryPage() {
               ))}
             </div>
             {tab === 'cases' && (
-              <div className="flex items-center gap-2 flex-1 max-w-sm">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="relative flex-1 max-w-sm">
                   <svg viewBox="0 0 24 24" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-400 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input
                     type="text"
@@ -237,6 +237,21 @@ export default function InventoryPage() {
                 </div>
                 {search && (
                   <button onClick={() => setSearch('')} className="text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0">Clear</button>
+                )}
+                {services.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const allCollapsed = services.every(s => collapsedServices.has(s))
+                      setCollapsedServices(allCollapsed ? new Set() : new Set(services))
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    {services.every(s => collapsedServices.has(s)) ? (
+                      <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
+                    ) : (
+                      <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
+                    )}
+                  </button>
                 )}
               </div>
             )}
@@ -260,6 +275,8 @@ export default function InventoryPage() {
                   <tr className="border-b border-slate-100 bg-slate-50">
                     <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">ID</th>
                     <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Title</th>
+                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Created By</th>
+                    <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Last Run By</th>
                     <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">Last Run</th>
                     <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-24 text-center">State</th>
                     <th className="px-3 py-2.5 w-16"></th>
@@ -270,7 +287,7 @@ export default function InventoryPage() {
                     <>
                       {/* Service group header */}
                       <tr key={`hdr-${svc}`}>
-                        <td colSpan={5}>
+                        <td colSpan={7}>
                           <button
                             onClick={() => toggleService(svc)}
                             className="w-full flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer text-left border-y border-slate-100"
@@ -308,6 +325,19 @@ export default function InventoryPage() {
                                   ))}
                                 </div>
                               )}
+                            </td>
+
+                            {/* Created By */}
+                            <td className="px-3 py-3 align-middle">
+                              <span className="text-[12px] text-slate-500 truncate block max-w-[96px]" title={tc.createdBy}>{tc.createdBy || '—'}</span>
+                            </td>
+
+                            {/* Last Run By */}
+                            <td className="px-3 py-3 align-middle">
+                              {(() => {
+                                const lastRunBy = tc.runs?.[tc.runs.length - 1]?.runBy
+                                return <span className="text-[12px] text-slate-500 truncate block max-w-[96px]" title={lastRunBy}>{lastRunBy || '—'}</span>
+                              })()}
                             </td>
 
                             {/* Last Run */}
