@@ -564,7 +564,7 @@ export default function TestCasePage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {calls.map((call, j) => {
                                 const friendlyName = call.tool.replace(/^(playwright_|browser_)/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                                const paramEntries = Object.entries(call.params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+                                const paramEntries = Object.entries(call.params).filter(([k, v]) => k !== 'ref' && v !== undefined && v !== null && v !== '')
                                 return (
                                   <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
                                     <div style={{ minWidth: 180, flexShrink: 0 }}>
