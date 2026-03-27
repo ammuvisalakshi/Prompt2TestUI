@@ -77,6 +77,7 @@ export default function TestCasePage() {
     const newTab = window.open(loadingUrl, '_blank')
     tabRef.current = newTab
 
+    let runSessionInfo: { task_arn?: string; cluster?: string } = {}
     try {
       const sessionRaw = await callAgent(
         { inputText: tc.title || tc.description, mode: 'start_session', sessionId: sessionId.current },
@@ -84,6 +85,7 @@ export default function TestCasePage() {
       )
       const session = JSON.parse(sessionRaw)
       if (session.error) throw new Error(session.error as string)
+      runSessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
 
       URL.revokeObjectURL(loadingUrl)
       if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
@@ -92,10 +94,6 @@ export default function TestCasePage() {
       const replayScript = (tc as any).replayScript
       const useReplay = Array.isArray(replayScript) && replayScript.length > 0
       isReplayMode.current = useReplay
-
-      if (useReplay) {
-        setRunPhase('running')
-      }
 
       const plan = { summary: tc.title || tc.description, steps, mcpCalls: 0 }
       const raw = await callAgent(
@@ -122,7 +120,11 @@ export default function TestCasePage() {
       )
 
       const result = JSON.parse(raw)
-      if (result.error) throw new Error(result.error as string)
+      // Check both top-level error (from main.py exception handler) and nested result error
+      const topError = result.error
+      const innerError = result.result?.error
+      if (topError) throw new Error(topError as string)
+      if (innerError) throw new Error(innerError as string)
 
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
@@ -138,6 +140,11 @@ export default function TestCasePage() {
       tabRef.current = null
       setRunError(err instanceof Error ? err.message : String(err))
       setRunPhase('error')
+    } finally {
+      // Always stop the ECS task — prevents zombie tasks on failure, abort, or error
+      if (runSessionInfo.task_arn && runSessionInfo.cluster) {
+        callAgent({ inputText: '', mode: 'stop_session', task_arn: runSessionInfo.task_arn, cluster: runSessionInfo.cluster }, sessionId.current).catch(() => {})
+      }
     }
   }
 
@@ -196,7 +203,11 @@ export default function TestCasePage() {
       }, sessionId.current)
 
       const result = JSON.parse(raw)
-      if (result.error) throw new Error(result.error as string)
+      // Check both top-level error (from main.py exception handler) and nested result error
+      const topError = result.error
+      const innerError = result.result?.error
+      if (topError) throw new Error(topError as string)
+      if (innerError) throw new Error(innerError as string)
 
       if (automateAbortedRef.current) return
       const passed = result.result?.passed ?? result.passed
