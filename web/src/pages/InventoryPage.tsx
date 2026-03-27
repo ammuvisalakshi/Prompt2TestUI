@@ -41,6 +41,8 @@ export default function InventoryPage() {
   const [assignSaving, setAssignSaving] = useState(false)
   const [availableServices, setAvailableServices] = useState<string[]>([])
   const [servicesLoading, setServicesLoading] = useState(false)
+  const [search, setSearch] = useState('')
+  const [collapsedServices, setCollapsedServices] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -93,14 +95,30 @@ export default function InventoryPage() {
     }
   }
 
-  // Group test cases by service
-  const grouped = cases.reduce<Record<string, TestCase[]>>((acc, tc) => {
+  // Filter + group test cases by service
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? cases.filter(tc =>
+        tc.id.toLowerCase().includes(q) ||
+        (tc.title || '').toLowerCase().includes(q) ||
+        tc.description.toLowerCase().includes(q)
+      )
+    : cases
+  const grouped = filtered.reduce<Record<string, TestCase[]>>((acc, tc) => {
     const svc = tc.service || 'Uncategorized'
     if (!acc[svc]) acc[svc] = []
     acc[svc].push(tc)
     return acc
   }, {})
   const services = Object.keys(grouped).sort()
+
+  function toggleService(svc: string) {
+    setCollapsedServices(prev => {
+      const next = new Set(prev)
+      next.has(svc) ? next.delete(svc) : next.add(svc)
+      return next
+    })
+  }
 
   const smoke    = cases.filter(tc => tc.tags.includes('Smoke')).length
   const failures = cases.filter(tc => tc.lastResult === 'FAIL').length
@@ -194,8 +212,8 @@ export default function InventoryPage() {
 
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-visible">
           {/* Tab bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <div className="flex gap-1">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 gap-3">
+            <div className="flex gap-1 flex-shrink-0">
               {(['cases', 'runs'] as Tab[]).map(t => (
                 <button key={t} onClick={() => setTab(t)}
                   className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors cursor-pointer ${
@@ -205,8 +223,25 @@ export default function InventoryPage() {
                 </button>
               ))}
             </div>
+            {tab === 'cases' && (
+              <div className="flex items-center gap-2 flex-1 max-w-sm">
+                <div className="relative flex-1">
+                  <svg viewBox="0 0 24 24" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-400 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Search by ID, title…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-[13px] border border-slate-200 rounded-lg bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#7C3AED] focus:bg-white transition-colors"
+                  />
+                </div>
+                {search && (
+                  <button onClick={() => setSearch('')} className="text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0">Clear</button>
+                )}
+              </div>
+            )}
             <button onClick={load} disabled={loading}
-              className="text-[12px] text-slate-400 hover:text-[#7C3AED] transition-colors cursor-pointer disabled:opacity-40">
+              className="text-[12px] text-slate-400 hover:text-[#7C3AED] transition-colors cursor-pointer disabled:opacity-40 flex-shrink-0">
               {loading ? 'Loading…' : '↻ Refresh'}
             </button>
           </div>
@@ -222,27 +257,34 @@ export default function InventoryPage() {
               <div>
                 {services.map(svc => (
                   <div key={svc}>
-                    {/* Service group header */}
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                    {/* Service group header — click to collapse */}
+                    <button
+                      onClick={() => toggleService(svc)}
+                      className="w-full flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors cursor-pointer text-left"
+                    >
+                      <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 text-slate-400 transition-transform flex-shrink-0 ${collapsedServices.has(svc) ? '-rotate-90' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
                       <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{svc}</span>
                       <span className="text-[11px] text-slate-400">({grouped[svc].length})</span>
-                    </div>
+                    </button>
 
                     {/* Rows */}
-                    {grouped[svc].map((tc) => {
+                    {!collapsedServices.has(svc) && grouped[svc].map((tc) => {
                       const isAutomated = (tc as TestCase & { stepCount?: number }).stepCount ?? 0 > 0
                       return (
                         <div key={tc.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                          {/* Description */}
+                          {/* ID + Description */}
                           <div className="flex-1 min-w-0">
-                            <div className="text-[14px] text-slate-700 font-medium truncate" title={tc.description}>{tc.description}</div>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-[11px] font-mono text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 flex-shrink-0">{tc.id}</span>
+                            </div>
+                            <div className="text-[14px] text-slate-700 font-medium truncate" title={tc.title || tc.description}>{tc.title || tc.description}</div>
                             <div className="flex items-center gap-2 mt-1">
                               {tc.tags.map(tag => (
                                 <span key={tag} className="text-[11px] px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium">{tag}</span>
                               ))}
                               {tc.lastResult && (
                                 <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${tc.lastResult === 'PASS' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                  {tc.lastResult}
+                                  {tc.lastResult === 'PASS' ? '✓' : '✕'} {tc.lastResult}
                                 </span>
                               )}
                             </div>
