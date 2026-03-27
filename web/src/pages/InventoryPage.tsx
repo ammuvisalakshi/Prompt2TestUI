@@ -213,7 +213,6 @@ export default function InventoryPage() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-visible">
           {/* Tab bar */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
-            {/* Tabs */}
             <div className="flex gap-1 flex-shrink-0">
               {(['cases', 'runs'] as Tab[]).map(t => (
                 <button key={t} onClick={() => setTab(t)}
@@ -224,49 +223,50 @@ export default function InventoryPage() {
                 </button>
               ))}
             </div>
-
-            {/* Search */}
             {tab === 'cases' && (
               <div className="relative flex-1 max-w-xs">
                 <svg viewBox="0 0 24 24" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-400 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input
-                  type="text"
-                  placeholder="Search by ID, title…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-[13px] border border-slate-200 rounded-lg bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#7C3AED] focus:bg-white transition-colors"
-                />
+                <input type="text" placeholder="Search by ID, title…" value={search} onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-[13px] border border-slate-200 rounded-lg bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#7C3AED] focus:bg-white transition-colors" />
               </div>
             )}
-            {search && (
-              <button onClick={() => setSearch('')} className="text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0">Clear</button>
-            )}
-
-            <div className="flex-1" />
-
-            {/* Collapse all / Expand all */}
-            {tab === 'cases' && services.length > 0 && (
-              <button
-                onClick={() => {
-                  const allCollapsed = services.every(s => collapsedServices.has(s))
-                  setCollapsedServices(allCollapsed ? new Set() : new Set(services))
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer flex-shrink-0"
-              >
-                {services.every(s => collapsedServices.has(s)) ? (
-                  <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
-                ) : (
-                  <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
-                )}
-              </button>
-            )}
-
-            {/* Refresh */}
-            <button onClick={load} disabled={loading}
-              className="text-[12px] text-slate-400 hover:text-[#7C3AED] transition-colors cursor-pointer disabled:opacity-40 flex-shrink-0">
-              {loading ? 'Loading…' : '↻ Refresh'}
-            </button>
+            {search && <button onClick={() => setSearch('')} className="text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0">Clear</button>}
           </div>
+
+          {/* Table toolbar — sits right above the table */}
+          {tab === 'cases' && (
+            <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50/60">
+              {services.length > 0 && (
+                <button
+                  onClick={() => {
+                    const allCollapsed = services.every(s => collapsedServices.has(s))
+                    setCollapsedServices(allCollapsed ? new Set() : new Set(services))
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-semibold text-slate-500 border border-slate-200 bg-white hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer"
+                >
+                  {services.every(s => collapsedServices.has(s)) ? (
+                    <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
+                  ) : (
+                    <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
+                  )}
+                </button>
+              )}
+              <button onClick={load} disabled={loading}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-slate-500 border border-slate-200 bg-white hover:bg-slate-50 hover:text-[#7C3AED] transition-colors cursor-pointer disabled:opacity-40">
+                <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 ${loading ? 'animate-spin' : ''}`}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                {loading ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
+          )}
+          {tab === 'runs' && (
+            <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50/60">
+              <button onClick={load} disabled={loading}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-slate-500 border border-slate-200 bg-white hover:bg-slate-50 hover:text-[#7C3AED] transition-colors cursor-pointer disabled:opacity-40">
+                <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 ${loading ? 'animate-spin' : ''}`}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                {loading ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="px-4 py-3 text-[13px] text-red-600 bg-red-50 border-b border-red-100">{error}</div>
