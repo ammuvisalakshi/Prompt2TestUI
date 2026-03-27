@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import { fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
@@ -75,7 +75,7 @@ export default function AgentPage() {
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
+
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -453,7 +453,7 @@ export default function AgentPage() {
                   {/* View Test Case button — shown after save */}
                   {tcSaved === 'saved' && savedTcId.current && (
                     <button
-                      onClick={() => navigate(`/testcases/${savedTcId.current}`)}
+                      onClick={() => window.open(`/test-case/${savedTcId.current}`, '_blank')}
                       className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold bg-[#7C3AED] hover:bg-[#5B21B6] text-white transition-colors cursor-pointer"
                     >
                       <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
