@@ -515,8 +515,7 @@ export default function TestCasePage() {
                   )}
                 </button>
               </div>
-              {autoSteps.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {autoSteps.map((step, i) => {
                     const statusColor = step.status === 'failed' ? '#EF4444' : step.status === 'skipped' ? '#F59E0B' : '#16A34A'
                     const statusBadgeBg = step.status === 'failed' ? '#FEF2F2' : step.status === 'skipped' ? '#FFFBEB' : '#F0FDF4'
@@ -568,7 +567,6 @@ export default function TestCasePage() {
                     )
                   })}
                 </div>
-              )}
             </>) : (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
