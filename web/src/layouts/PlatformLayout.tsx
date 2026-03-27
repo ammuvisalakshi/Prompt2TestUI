@@ -129,7 +129,9 @@ export default function PlatformLayout() {
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-[52px] border-b border-slate-100 flex-shrink-0">
-          <img src="/favicon.svg" width="24" height="24" alt="Prompt2Test" />
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2.5 }}><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
           <span className="text-[15px] font-bold text-slate-900 tracking-tight">Prompt2Test</span>
         </div>
 
