@@ -285,9 +285,7 @@ export default function TestCasePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Logo — click to go home */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4, textDecoration: 'none' }}>
-            <div style={{ width: 24, height: 24, borderRadius: 6, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2.5 }}><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
+            <img src="/favicon.svg" width="24" height="24" alt="Prompt2Test" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', letterSpacing: '-0.3px' }}>Prompt2Test</span>
           </a>
           <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: '#CBD5E1', fill: 'none', strokeWidth: 2 }}><polyline points="9 18 15 12 9 6"/></svg>
