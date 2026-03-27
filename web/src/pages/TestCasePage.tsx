@@ -46,6 +46,7 @@ export default function TestCasePage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const replayScriptRef = useRef<object[]>([])
+  const automateAbortedRef = useRef(false)
 
   useEffect(() => {
     if (!id) return
@@ -147,6 +148,7 @@ export default function TestCasePage() {
     setAutomateError(null)
     setStepsSaveState('idle')
     replayScriptRef.current = []
+    automateAbortedRef.current = false
 
     const label = tc.title || tc.description
     const tabTitle = `${tc.id} — ${label}`
@@ -190,6 +192,7 @@ export default function TestCasePage() {
       const result = JSON.parse(raw)
       if (result.error) throw new Error(result.error as string)
 
+      if (automateAbortedRef.current) return
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
       replayScriptRef.current = result.result?.replay_script ?? result.replay_script ?? []
@@ -335,6 +338,19 @@ export default function TestCasePage() {
             {automatePhase === 'done' && (automateResult?.passed ? '✅ Test Passed — save automated steps?' : '❌ Test Failed')}
             {automatePhase === 'error' && '⚠️ Automation failed'}
           </span>
+          {(automatePhase === 'starting' || automatePhase === 'running') && (
+            <button
+              onClick={() => {
+                automateAbortedRef.current = true
+                tabRef.current?.close()
+                tabRef.current = null
+                setAutomatePhase('idle')
+                setAutomateResult(null)
+                setAutomateError(null)
+              }}
+              style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 6, background: 'none', border: '1px solid #FCD34D', color: '#92400E', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+            >Stop</button>
+          )}
           {automateResult?.summary && <span style={{ fontSize: 12, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {automateResult.summary}</span>}
           {automateError && <span style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {automateError}</span>}
           {automatePhase === 'done' && automateResult?.passed && (
@@ -411,7 +427,22 @@ export default function TestCasePage() {
             planSteps.length > 0 ? (
               <>
               {!isAutomated && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 8 }}>
+                  {(automatePhase === 'starting' || automatePhase === 'running') && (
+                    <button
+                      onClick={() => {
+                        automateAbortedRef.current = true
+                        tabRef.current?.close()
+                        tabRef.current = null
+                        setAutomatePhase('idle')
+                        setAutomateResult(null)
+                        setAutomateError(null)
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                    >
+                      <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, fill: '#64748B' }}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Stop
+                    </button>
+                  )}
                   <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1 }}
                     onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.background = '#B45309' }}
@@ -473,43 +504,28 @@ export default function TestCasePage() {
                   )}
                 </button>
               </div>
-              {autoSteps.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {autoSteps.map((step, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#7C3AED', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                        {step.stepNumber ?? i + 1}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 3 }}>{step.action}</div>
-                        <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 4 }}>{step.detail}</div>
-                        <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {step.type}{step.tool ? ` · ${step.tool}` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {replaySteps.map((step, i) => {
-                    const tool = step.tool.replace('playwright_', '')
-                    const params = step.params ?? {}
-                    const detail = Object.entries(params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(' · ')
-                    return (
-                      <div key={i} style={{ display: 'flex', gap: 12, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#7C3AED', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                          {i + 1}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 3, textTransform: 'capitalize' }}>{tool.replace(/_/g, ' ')}</div>
-                          <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, fontFamily: 'monospace', wordBreak: 'break-all' }}>{detail}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: 40 }}>#</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', width: '46%' }}>Action</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {autoSteps.map((step, i) => (
+                      <tr key={i} style={{ borderBottom: i < autoSteps.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                        <td style={{ padding: '12px', textAlign: 'center', verticalAlign: 'top' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 11, fontWeight: 700 }}>{step.stepNumber ?? i + 1}</span>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#334155', lineHeight: 1.6, verticalAlign: 'top' }}>{step.action}</td>
+                        <td style={{ padding: '12px 16px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>{step.detail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>) : (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: '56px 24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
