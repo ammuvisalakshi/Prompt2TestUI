@@ -376,7 +376,7 @@ export default function TestCasePage() {
                       try {
                         const stepsToSave = resultStepsRef.current.length > 0
                           ? resultStepsRef.current
-                          : (tc.planSteps ?? [] as PlanStep[]).map((s: PlanStep) => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected, playwright_calls: [] }))
+                          : ((tc.planSteps ?? []) as PlanStep[]).map((s: PlanStep) => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected, playwright_calls: [] }))
                         await updateTestCaseSteps(tc.id, stepsToSave)
                         if (replayScriptRef.current.length > 0) {
                           await updateReplayScript(tc.id, replayScriptRef.current)
