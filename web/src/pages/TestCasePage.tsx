@@ -46,6 +46,7 @@ export default function TestCasePage() {
   const [automateResult, setAutomateResult] = useState<{ passed: boolean; summary: string } | null>(null)
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [showReAutomateConfirm, setShowReAutomateConfirm] = useState(false)
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
   const automateAbortedRef = useRef(false)
@@ -282,13 +283,13 @@ export default function TestCasePage() {
       {/* Top nav bar */}
       <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '0 20px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
+          {/* Logo — click to go home */}
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4, textDecoration: 'none' }}>
             <div style={{ width: 24, height: 24, borderRadius: 6, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2.5 }}><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', letterSpacing: '-0.3px' }}>Prompt2Test</span>
-          </div>
+          </a>
           <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: '#CBD5E1', fill: 'none', strokeWidth: 2 }}><polyline points="9 18 15 12 9 6"/></svg>
           <span style={{ fontSize: 13, color: '#64748B' }}>Test Case</span>
         </div>
@@ -461,23 +462,34 @@ export default function TestCasePage() {
           {activeTab === 'plan' && (
             planSteps.length > 0 ? (
               <>
-              {!isAutomated && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 8 }}>
-                  {(automatePhase === 'starting' || automatePhase === 'running') && (
-                    <button
-                      onClick={() => {
-                        automateAbortedRef.current = true
-                        tabRef.current?.close()
-                        tabRef.current = null
-                        setAutomatePhase('idle')
-                        setAutomateResult(null)
-                        setAutomateError(null)
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                    >
-                      <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, fill: '#64748B' }}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Stop
-                    </button>
-                  )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 8 }}>
+                {(automatePhase === 'starting' || automatePhase === 'running') && (
+                  <button
+                    onClick={() => {
+                      automateAbortedRef.current = true
+                      tabRef.current?.close()
+                      tabRef.current = null
+                      setAutomatePhase('idle')
+                      setAutomateResult(null)
+                      setAutomateError(null)
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                  >
+                    <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, fill: '#64748B' }}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Stop
+                  </button>
+                )}
+                {isAutomated ? (
+                  <button
+                    onClick={() => setShowReAutomateConfirm(true)}
+                    disabled={automatePhase === 'starting' || automatePhase === 'running'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#D97706', border: '1px solid #FCD34D', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.5 : 1 }}
+                    onMouseEnter={e => { if (automatePhase === 'idle') { (e.currentTarget as HTMLButtonElement).style.background = '#FFFBEB' } }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'white' }}
+                  >
+                    <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: '#D97706', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    Re-Automate
+                  </button>
+                ) : (
                   <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1 }}
                     onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.background = '#B45309' }}
@@ -489,8 +501,8 @@ export default function TestCasePage() {
                       <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automate</>
                     )}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
@@ -601,6 +613,30 @@ export default function TestCasePage() {
           )}
         </div>
       </div>
+
+      {/* Re-Automate confirmation dialog */}
+      {showReAutomateConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: 14, padding: '28px 28px 22px', maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 22, marginBottom: 10 }}>⚠️</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>Re-automate this test?</div>
+            <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, marginBottom: 22 }}>
+              This will run a new LLM-driven automation session and <strong>erase the previously saved steps and replay script</strong>. You'll need to save the new steps again after it completes.
+              <br/><br/>Do you want to proceed?
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowReAutomateConfirm(false)}
+                style={{ padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+              >Cancel</button>
+              <button
+                onClick={() => { setShowReAutomateConfirm(false); automateTest() }}
+                style={{ padding: '7px 16px', borderRadius: 8, background: '#D97706', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+              >Yes, Re-Automate</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
