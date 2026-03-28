@@ -19,9 +19,7 @@ export default function LoginPage() {
     try {
       await signOut().catch(() => {})
       const result = await signIn({ username: email.trim().toLowerCase(), password })
-
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        // Temp password — user must set a permanent one
         setStep('new-password')
       } else {
         navigate('/agent')
@@ -49,46 +47,66 @@ export default function LoginPage() {
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px',
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 10, fontSize: 14, color: 'white', outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  function onFocus(e: React.FocusEvent<HTMLInputElement>) {
+    e.currentTarget.style.border = '1px solid rgba(139,92,246,0.6)'
+  }
+  function onBlur(e: React.FocusEvent<HTMLInputElement>) {
+    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)'
+  }
+
   return (
-    <div className="fixed inset-0 bg-slate-100 flex items-center justify-center">
-      <div className="bg-white border border-slate-200 rounded-2xl p-11 w-[400px] text-center shadow-lg">
-        <div className="flex items-center justify-center gap-2.5 mb-1.5">
-          <img src="/favicon.svg" width="36" height="36" alt="Prompt2Test"/>
-          <span className="text-[26px] font-bold text-slate-900">Prompt2Test</span>
+    <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #0D0821 0%, #130D35 45%, #0A1628 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '44px 40px', width: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
+          <img src="/favicon.svg" width="36" height="36" alt="Prompt2Test" />
+          <span style={{ fontSize: 26, fontWeight: 700, color: 'white', textShadow: '0 0 20px rgba(167,139,250,0.5)' }}>Prompt2Test</span>
         </div>
-        <div className="text-[14px] text-slate-500 mb-7">AI-powered test authoring &amp; automation platform</div>
-        <div className="inline-block text-[12px] text-[#7C3AED] border border-[#7C3AED] px-3 py-0.5 rounded-full mb-7">
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>AI-powered test authoring &amp; automation platform</div>
+        <div style={{ display: 'inline-block', fontSize: 12, color: '#C084FC', border: '1px solid rgba(139,92,246,0.4)', background: 'rgba(139,92,246,0.1)', padding: '3px 12px', borderRadius: 20, marginBottom: 28 }}>
           Bedrock Agent Core · AWS · Team workspace
         </div>
 
         {step === 'login' ? (
-          <form onSubmit={handleLogin} className="flex flex-col gap-2.5">
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="your@company.com" required autoFocus
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#7C3AED] transition-colors" />
+              style={{ ...inputStyle, color: 'white' }}
+              onFocus={onFocus} onBlur={onBlur} />
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="Password" required
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#7C3AED] transition-colors" />
-            {error && <div className="text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-left">{error}</div>}
+              style={{ ...inputStyle, color: 'white' }}
+              onFocus={onFocus} onBlur={onBlur} />
+            {error && <div style={{ fontSize: 13, color: '#F87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', textAlign: 'left' }}>{error}</div>}
             <button type="submit" disabled={loading}
-              className="w-full py-2.5 bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white rounded-lg text-[14px] font-semibold mt-1 transition-colors cursor-pointer">
+              style={{ width: '100%', padding: 10, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: 4, boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}>
               {loading ? 'Signing in…' : 'Sign in →'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleNewPassword} className="flex flex-col gap-2.5">
-            <div className="text-[13px] text-slate-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-left mb-1">
+          <form onSubmit={handleNewPassword} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13, color: '#FCD34D', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', textAlign: 'left', marginBottom: 4 }}>
               Your temporary password has expired. Please set a permanent password to continue.
             </div>
             <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
               placeholder="New password" required autoFocus
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#7C3AED] transition-colors" />
+              style={{ ...inputStyle, color: 'white' }}
+              onFocus={onFocus} onBlur={onBlur} />
             <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
               placeholder="Confirm new password" required
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-slate-800 placeholder-slate-400 outline-none focus:border-[#7C3AED] transition-colors" />
-            {error && <div className="text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-left">{error}</div>}
+              style={{ ...inputStyle, color: 'white' }}
+              onFocus={onFocus} onBlur={onBlur} />
+            {error && <div style={{ fontSize: 13, color: '#F87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', textAlign: 'left' }}>{error}</div>}
             <button type="submit" disabled={loading}
-              className="w-full py-2.5 bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-60 text-white rounded-lg text-[14px] font-semibold mt-1 transition-colors cursor-pointer">
+              style={{ width: '100%', padding: 10, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: 4, boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}>
               {loading ? 'Setting password…' : 'Set password & continue →'}
             </button>
           </form>

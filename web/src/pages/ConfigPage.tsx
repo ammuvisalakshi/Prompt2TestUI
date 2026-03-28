@@ -46,27 +46,22 @@ async function deleteParam(name: string) {
 
 export default function ConfigPage() {
   const { env } = useEnv()
-  const [tab, setTab]   = useState<'services' | 'accounts'>('services')
+  const [tab, setTab] = useState<'services' | 'accounts'>('services')
 
-  // Services: svcName -> param rows
-  const [svcRows, setSvcRows]   = useState<Record<string, ParamRow[]>>({})
+  const [svcRows,   setSvcRows]   = useState<Record<string, ParamRow[]>>({})
   const [svcLoading, setSvcLoading] = useState(false)
   const [svcSaving,  setSvcSaving]  = useState<Record<string, boolean>>({})
   const [svcStatus,  setSvcStatus]  = useState<Record<string, { type: 'idle' | 'saved' | 'error'; msg?: string }>>({})
   const [showRegisterModal, setShowRegisterModal] = useState(false)
 
-  // Accounts (per env)
   const [accounts,    setAccounts]    = useState<Account[]>([])
   const [acctLoading, setAcctLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-
-  // ── Loaders ───────────────────────────────────────────────────────────────
 
   const loadServices = useCallback(async () => {
     setSvcLoading(true)
     try {
       const flat = await loadParamsForPath(`${SSM_PREFIX}/${env}/services`, true)
-      // keys: "{svcname}/{FIELD}"
       const map: Record<string, Record<string, string>> = {}
       for (const [k, v] of Object.entries(flat)) {
         const slash = k.indexOf('/')
@@ -89,7 +84,6 @@ export default function ConfigPage() {
     setAcctLoading(true)
     try {
       const flat = await loadParamsForPath(`${SSM_PREFIX}/accounts/${env}`, true)
-      // keys: "{id}/NAME", "{id}/CODE"
       const map: Record<string, Record<string, string>> = {}
       for (const [k, v] of Object.entries(flat)) {
         const slash = k.indexOf('/')
@@ -113,8 +107,6 @@ export default function ConfigPage() {
     if (tab === 'services') loadServices()
     if (tab === 'accounts') loadAccounts()
   }, [env, tab, loadServices, loadAccounts])
-
-  // ── Service actions ───────────────────────────────────────────────────────
 
   async function saveService(svc: string) {
     setSvcSaving(p => ({ ...p, [svc]: true }))
@@ -149,8 +141,6 @@ export default function ConfigPage() {
     } catch (e) { console.error('Delete service failed:', e) }
   }
 
-  // ── Account actions ───────────────────────────────────────────────────────
-
   async function deleteAccount(id: string) {
     if (!confirm('Delete this test account?')) return
     try {
@@ -161,105 +151,108 @@ export default function ConfigPage() {
     } catch (e) { console.error('Delete account failed:', e) }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#F5F7FA]">
-      <div className="flex-1 overflow-y-auto p-5">
-        {/* Sub tabs */}
-        <div className="flex gap-1 mb-5 border-b border-slate-200">
-          {(['services', 'accounts'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-[14px] font-medium cursor-pointer border-b-2 -mb-px transition-colors ${
-                tab === t ? 'text-[#7C3AED] border-[#7C3AED]' : 'text-slate-400 border-transparent hover:text-slate-600'
-              }`}
-            >{t === 'services' ? 'Services' : 'Test Accounts'}</button>
-          ))}
-        </div>
-
-        {/* ── Services ──────────────────────────────────────────────────── */}
-        {tab === 'services' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-[14px] font-semibold text-slate-600">
-                {svcLoading ? 'Loading…' : `${Object.keys(svcRows).length} service${Object.keys(svcRows).length !== 1 ? 's' : ''} · ${env.toUpperCase()}`}
-              </div>
-              <button onClick={() => setShowRegisterModal(true)}
-                className="px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
-                + Register Service
-              </button>
-            </div>
-
-            {svcLoading ? (
-              <div className="text-[13px] text-slate-400 py-6 text-center">Loading from SSM…</div>
-            ) : Object.keys(svcRows).length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-[13px]">
-                No services registered for {env.toUpperCase()} yet.{' '}
-                Click <strong>+ Register Service</strong> to add one.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {Object.keys(svcRows).sort().map(svc => (
-                  <ServiceCard
-                    key={svc}
-                    svc={svc}
-                    env={env}
-                    rows={svcRows[svc]}
-                    saving={svcSaving[svc] ?? false}
-                    status={svcStatus[svc] ?? { type: 'idle' }}
-                    onChange={rows => setSvcRows(p => ({ ...p, [svc]: rows }))}
-                    onSave={() => saveService(svc)}
-                    onDelete={() => deleteService(svc)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Test Accounts ─────────────────────────────────────────────── */}
-        {tab === 'accounts' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-[14px] font-semibold text-slate-600">
-                {acctLoading ? 'Loading…' : `${accounts.length} account${accounts.length !== 1 ? 's' : ''} · ${env.toUpperCase()}`}
-              </div>
-              <button onClick={() => setShowAddModal(true)}
-                className="px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6]">
-                + Add Account
-              </button>
-            </div>
-
-            {acctLoading ? (
-              <div className="text-[13px] text-slate-400 py-6 text-center">Loading from SSM…</div>
-            ) : (
-              <div className="space-y-3">
-                {accounts.map(acc => (
-                  <div key={acc.id} className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-lg bg-[#EDE9FE] text-[#7C3AED] flex items-center justify-center text-[13px] font-bold flex-shrink-0">
-                      {acc.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[14px] font-semibold text-slate-900">{acc.name}</div>
-                      <div className="text-[12px] text-slate-400 font-mono">{acc.code}</div>
-                    </div>
-                    <button onClick={() => deleteAccount(acc.id)}
-                      className="text-slate-300 hover:text-red-400 transition-colors cursor-pointer text-[16px]" title="Delete">
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {accounts.length === 0 && !acctLoading && (
-                  <div className="text-center py-10 text-slate-400 text-[13px]">
-                    No test accounts for {env.toUpperCase()} yet.{' '}
-                    Click <strong>+ Add Account</strong> to add one.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+    <div style={{ height: '100%', overflowY: 'auto', padding: 20, background: 'transparent' }}>
+      {/* Sub tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        {(['services', 'accounts'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{
+              padding: '8px 16px', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+              background: 'none', border: 'none', borderBottom: `2px solid ${tab === t ? '#A855F7' : 'transparent'}`,
+              color: tab === t ? '#C084FC' : 'rgba(255,255,255,0.35)',
+              marginBottom: -1, transition: 'all 0.15s',
+            }}>
+            {t === 'services' ? 'Services' : 'Test Accounts'}
+          </button>
+        ))}
       </div>
+
+      {/* ── Services ──────────────────────────────────────────────────── */}
+      {tab === 'services' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
+              {svcLoading ? 'Loading…' : `${Object.keys(svcRows).length} service${Object.keys(svcRows).length !== 1 ? 's' : ''} · ${env.toUpperCase()}`}
+            </div>
+            <button onClick={() => setShowRegisterModal(true)}
+              style={{ padding: '6px 14px', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', boxShadow: '0 0 12px rgba(139,92,246,0.3)' }}>
+              + Register Service
+            </button>
+          </div>
+
+          {svcLoading ? (
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '24px 0', textAlign: 'center' }}>Loading from SSM…</div>
+          ) : Object.keys(svcRows).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
+              No services registered for {env.toUpperCase()} yet.{' '}
+              Click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>+ Register Service</strong> to add one.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {Object.keys(svcRows).sort().map(svc => (
+                <ServiceCard
+                  key={svc}
+                  svc={svc}
+                  env={env}
+                  rows={svcRows[svc]}
+                  saving={svcSaving[svc] ?? false}
+                  status={svcStatus[svc] ?? { type: 'idle' }}
+                  onChange={rows => setSvcRows(p => ({ ...p, [svc]: rows }))}
+                  onSave={() => saveService(svc)}
+                  onDelete={() => deleteService(svc)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Test Accounts ─────────────────────────────────────────────── */}
+      {tab === 'accounts' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
+              {acctLoading ? 'Loading…' : `${accounts.length} account${accounts.length !== 1 ? 's' : ''} · ${env.toUpperCase()}`}
+            </div>
+            <button onClick={() => setShowAddModal(true)}
+              style={{ padding: '6px 14px', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', boxShadow: '0 0 12px rgba(139,92,246,0.3)' }}>
+              + Add Account
+            </button>
+          </div>
+
+          {acctLoading ? (
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '24px 0', textAlign: 'center' }}>Loading from SSM…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {accounts.map(acc => (
+                <div key={acc.id} style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(139,92,246,0.25)', border: '1px solid rgba(139,92,246,0.4)', color: '#C084FC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                    {acc.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{acc.name}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{acc.code}</div>
+                  </div>
+                  <button onClick={() => deleteAccount(acc.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', fontSize: 16, lineHeight: 1, padding: 0 }}
+                    title="Delete"
+                    onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}>
+                    ×
+                  </button>
+                </div>
+              ))}
+              {accounts.length === 0 && !acctLoading && (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
+                  No test accounts for {env.toUpperCase()} yet.{' '}
+                  Click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>+ Add Account</strong> to add one.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {showRegisterModal && (
         <RegisterServiceModal
@@ -297,60 +290,71 @@ function ServiceCard({
   onSave: () => void
   onDelete: () => void
 }) {
+  const inputStyle: React.CSSProperties = {
+    padding: '6px 12px', background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
+    fontSize: 13, color: 'white', outline: 'none',
+  }
+
   function updateRow(i: number, field: 'key' | 'value', val: string) {
     onChange(rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r))
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="text-[15px] font-bold text-slate-900 capitalize">{svc}</div>
-          <span className="text-[11px] text-slate-400 font-mono">/…/{env}/services/{svc}/*</span>
+    <div style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'capitalize' }}>{svc}</div>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>/…/{env}/services/{svc}/*</span>
         </div>
         <button onClick={onDelete}
-          className="text-slate-300 hover:text-red-400 transition-colors cursor-pointer text-[18px] leading-none" title="Delete service">
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', fontSize: 18, lineHeight: 1, padding: 0 }}
+          title="Delete service"
+          onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}>
           ×
         </button>
       </div>
 
-      <div className="space-y-2 mb-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
         {rows.map((row, i) => (
-          <div key={i} className="flex items-center gap-2">
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
-              className="w-[180px] flex-shrink-0 px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] font-mono outline-none focus:border-[#7C3AED]"
+              style={{ ...inputStyle, width: 180, flexShrink: 0, fontFamily: 'monospace' }}
               placeholder="PARAM_KEY"
               value={row.key}
               onChange={e => updateRow(i, 'key', e.target.value.toUpperCase().replace(/\s+/g, '_'))}
             />
             <input
-              className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#7C3AED]"
+              style={{ ...inputStyle, flex: 1 }}
               placeholder="value"
               value={row.value}
               onChange={e => updateRow(i, 'value', e.target.value)}
             />
             <button onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
-              className="text-slate-300 hover:text-red-400 transition-colors cursor-pointer text-[16px] flex-shrink-0 leading-none">
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', fontSize: 16, flexShrink: 0, lineHeight: 1, padding: 0 }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}>
               ×
             </button>
           </div>
         ))}
         {rows.length === 0 && (
-          <div className="text-[12px] text-slate-400 italic">No parameters yet — click + Add param below.</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>No parameters yet — click + Add param below.</div>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => onChange([...rows, { key: '', value: '' }])}
-          className="px-3 py-1.5 border border-slate-200 rounded-lg text-[13px] text-slate-500 cursor-pointer hover:bg-slate-50">
+          style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 13, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
           + Add param
         </button>
         <button onClick={onSave} disabled={saving}
-          className="px-3 py-1.5 bg-[#7C3AED] text-white rounded-lg text-[13px] font-medium cursor-pointer hover:bg-[#5B21B6] disabled:opacity-50 disabled:cursor-not-allowed">
+          style={{ padding: '6px 12px', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
           {saving ? 'Saving…' : 'Save'}
         </button>
-        {status.type === 'saved' && <span className="text-[12px] text-green-600 font-medium">✓ Saved</span>}
-        {status.type === 'error' && <span className="text-[12px] text-red-500 font-medium">✗ {status.msg}</span>}
+        {status.type === 'saved' && <span style={{ fontSize: 12, color: '#6EE7B7', fontWeight: 500 }}>✓ Saved</span>}
+        {status.type === 'error' && <span style={{ fontSize: 12, color: '#F87171', fontWeight: 500 }}>✗ {status.msg}</span>}
       </div>
     </div>
   )
@@ -375,33 +379,41 @@ function RegisterServiceModal({
     onRegister(n)
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px',
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 8, fontSize: 14, color: 'white', outline: 'none',
+    boxSizing: 'border-box',
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-[380px] p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <div className="text-[16px] font-bold text-slate-900">Register Service</div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-[20px] cursor-pointer leading-none">×</button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={onClose}>
+      <div style={{ background: 'rgba(20,10,50,0.95)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 28, width: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'white' }}>Register Service</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
         </div>
         <div>
-          <label className="block text-[13px] font-medium text-slate-600 mb-1">Service Name</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>Service Name</label>
           <input
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED]"
+            style={inputStyle}
             placeholder="e.g. billing, payment, auth"
             autoFocus
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleRegister()}
           />
-          {error && <div className="mt-2 text-[12px] text-red-500">✗ {error}</div>}
-          <div className="mt-2 text-[11px] text-slate-400">Parameters can be added after registering.</div>
+          {error && <div style={{ marginTop: 8, fontSize: 12, color: '#F87171' }}>✗ {error}</div>}
+          <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Parameters can be added after registering.</div>
         </div>
-        <div className="mt-5 flex justify-end gap-3">
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button onClick={onClose}
-            className="px-4 py-2 border border-slate-200 rounded-lg text-[14px] text-slate-600 cursor-pointer hover:bg-slate-50">
+            style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleRegister}
-            className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-[14px] font-medium cursor-pointer hover:bg-[#5B21B6]">
+            style={{ padding: '8px 16px', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
             Register
           </button>
         </div>
@@ -437,33 +449,39 @@ function AddAccountModal({ env, onClose, onSaved }: { env: string; onClose: () =
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px',
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 8, fontSize: 14, color: 'white', outline: 'none',
+    boxSizing: 'border-box',
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <div className="text-[16px] font-bold text-slate-900">Add Test Account · {env.toUpperCase()}</div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-[20px] cursor-pointer leading-none">×</button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={onClose}>
+      <div style={{ background: 'rgba(20,10,50,0.95)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 28, width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'white' }}>Add Test Account · {env.toUpperCase()}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-1">Name</label>
-            <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED]"
-              placeholder="Acme Corp" autoFocus value={name} onChange={e => setName(e.target.value)} />
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>Name</label>
+            <input style={inputStyle} placeholder="Acme Corp" autoFocus value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div>
-            <label className="block text-[13px] font-medium text-slate-600 mb-1">Code</label>
-            <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[14px] outline-none focus:border-[#7C3AED] font-mono"
-              placeholder="ACME001" value={code} onChange={e => setCode(e.target.value.toUpperCase())} />
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>Code</label>
+            <input style={{ ...inputStyle, fontFamily: 'monospace' }} placeholder="ACME001" value={code} onChange={e => setCode(e.target.value.toUpperCase())} />
           </div>
         </div>
-        {error && <div className="mt-3 text-[12px] text-red-500">✗ {error}</div>}
-        <div className="mt-5 flex justify-end gap-3">
+        {error && <div style={{ marginTop: 12, fontSize: 12, color: '#F87171' }}>✗ {error}</div>}
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button onClick={onClose}
-            className="px-4 py-2 border border-slate-200 rounded-lg text-[14px] text-slate-600 cursor-pointer hover:bg-slate-50">
+            style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving}
-            className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-[14px] font-medium cursor-pointer hover:bg-[#5B21B6] disabled:opacity-50 disabled:cursor-not-allowed">
+            style={{ padding: '8px 16px', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving…' : 'Save Account'}
           </button>
         </div>

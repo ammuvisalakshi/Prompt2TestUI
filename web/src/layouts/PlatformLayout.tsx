@@ -122,15 +122,15 @@ export default function PlatformLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F5F7FA]">
+    <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #0D0821 0%, #130D35 45%, #0A1628 100%)' }}>
 
       {/* ── Left Sidebar ──────────────────────────────────────────────── */}
-      <div style={{ width: sidebarWidth }} className="flex-shrink-0 bg-white flex flex-col">
+      <div style={{ width: sidebarWidth, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Logo */}
-        <div className="flex items-center gap-2 px-4 h-[52px] border-b border-slate-100 flex-shrink-0">
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }} className="flex items-center gap-2 px-4 h-[52px] flex-shrink-0">
           <img src="/favicon.svg" width="24" height="24" alt="Prompt2Test" />
-          <span className="text-[15px] font-bold text-slate-900 tracking-tight">Prompt2Test</span>
+          <span className="text-[15px] font-bold text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(167,139,250,0.5)' }}>Prompt2Test</span>
         </div>
 
         {/* Author Agent — primary action */}
@@ -140,10 +140,15 @@ export default function PlatformLayout() {
             className={({ isActive }) =>
               `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-all ${
                 isActive
-                  ? 'bg-[#EDE9FE] text-[#5B21B6]'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'text-purple-300'
+                  : 'text-slate-400 hover:text-white'
               }`
             }
+            style={({ isActive }) => isActive ? {
+              background: 'rgba(139,92,246,0.2)',
+              border: '1px solid rgba(139,92,246,0.35)',
+              boxShadow: '0 0 12px rgba(139,92,246,0.15)'
+            } : {}}
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2 flex-shrink-0">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -154,14 +159,16 @@ export default function PlatformLayout() {
 
         {/* Environment selector */}
         <div className="px-3 pt-3 pb-1">
-          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-1 mb-1.5">Environment</div>
+          <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-1 mb-1.5">Environment</div>
           <div className="grid grid-cols-2 gap-1">
             {ENVS.map(e => (
               <button key={e} onClick={() => setEnv(e)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border cursor-pointer transition-all ${
-                  env === e ? ENV_COLORS[e] + ' border-current' : 'text-slate-400 bg-white border-slate-200 hover:text-slate-600'
-                }`}>
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${env === e ? ENV_DOT[e] : 'bg-slate-300'}`} />
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold cursor-pointer transition-all ${
+                  env === e ? ENV_COLORS[e] : 'text-slate-500 hover:text-slate-300'
+                }`}
+                style={env === e ? { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${env === e ? ENV_DOT[e] : 'bg-slate-600'}`} />
                 {e.toUpperCase()}
               </button>
             ))}
@@ -170,7 +177,7 @@ export default function PlatformLayout() {
 
         {/* Workspace nav */}
         <div className="px-4 pt-4 pb-1">
-          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Workspace</div>
+          <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Workspace</div>
         </div>
         <nav className="flex flex-col gap-0.5 px-3">
           {NAV.map(item => (
@@ -179,11 +186,13 @@ export default function PlatformLayout() {
               to={item.to}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium cursor-pointer transition-all ${
-                  isActive
-                    ? 'bg-[#EDE9FE] text-[#5B21B6]'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                  isActive ? 'text-purple-300' : 'text-slate-400 hover:text-white'
                 }`
               }
+              style={({ isActive }) => isActive ? {
+                background: 'rgba(139,92,246,0.15)',
+                border: '1px solid rgba(139,92,246,0.25)',
+              } : {}}
             >
               {item.icon}
               {item.label}
@@ -193,21 +202,21 @@ export default function PlatformLayout() {
 
         {/* Run History */}
         <div className="px-4 pt-5 pb-1 flex-shrink-0">
-          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Run History</div>
+          <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Run History</div>
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           {runs.length === 0 ? (
-            <div className="text-[12px] text-slate-400 px-3 py-2 italic">No runs yet</div>
+            <div className="text-[12px] text-slate-600 px-3 py-2 italic">No runs yet</div>
           ) : (
             <div className="flex flex-col gap-1">
               {runs.slice().reverse().map(run => (
-                <div key={run.id} className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-default">
-                  <span className={`mt-0.5 flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${run.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                <div key={run.id} className="flex items-start gap-2 px-3 py-2 rounded-lg cursor-default transition-colors" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <span className={`mt-0.5 flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${run.passed ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
                     {run.passed ? 'PASS' : 'FAIL'}
                   </span>
                   <div className="min-w-0">
-                    <div className="text-[12px] text-slate-700 truncate leading-tight">{run.description}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{timeAgo(run.timestamp)}</div>
+                    <div className="text-[12px] text-slate-300 truncate leading-tight">{run.description}</div>
+                    <div className="text-[11px] text-slate-600 mt-0.5">{timeAgo(run.timestamp)}</div>
                   </div>
                 </div>
               ))}
@@ -216,28 +225,28 @@ export default function PlatformLayout() {
         </div>
 
         {/* Avatar / profile at bottom */}
-        <div className="border-t border-slate-100 p-3 flex-shrink-0">
+        <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(o => !o)}
-              className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg transition-colors cursor-pointer hover:bg-white/5"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#A855F7] to-[#7C3AED] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ boxShadow: '0 0 10px rgba(168,85,247,0.4)' }}>
                 {initials}
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <div className="text-[13px] font-semibold text-slate-800 truncate">{displayName}</div>
-                {role && <div className="text-[11px] text-[#7C3AED] font-medium truncate">{role}</div>}
+                <div className="text-[13px] font-semibold text-slate-200 truncate">{displayName}</div>
+                {role && <div className="text-[11px] text-purple-400 font-medium truncate">{role}</div>}
               </div>
             </button>
 
             {dropdownOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                <div className="absolute bottom-full left-0 mb-1 z-50 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 overflow-hidden">
+                <div className="absolute bottom-full left-0 mb-1 z-50 w-48 rounded-xl shadow-2xl py-1 overflow-hidden" style={{ background: 'rgba(20,10,50,0.95)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)' }}>
                   <button
                     onClick={handleSignOut}
-                    className="w-full text-left px-4 py-2 text-[13px] text-slate-600 hover:bg-slate-50 cursor-pointer"
+                    className="w-full text-left px-4 py-2 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 cursor-pointer transition-colors"
                   >
                     Sign out
                   </button>
@@ -251,7 +260,10 @@ export default function PlatformLayout() {
       {/* ── Drag handle ───────────────────────────────────────────────── */}
       <div
         onMouseDown={onDragStart}
-        className="w-1 flex-shrink-0 bg-slate-200 hover:bg-[#7C3AED] transition-colors cursor-col-resize"
+        className="w-px flex-shrink-0 cursor-col-resize transition-colors"
+        style={{ background: 'rgba(255,255,255,0.06)' }}
+        onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(139,92,246,0.5)'}
+        onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'}
       />
 
       {/* ── Main content ──────────────────────────────────────────────── */}

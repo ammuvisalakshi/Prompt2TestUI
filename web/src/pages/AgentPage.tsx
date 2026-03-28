@@ -32,7 +32,6 @@ type StepItem = { step: number; action: string; expected: string }
 
 function parseAgentResponse(text: string): { steps: StepItem[]; note: string; isFinal: boolean; summary: string } {
   const trimmed = text.trim()
-  // Final generation: starts with SUMMARY:
   if (trimmed.startsWith('SUMMARY:')) {
     const summaryMatch = trimmed.match(/^SUMMARY:\s*(.+)/m)
     const stepsMatch = trimmed.match(/STEPS:\s*(\[[\s\S]*\])/)
@@ -43,7 +42,6 @@ function parseAgentResponse(text: string): { steps: StepItem[]; note: string; is
       note: '',
     }
   }
-  // Regular turn: NOTE: ... STEPS: [...]
   const noteMatch = trimmed.match(/NOTE:\s*([\s\S]*?)(?=\nSTEPS:|\nsteps:)/i)
   const stepsMatch = trimmed.match(/STEPS:\s*(\[[\s\S]*\])/i)
   const steps = stepsMatch ? (() => { try { return JSON.parse(stepsMatch[1]) } catch { return [] } })() : []
@@ -65,12 +63,11 @@ export default function AgentPage() {
   const [tcService, setTcService] = useState('')
   const [availableServices, setAvailableServices] = useState<string[]>([])
   const [servicesLoading, setServicesLoading] = useState(false)
-  // Plan Scenario mode state
   const [planScenario, setPlanScenario] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [saveTitleInput, setSaveTitleInput] = useState('')
   const [saveTcIdInput, setSaveTcIdInput] = useState('')
-  const [saveService, setSaveService] = useState('')  // locked-in service at dialog-open time
+  const [saveService, setSaveService] = useState('')
   const [planSteps, setPlanSteps] = useState<StepItem[]>([])
   const { env } = useEnv()
   const [modeOpen, setModeOpen] = useState(false)
@@ -88,7 +85,6 @@ export default function AgentPage() {
     }).catch(() => {})
   }, [])
 
-  // Pre-load service list whenever env changes
   useEffect(() => {
     setServicesLoading(true)
     loadServiceNames(env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
@@ -107,7 +103,6 @@ export default function AgentPage() {
       .join('\n')
 
     try {
-      // Plan Scenario mode — enrich scenario with real SSM config, conversational refinement
       if (!tcService) {
         setMessages(prev => [...prev, { role: 'agent', text: 'Please pick a service from the panel on the right before sending your scenario.' }])
         setLoading(false)
@@ -163,39 +158,43 @@ export default function AgentPage() {
 
 
   return (
-    <div className="flex flex-col h-full bg-[#F5F7FA]">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent' }}>
       {/* Agent topbar */}
-      <div className="flex items-center gap-3 px-4 h-[52px] bg-white border-b border-slate-200 flex-shrink-0">
-        <span className="text-[14px] font-semibold text-slate-700">Author Agent</span>
-        <span className="text-[12px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] px-2 py-0.5 rounded-full">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', height: 52, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>Author Agent</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#C084FC', background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.35)', padding: '2px 8px', borderRadius: 20 }}>
           Bedrock · {env.toUpperCase()}
         </span>
       </div>
 
       {/* Main workspace */}
-      <div className="flex flex-1 overflow-hidden">
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Chat panel */}
-        <div className="flex flex-col border-r border-slate-200 flex-shrink-0 bg-white w-[440px]">
-          <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: 'rgba(255,255,255,0.03)', width: 440 }}>
+          <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, i) => (
-              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className="text-[12px] text-slate-400 mb-1">
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginBottom: 4 }}>
                   {msg.role === 'user' ? (userName || 'You') : 'Prompt2Test'}
                 </div>
-                <div className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-[14px] leading-relaxed whitespace-pre-line ${
-                  msg.role === 'user'
-                    ? 'bg-[#7C3AED] text-white rounded-br-sm'
-                    : 'bg-slate-50 border border-slate-200 text-slate-700 rounded-bl-sm'
-                }`}>
+                <div style={{
+                  maxWidth: '85%', padding: '10px 14px', borderRadius: 14, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-line',
+                  ...(msg.role === 'user'
+                    ? { background: '#7C3AED', color: 'white', borderBottomRightRadius: 4 }
+                    : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.8)', borderBottomLeftRadius: 4 }
+                  ),
+                }}>
                   {msg.text}
                 </div>
                 {msg.role === 'user' && (
                   <button
                     onClick={() => setInput(msg.text)}
                     title="Edit & resend"
-                    className="mt-1 flex items-center gap-1 text-[11px] text-slate-400 hover:text-[#7C3AED] cursor-pointer transition-colors"
+                    style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#C084FC')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
                   >
-                    <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2">
+                    <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}>
                       <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
                     </svg>
                     resend
@@ -206,8 +205,8 @@ export default function AgentPage() {
           </div>
 
           {/* Input */}
-          <div className="px-3 pt-3 pb-3 border-t border-slate-200 bg-white">
-            <div className="border border-slate-200 rounded-xl bg-white focus-within:border-[#7C3AED] transition-colors">
+          <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)', flexShrink: 0 }}>
+            <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
@@ -215,37 +214,41 @@ export default function AgentPage() {
                 placeholder="Paste your scenario here…"
                 rows={3}
                 disabled={loading}
-                className="w-full bg-white px-4 pt-3 pb-1 text-[14px] text-slate-800 placeholder-slate-400 outline-none resize-none font-sans disabled:opacity-60"
+                style={{ width: '100%', background: 'transparent', padding: '12px 16px 4px', fontSize: 14, color: 'rgba(255,255,255,0.85)', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', opacity: loading ? 0.6 : 1 }}
               />
 
-              {/* Bottom toolbar — Copilot style */}
-              <div className="flex items-center justify-between px-3 pb-2 pt-1">
-                <div className="flex items-center gap-1 flex-wrap">
+              {/* Bottom toolbar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                   {/* Mode dropdown */}
-                  <div className="relative">
+                  <div style={{ position: 'relative' }}>
                     <button
                       onClick={() => setModeOpen(o => !o)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[13px] font-medium text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                     >
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                       Plan
-                      <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2 opacity-40"><polyline points="6 9 12 15 18 9"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2, opacity: 0.4 }}><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
 
                     {modeOpen && (
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setModeOpen(false)} />
-                        <div className="absolute bottom-full mb-2 left-0 z-50 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1 overflow-hidden">
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setModeOpen(false)} />
+                        <div style={{ position: 'absolute', bottom: '100%', marginBottom: 8, left: 0, zIndex: 50, width: 208, background: 'rgba(20,10,50,0.97)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(16px)', padding: '4px 0', overflow: 'hidden' }}>
                           <button onClick={() => setModeOpen(false)}
-                            className="w-full text-left px-3 py-2.5 hover:bg-slate-50 flex items-center gap-3 cursor-pointer">
-                            <div className="flex-shrink-0 text-[#7C3AED]">
-                              <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                            <div style={{ color: '#C084FC', flexShrink: 0 }}>
+                              <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                             </div>
-                            <div className="flex-1">
-                              <div className="text-[13px] font-semibold text-[#7C3AED]">Plan</div>
-                              <div className="text-[11px] text-slate-400 mt-0.5">Review steps before running</div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#C084FC' }}>Plan</div>
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Review steps before running</div>
                             </div>
-                            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-[#7C3AED] fill-none stroke-2 flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: '#C084FC', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
                           </button>
                         </div>
                       </>
@@ -256,20 +259,20 @@ export default function AgentPage() {
                   {tcService && (
                     <button
                       onClick={() => { if (!loading) setTcService('') }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[13px] font-medium text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE] hover:bg-[#DDD6FE] transition-colors cursor-pointer"
                       title="Change service"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#C084FC', background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', cursor: 'pointer' }}
                     >
-                      <svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
                       {tcService}
-                      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 stroke-current fill-none stroke-2 opacity-50"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 10, height: 10, stroke: 'currentColor', fill: 'none', strokeWidth: 2, opacity: 0.5 }}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   )}
                 </div>
 
                 {/* Send button */}
                 <button onClick={send} disabled={loading || !input.trim()}
-                  className="w-7 h-7 flex items-center justify-center bg-[#7C3AED] hover:bg-[#5B21B6] disabled:opacity-40 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2">
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, cursor: (loading || !input.trim()) ? 'default' : 'pointer', opacity: (loading || !input.trim()) ? 0.4 : 1, flexShrink: 0 }}>
+                  <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}>
                     <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
                   </svg>
                 </button>
@@ -279,10 +282,10 @@ export default function AgentPage() {
         </div>
 
         {/* Plan panel */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <>
-            <div className="px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0 flex items-center justify-between">
-              <div className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Test Steps
               </div>
               {planSteps.length > 0 && !showSaveDialog && (
@@ -308,9 +311,9 @@ export default function AgentPage() {
                     }
                   }}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[12px] font-semibold bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE] hover:bg-[#DDD6FE] transition-colors cursor-pointer disabled:opacity-40"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'rgba(139,92,246,0.15)', color: '#C084FC', border: '1px solid rgba(139,92,246,0.3)', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.4 : 1 }}
                 >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                  <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
                   Generate Final
                 </button>
               )}
@@ -320,65 +323,71 @@ export default function AgentPage() {
             <>
               {/* State 1: No service selected — show service picker chips */}
               {!tcService ? (
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Pick a Service</div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Pick a Service</div>
                   {servicesLoading ? (
-                    <div className="text-[13px] text-slate-400">Loading services…</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>Loading services…</div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       <button
                         onClick={() => setTcService('exploratory')}
-                        className="px-3 py-1.5 rounded-full text-[13px] font-semibold border cursor-pointer transition-colors bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]"
+                        style={{ padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(139,92,246,0.5)'; (e.currentTarget as HTMLButtonElement).style.color = '#C084FC' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.55)' }}
                       >
                         Exploratory
                       </button>
                       {availableServices.map(svc => (
                         <button key={svc} onClick={() => setTcService(svc)}
-                          className="px-3 py-1.5 rounded-full text-[13px] font-semibold border cursor-pointer transition-colors bg-slate-50 text-slate-600 border-slate-200 hover:border-[#7C3AED] hover:text-[#7C3AED]"
+                          style={{ padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(139,92,246,0.5)'; (e.currentTarget as HTMLButtonElement).style.color = '#C084FC' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.55)' }}
                         >
                           {svc}
                         </button>
                       ))}
                     </div>
                   )}
-                  <p className="mt-4 text-[13px] text-slate-400 leading-relaxed">
+                  <p style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>
                     Select a service, then paste your scenario in the chat to start enriching it.
                   </p>
                 </div>
               ) : planSteps.length > 0 ? (
                 /* State 2: Steps exist — show MTM-style step table */
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                    Test Steps &nbsp;·&nbsp; <span className="text-[#7C3AED] normal-case font-semibold">{tcService}</span>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                    Test Steps &nbsp;·&nbsp; <span style={{ color: '#C084FC', textTransform: 'none', fontWeight: 600 }}>{tcService}</span>
                   </div>
-                  <table className="w-full border-collapse text-[13px]">
-                    <thead>
-                      <tr className="bg-slate-50 border border-slate-200 rounded-lg">
-                        <th className="py-2 px-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-8 border-b border-slate-200">#</th>
-                        <th className="py-2 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Action</th>
-                        <th className="py-2 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Expected Result</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {planSteps.map((s, i) => (
-                        <tr key={s.step} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                          <td className="py-2.5 px-2.5 text-center align-top">
-                            <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-[#EDE9FE] text-[#7C3AED] text-[10px] font-bold">{s.step}</span>
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-700 leading-relaxed align-top">{s.action}</td>
-                          <td className="py-2.5 px-3 text-slate-500 leading-relaxed align-top">{s.expected}</td>
+                  <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em', width: 32 }}>#</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {planSteps.map((s, i) => (
+                          <tr key={s.step} style={{ borderBottom: i < planSteps.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                            <td style={{ padding: '10px', textAlign: 'center', verticalAlign: 'top' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'rgba(139,92,246,0.25)', color: '#C084FC', fontSize: 10, fontWeight: 700, border: '1px solid rgba(139,92,246,0.4)' }}>{s.step}</span>
+                            </td>
+                            <td style={{ padding: '10px 12px', color: '#e2e8f0', lineHeight: 1.6, verticalAlign: 'top' }}>{s.action}</td>
+                            <td style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, verticalAlign: 'top' }}>{s.expected}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
                 /* State 2 empty: service selected, no steps yet */
-                <div className="flex-1 flex flex-col items-center justify-center text-center px-6 gap-2">
-                  <div className="text-[13px] font-semibold text-slate-600">
-                    Service: <span className="text-[#7C3AED]">{tcService}</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 24px', gap: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
+                    Service: <span style={{ color: '#C084FC' }}>{tcService}</span>
                   </div>
-                  <div className="text-[13px] text-slate-400 leading-relaxed">
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>
                     Paste your scenario in the chat.<br />Steps will appear here as I refine them.
                   </div>
                 </div>
@@ -386,11 +395,11 @@ export default function AgentPage() {
 
               {/* Save dialog */}
               {showSaveDialog && (
-                <div className="border-t border-slate-200 bg-white px-4 py-3 flex-shrink-0 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Save Test Case</div>
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Save Test Case</div>
                     {(saveService || tcService) && (
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#EDE9FE] text-[#7C3AED] border border-[#DDD6FE]">
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'rgba(139,92,246,0.2)', color: '#C084FC', border: '1px solid rgba(139,92,246,0.35)' }}>
                         {saveService || tcService}
                       </span>
                     )}
@@ -400,17 +409,15 @@ export default function AgentPage() {
                     onChange={e => setSaveTitleInput(e.target.value)}
                     placeholder="Title"
                     disabled={tcSaved === 'saved'}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] transition-colors disabled:opacity-50 disabled:bg-slate-50"
+                    style={{ width: '100%', padding: '6px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: 'white', outline: 'none', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
                   />
-                  <div className="flex gap-2">
-                    <input
-                      value={saveTcIdInput}
-                      onChange={e => setSaveTcIdInput(e.target.value)}
-                      placeholder="Test Case ID (e.g. TC-001)"
-                      disabled={tcSaved === 'saved'}
-                      className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#7C3AED] font-mono transition-colors disabled:opacity-50 disabled:bg-slate-50"
-                    />
-                  </div>
+                  <input
+                    value={saveTcIdInput}
+                    onChange={e => setSaveTcIdInput(e.target.value)}
+                    placeholder="Test Case ID (e.g. TC-001)"
+                    disabled={tcSaved === 'saved'}
+                    style={{ width: '100%', padding: '6px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: 'white', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
+                  />
                   <button
                     onClick={async () => {
                       if (tcSaved !== 'idle' || !saveTitleInput.trim()) return
@@ -429,23 +436,25 @@ export default function AgentPage() {
                         })
                         savedTcId.current = id
                         setTcSaved('saved')
-                        // Keep plan steps in sync if user refines further after saving
                         if (id && planSteps.length) updateTestCasePlanSteps(id, planSteps).catch(() => {})
                       } catch { setTcSaved('idle') }
                     }}
                     disabled={tcSaved !== 'idle' || !saveTitleInput.trim()}
-                    className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors cursor-pointer ${
-                      tcSaved === 'saved'
-                        ? 'bg-green-50 text-green-700 border-green-200'
-                        : 'bg-[#EDE9FE] text-[#7C3AED] border-[#DDD6FE] hover:bg-[#DDD6FE] disabled:opacity-40 disabled:cursor-not-allowed'
-                    }`}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '6px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tcSaved !== 'idle' || !saveTitleInput.trim() ? 'default' : 'pointer',
+                      ...(tcSaved === 'saved'
+                        ? { background: 'rgba(16,185,129,0.2)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,0.3)' }
+                        : { background: 'rgba(139,92,246,0.2)', color: '#C084FC', border: '1px solid rgba(139,92,246,0.35)', opacity: (tcSaved !== 'idle' || !saveTitleInput.trim()) ? 0.4 : 1 }
+                      ),
+                    }}
                   >
                     {tcSaved === 'saving' ? (
-                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                      <svg style={{ width: 14, height: 14, animation: 'spin 0.7s linear infinite' }} viewBox="0 0 24 24" fill="none"><circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
                     ) : tcSaved === 'saved' ? (
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><polyline points="20 6 9 17 4 12"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polyline points="20 6 9 17 4 12"/></svg>
                     ) : (
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                     )}
                     {tcSaved === 'saving' ? 'Saving…' : tcSaved === 'saved' ? 'Saved to Test Inventory' : 'Save Test Case'}
                   </button>
@@ -454,9 +463,9 @@ export default function AgentPage() {
                   {tcSaved === 'saved' && savedTcId.current && (
                     <button
                       onClick={() => window.open(`/test-case/${savedTcId.current}`, '_blank')}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-semibold bg-[#7C3AED] hover:bg-[#5B21B6] text-white transition-colors cursor-pointer"
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 0 16px rgba(139,92,246,0.3)' }}
                     >
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+                      <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
                       View Test Case →
                     </button>
                   )}
@@ -466,6 +475,7 @@ export default function AgentPage() {
           </>
         </div>
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }
