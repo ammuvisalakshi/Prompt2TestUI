@@ -88,7 +88,7 @@ export default function MembersPage() {
     }
   }
 
-  useEffect(() => { loadMembers() }, [])
+  useEffect(() => { if (currentUserTeam) loadMembers() }, [currentUserTeam])
 
   async function removeMember(username: string) {
     if (!confirm('Remove this member? They will lose access immediately.')) return
@@ -133,7 +133,7 @@ export default function MembersPage() {
         <div style={{ maxWidth: 780 }}>
 
           <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' }}>
-            {loading ? (
+            {!currentUserTeam || loading ? (
               <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>Loading members…</div>
             ) : filteredMembers.length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>
