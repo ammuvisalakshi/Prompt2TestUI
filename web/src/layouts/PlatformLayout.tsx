@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
-import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 import { EnvContext, ENVS, type Env } from '../context/EnvContext'
 import { TeamContext } from '../context/TeamContext'
-
-const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
 export type RunEntry = {
   id: string
@@ -93,23 +90,12 @@ export default function PlatformLayout() {
   }, [sidebarWidth])
 
   useEffect(() => {
-    fetchUserAttributes().then(async attrs => {
+    Promise.all([fetchUserAttributes(), fetchAuthSession()]).then(([attrs, session]) => {
       const name = attrs.name || attrs.email || ''
       setInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
       setDisplayName(attrs.name || attrs.email?.split('@')[0] || '')
-      const username = attrs.name ?? ''  // e.g. VA1234
-      if (username) {
-        try {
-          const session = await fetchAuthSession()
-          const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
-          const resp = await ssm.send(new GetParametersByPathCommand({ Path: `/prompt2test/config/members/${username}`, Recursive: true }))
-          for (const p of resp.Parameters ?? []) {
-            const parts = p.Name!.split('/')
-            const key = parts[parts.length - 1]
-            if (key === 'TEAM') setTeam(p.Value ?? '')
-          }
-        } catch { /* no params stored yet */ }
-      }
+      const groups = (session.tokens?.idToken?.payload['cognito:groups'] as string[]) ?? []
+      setTeam(groups[0] ?? '')
       setTeamLoaded(true)
     }).catch(() => { setTeamLoaded(true) })
   }, [])

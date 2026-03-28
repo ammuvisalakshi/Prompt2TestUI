@@ -5,113 +5,104 @@ import {
   AdminCreateUserCommand,
   AdminDeleteUserCommand,
   ListUsersCommand,
+  CreateGroupCommand,
+  DeleteGroupCommand,
+  ListGroupsCommand,
+  ListUsersInGroupCommand,
+  AdminAddUserToGroupCommand,
+  AdminRemoveUserFromGroupCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
-import {
-  SSMClient,
-  GetParametersByPathCommand,
-  PutParameterCommand,
-  DeleteParameterCommand,
-} from '@aws-sdk/client-ssm'
 import { useTeam } from '../context/TeamContext'
 
-const AWS_REGION    = import.meta.env.VITE_AWS_REGION as string
 const USER_POOL_ID  = import.meta.env.VITE_USER_POOL_ID as string
-const SSM_TEAMS     = '/prompt2test/teams'
-const SSM_MEMBERS   = '/prompt2test/config/members'
+const AWS_REGION    = import.meta.env.VITE_AWS_REGION as string
 
 const AVATAR_COLORS = ['#7C3AED', '#6B21A8', '#166534', '#1E40AF', '#B45309', '#9F1239']
 
-type Team   = { id: string; name: string }
+type Team   = { id: string; description: string }
 type Member = { username: string; name: string; email: string; team: string; status: string }
 
-// ── AWS clients ──────────────────────────────────────────────────────────────
+// ── AWS client ───────────────────────────────────────────────────────────────
 
 async function getCognito() {
   const s = await fetchAuthSession()
   return new CognitoIdentityProviderClient({ region: AWS_REGION, credentials: s.credentials })
 }
-async function getSSM() {
-  const s = await fetchAuthSession()
-  return new SSMClient({ region: AWS_REGION, credentials: s.credentials })
+
+// ── Data loaders ─────────────────────────────────────────────────────────────
+
+async function loadGroups(): Promise<Team[]> {
+  const c = await getCognito()
+  const resp = await c.send(new ListGroupsCommand({ UserPoolId: USER_POOL_ID, Limit: 60 }))
+  return (resp.Groups ?? [])
+    .filter(g => g.GroupName !== 'admin')
+    .map(g => ({ id: g.GroupName ?? '', description: g.Description ?? '' }))
 }
 
-async function loadTeams(): Promise<Team[]> {
-  const ssm = await getSSM()
-  const teams: Record<string, string> = {}
-  let nextToken: string | undefined
-  do {
-    const r = await ssm.send(new GetParametersByPathCommand({ Path: SSM_TEAMS, Recursive: true, NextToken: nextToken }))
-    for (const p of r.Parameters ?? []) {
-      const parts = p.Name!.split('/')
-      if (parts[parts.length - 1] === 'NAME') teams[parts[parts.length - 2]] = p.Value ?? ''
-    }
-    nextToken = r.NextToken
-  } while (nextToken)
-  return Object.entries(teams).map(([id, name]) => ({ id, name }))
+async function loadAllMembers(): Promise<Member[]> {
+  const c = await getCognito()
+
+  // Get all users
+  const usersResp = await c.send(new ListUsersCommand({ UserPoolId: USER_POOL_ID, Limit: 60 }))
+  const users = usersResp.Users ?? []
+
+  // Get all groups and their members to build username→team map
+  const groupsResp = await c.send(new ListGroupsCommand({ UserPoolId: USER_POOL_ID, Limit: 60 }))
+  const teamMap: Record<string, string> = {}
+  await Promise.all(
+    (groupsResp.Groups ?? []).map(async g => {
+      const r = await c.send(new ListUsersInGroupCommand({ UserPoolId: USER_POOL_ID, GroupName: g.GroupName!, Limit: 60 }))
+      for (const u of r.Users ?? []) teamMap[u.Username!] = g.GroupName!
+    })
+  )
+
+  return users.map(u => {
+    const attr = (n: string) => u.Attributes?.find(a => a.Name === n)?.Value ?? ''
+    const username = u.Username ?? ''
+    const email = attr('email') || username
+    const name = attr('name') || email.split('@')[0]
+    return { username, name, email, team: teamMap[username] ?? '', status: u.UserStatus ?? 'UNCONFIRMED' }
+  })
 }
 
-async function loadTeamMap(): Promise<Record<string, string>> {
-  const ssm = await getSSM()
-  const map: Record<string, string> = {}
-  let nextToken: string | undefined
-  do {
-    const r = await ssm.send(new GetParametersByPathCommand({ Path: SSM_MEMBERS, Recursive: true, NextToken: nextToken }))
-    for (const p of r.Parameters ?? []) {
-      const parts = p.Name!.split('/')
-      if (parts[parts.length - 1] === 'TEAM') map[parts[parts.length - 2]] = p.Value ?? ''
-    }
-    nextToken = r.NextToken
-  } while (nextToken)
-  return map
-}
-
-async function loadCognitoMembers(teamMap: Record<string, string>): Promise<Member[]> {
-  const cognito = await getCognito()
-  const resp = await cognito.send(new ListUsersCommand({ UserPoolId: USER_POOL_ID, Limit: 60 }))
+async function loadTeamMembers(teamId: string): Promise<Member[]> {
+  const c = await getCognito()
+  const resp = await c.send(new ListUsersInGroupCommand({ UserPoolId: USER_POOL_ID, GroupName: teamId, Limit: 60 }))
   return (resp.Users ?? []).map(u => {
     const attr = (n: string) => u.Attributes?.find(a => a.Name === n)?.Value ?? ''
     const username = u.Username ?? ''
     const email = attr('email') || username
-    const nameAttr = attr('name')
-    const givenName = attr('given_name')
-    const name = nameAttr || (givenName ? `${givenName} ${attr('family_name')}`.trim() : email.split('@')[0])
-    return { username, name, email, team: teamMap[nameAttr || username] ?? '', status: u.UserStatus ?? 'UNCONFIRMED' }
+    const name = attr('name') || email.split('@')[0]
+    return { username, name, email, team: teamId, status: u.UserStatus ?? 'UNCONFIRMED' }
   })
 }
 
-// ── Root component ───────────────────────────────────────────────────────────
+// ── Root ─────────────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
   const { team: currentUserTeam } = useTeam()
   const isAdmin = currentUserTeam.toLowerCase() === 'admin'
-
-  return isAdmin ? <AdminMembersView /> : <TeamMembersView currentUserTeam={currentUserTeam} />
+  return isAdmin ? <AdminView /> : <TeamView currentUserTeam={currentUserTeam} />
 }
 
-// ── Admin view (create teams + manage all members) ───────────────────────────
+// ── Admin view ────────────────────────────────────────────────────────────────
 
-function AdminMembersView() {
+function AdminView() {
   const [tab, setTab] = useState<'teams' | 'members'>('teams')
-
   return (
     <div style={{ height: '100%', overflowY: 'auto', background: '#FAFBFF', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-      <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #0EA5E9 100%)', padding: '24px 28px 0', flexShrink: 0 }}>
+      <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #0EA5E9 100%)', padding: '24px 28px 0' }}>
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 4, letterSpacing: '-0.3px' }}>Team Management</div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>Create teams and manage member access</div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['teams', 'members'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{
-                padding: '8px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                borderRadius: '8px 8px 0 0', transition: 'all 0.15s',
-                ...(tab === t
-                  ? { background: '#FAFBFF', color: '#4F46E5' }
-                  : { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }),
-              }}>
-              {t === 'teams' ? 'Teams' : 'Members'}
-            </button>
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: '8px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              borderRadius: '8px 8px 0 0',
+              ...(tab === t ? { background: '#FAFBFF', color: '#4F46E5' } : { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }),
+            }}>{t === 'teams' ? 'Teams' : 'Members'}</button>
           ))}
         </div>
       </div>
@@ -122,20 +113,20 @@ function AdminMembersView() {
   )
 }
 
-// ── Teams tab ────────────────────────────────────────────────────────────────
+// ── Teams tab ─────────────────────────────────────────────────────────────────
 
 function TeamsTab() {
   const [teams,    setTeams]    = useState<Team[]>([])
   const [loading,  setLoading]  = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [teamId,   setTeamId]   = useState('')
-  const [teamName, setTeamName] = useState('')
+  const [teamDesc, setTeamDesc] = useState('')
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState('')
 
   async function load() {
     setLoading(true)
-    try { setTeams(await loadTeams()) }
+    try { setTeams(await loadGroups()) }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -143,29 +134,29 @@ function TeamsTab() {
   useEffect(() => { load() }, [])
 
   async function createTeam() {
-    if (!teamId.trim() || !teamName.trim()) { setError('Team ID and name are required'); return }
     const id = teamId.trim().toLowerCase().replace(/\s+/g, '')
+    if (!id) { setError('Team ID is required'); return }
+    if (id === 'admin') { setError('"admin" is reserved'); return }
     setSaving(true); setError('')
     try {
-      const ssm = await getSSM()
-      await ssm.send(new PutParameterCommand({
-        Name: `${SSM_TEAMS}/${id}/NAME`, Value: teamName.trim(), Type: 'String', Overwrite: false,
-      }))
-      setTeamId(''); setTeamName(''); setShowForm(false)
+      const c = await getCognito()
+      await c.send(new CreateGroupCommand({ UserPoolId: USER_POOL_ID, GroupName: id, Description: teamDesc.trim() || id }))
+      setTeamId(''); setTeamDesc(''); setShowForm(false)
       await load()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally { setSaving(false) }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)) }
+    finally { setSaving(false) }
   }
 
   async function deleteTeam(id: string) {
-    if (!confirm(`Delete team "${id}"? This cannot be undone.`)) return
+    if (!confirm(`Delete team "${id}"? Members will lose access.`)) return
     try {
-      const ssm = await getSSM()
-      await ssm.send(new DeleteParameterCommand({ Name: `${SSM_TEAMS}/${id}/NAME` }))
+      const c = await getCognito()
+      await c.send(new DeleteGroupCommand({ UserPoolId: USER_POOL_ID, GroupName: id }))
       setTeams(prev => prev.filter(t => t.id !== id))
     } catch (e) { console.error(e); alert('Failed to delete team') }
   }
+
+  const inp: React.CSSProperties = { width: '100%', padding: '8px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', boxSizing: 'border-box' }
 
   return (
     <div style={{ maxWidth: 680 }}>
@@ -185,21 +176,17 @@ function TeamsTab() {
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Team ID</label>
-              <input value={teamId} onChange={e => setTeamId(e.target.value)} placeholder="e.g. teama"
-                style={{ width: '100%', padding: '8px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', boxSizing: 'border-box' }} />
+              <input value={teamId} onChange={e => setTeamId(e.target.value)} placeholder="e.g. teama" style={inp} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Display Name</label>
-              <input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="e.g. Team Alpha"
-                style={{ width: '100%', padding: '8px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', boxSizing: 'border-box' }} />
+              <input value={teamDesc} onChange={e => setTeamDesc(e.target.value)} placeholder="e.g. Team Alpha" style={inp} />
             </div>
           </div>
           {error && <div style={{ fontSize: 12, color: '#991B1B', marginBottom: 10 }}>✗ {error}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => { setShowForm(false); setError('') }}
-              style={{ padding: '7px 14px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#64748B', cursor: 'pointer' }}>
-              Cancel
-            </button>
+              style={{ padding: '7px 14px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#64748B', cursor: 'pointer' }}>Cancel</button>
             <button onClick={createTeam} disabled={saving}
               style={{ padding: '7px 14px', background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Creating…' : 'Create Team'}
@@ -234,7 +221,7 @@ function TeamsTab() {
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white' }}>
                         {t.id.slice(0, 2).toUpperCase()}
                       </div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{t.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{t.description || t.id}</div>
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -244,9 +231,7 @@ function TeamsTab() {
                     <button onClick={() => deleteTeam(t.id)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 18, lineHeight: 1, padding: 0 }}
                       onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}>
-                      ×
-                    </button>
+                      onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}>×</button>
                   </td>
                 </tr>
               ))}
@@ -258,7 +243,7 @@ function TeamsTab() {
   )
 }
 
-// ── Admin members tab (all members across all teams) ─────────────────────────
+// ── Admin members tab ─────────────────────────────────────────────────────────
 
 function AdminMembersTab() {
   const [members,   setMembers]   = useState<Member[]>([])
@@ -270,30 +255,27 @@ function AdminMembersTab() {
   async function load() {
     setLoading(true)
     try {
-      const [teamMap, teamList] = await Promise.all([loadTeamMap(), loadTeams()])
-      setTeams(teamList)
-      setMembers(await loadCognitoMembers(teamMap))
+      const [m, t] = await Promise.all([loadAllMembers(), loadGroups()])
+      setMembers(m); setTeams(t)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
 
-  async function removeMember(username: string) {
+  async function removeMember(username: string, team: string) {
     if (!confirm('Remove this member? They will lose access immediately.')) return
     try {
-      const [cognito, ssm] = await Promise.all([getCognito(), getSSM()])
+      const c = await getCognito()
       await Promise.all([
-        cognito.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: username })),
-        ssm.send(new DeleteParameterCommand({ Name: `${SSM_MEMBERS}/${username}/TEAM` })).catch(() => {}),
+        c.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: username })),
+        team ? c.send(new AdminRemoveUserFromGroupCommand({ UserPoolId: USER_POOL_ID, Username: username, GroupName: team })).catch(() => {}) : Promise.resolve(),
       ])
       setMembers(prev => prev.filter(m => m.username !== username))
     } catch (e) { console.error(e); alert('Failed to remove member') }
   }
 
-  const filtered = filter
-    ? members.filter(m => m.team.toLowerCase() === filter.toLowerCase())
-    : members
+  const filtered = filter ? members.filter(m => m.team === filter) : members
 
   return (
     <div style={{ maxWidth: 780 }}>
@@ -305,7 +287,7 @@ function AdminMembersTab() {
           <select value={filter} onChange={e => setFilter(e.target.value)}
             style={{ padding: '5px 10px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 12, color: '#475569', cursor: 'pointer', outline: 'none' }}>
             <option value="">All teams</option>
-            {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
+            {teams.map(t => <option key={t.id} value={t.id}>{t.description || t.id} ({t.id})</option>)}
           </select>
         </div>
         <button onClick={() => setShowModal(true)}
@@ -313,46 +295,36 @@ function AdminMembersTab() {
           + Invite Member
         </button>
       </div>
-
       <MembersTable members={filtered} loading={loading} onRemove={removeMember} />
-
-      {showModal && (
-        <InviteModal
-          teams={teams}
-          onClose={() => setShowModal(false)}
-          onInvited={() => { setShowModal(false); load() }}
-        />
-      )}
+      {showModal && <InviteModal teams={teams} onClose={() => setShowModal(false)} onInvited={() => { setShowModal(false); load() }} />}
     </div>
   )
 }
 
-// ── Regular team member view ─────────────────────────────────────────────────
+// ── Regular team view ─────────────────────────────────────────────────────────
 
-function TeamMembersView({ currentUserTeam }: { currentUserTeam: string }) {
+function TeamView({ currentUserTeam }: { currentUserTeam: string }) {
   const [members,   setMembers]   = useState<Member[]>([])
   const [loading,   setLoading]   = useState(true)
   const [showModal, setShowModal] = useState(false)
 
   async function load() {
+    if (!currentUserTeam) return
     setLoading(true)
-    try {
-      const teamMap = await loadTeamMap()
-      const all = await loadCognitoMembers(teamMap)
-      setMembers(all.filter(m => m.team.toLowerCase() === currentUserTeam.toLowerCase()))
-    } catch (e) { console.error(e) }
+    try { setMembers(await loadTeamMembers(currentUserTeam)) }
+    catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { if (currentUserTeam) load() }, [currentUserTeam])
+  useEffect(() => { load() }, [currentUserTeam])
 
-  async function removeMember(username: string) {
+  async function removeMember(username: string, team: string) {
     if (!confirm('Remove this member? They will lose access immediately.')) return
     try {
-      const [cognito, ssm] = await Promise.all([getCognito(), getSSM()])
+      const c = await getCognito()
       await Promise.all([
-        cognito.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: username })),
-        ssm.send(new DeleteParameterCommand({ Name: `${SSM_MEMBERS}/${username}/TEAM` })).catch(() => {}),
+        c.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: username })),
+        c.send(new AdminRemoveUserFromGroupCommand({ UserPoolId: USER_POOL_ID, Username: username, GroupName: team })).catch(() => {}),
       ])
       setMembers(prev => prev.filter(m => m.username !== username))
     } catch (e) { console.error(e); alert('Failed to remove member') }
@@ -365,7 +337,7 @@ function TeamMembersView({ currentUserTeam }: { currentUserTeam: string }) {
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 4, letterSpacing: '-0.3px' }}>Team Members</div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-              {loading ? 'Loading…' : `${members.length} member${members.length !== 1 ? 's' : ''} · Cognito SSO`}
+              {loading ? 'Loading…' : `${members.length} member${members.length !== 1 ? 's' : ''} · ${currentUserTeam}`}
             </div>
           </div>
           <button onClick={() => setShowModal(true)}
@@ -374,16 +346,14 @@ function TeamMembersView({ currentUserTeam }: { currentUserTeam: string }) {
           </button>
         </div>
       </div>
-
       <div style={{ padding: 24 }}>
         <div style={{ maxWidth: 780 }}>
-          <MembersTable members={members} loading={!currentUserTeam || loading} onRemove={removeMember} />
+          <MembersTable members={members} loading={loading} onRemove={removeMember} />
         </div>
       </div>
-
       {showModal && (
         <InviteModal
-          teams={[{ id: currentUserTeam, name: currentUserTeam }]}
+          teams={[{ id: currentUserTeam, description: currentUserTeam }]}
           defaultTeam={currentUserTeam}
           onClose={() => setShowModal(false)}
           onInvited={() => { setShowModal(false); load() }}
@@ -393,9 +363,9 @@ function TeamMembersView({ currentUserTeam }: { currentUserTeam: string }) {
   )
 }
 
-// ── Shared members table ─────────────────────────────────────────────────────
+// ── Shared members table ──────────────────────────────────────────────────────
 
-function MembersTable({ members, loading, onRemove }: { members: Member[]; loading: boolean; onRemove: (username: string) => void }) {
+function MembersTable({ members, loading, onRemove }: { members: Member[]; loading: boolean; onRemove: (username: string, team: string) => void }) {
   return (
     <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' }}>
       {loading ? (
@@ -425,9 +395,7 @@ function MembersTable({ members, loading, onRemove }: { members: Member[]; loadi
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                        {initials}
-                      </div>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>{initials}</div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{m.name}</div>
                         <div style={{ fontSize: 12, color: '#94A3B8' }}>{m.email}</div>
@@ -437,25 +405,18 @@ function MembersTable({ members, loading, onRemove }: { members: Member[]; loadi
                   <td style={{ padding: '12px 16px' }}>
                     {m.team ? (
                       <span style={{ fontSize: 12, fontFamily: 'monospace', background: '#EEF2FF', color: '#4F46E5', padding: '2px 8px', borderRadius: 5, fontWeight: 600 }}>{m.team}</span>
-                    ) : (
-                      <span style={{ fontSize: 13, color: '#94A3B8' }}>—</span>
-                    )}
+                    ) : <span style={{ fontSize: 13, color: '#94A3B8' }}>—</span>}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    {isPending ? (
-                      <span style={{ fontSize: 11, padding: '2px 8px', background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A', borderRadius: 20, fontWeight: 600 }}>Invite pending</span>
-                    ) : (
-                      <span style={{ fontSize: 11, padding: '2px 8px', background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0', borderRadius: 20, fontWeight: 600 }}>Active</span>
-                    )}
+                    {isPending
+                      ? <span style={{ fontSize: 11, padding: '2px 8px', background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A', borderRadius: 20, fontWeight: 600 }}>Invite pending</span>
+                      : <span style={{ fontSize: 11, padding: '2px 8px', background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0', borderRadius: 20, fontWeight: 600 }}>Active</span>}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <button onClick={() => onRemove(m.username)}
+                    <button onClick={() => onRemove(m.username, m.team)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 18, lineHeight: 1, padding: 0 }}
-                      title="Remove member"
                       onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}>
-                      ×
-                    </button>
+                      onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}>×</button>
                   </td>
                 </tr>
               )
@@ -467,48 +428,38 @@ function MembersTable({ members, loading, onRemove }: { members: Member[]; loadi
   )
 }
 
-// ── Invite Modal ─────────────────────────────────────────────────────────────
+// ── Invite modal ──────────────────────────────────────────────────────────────
 
-function InviteModal({
-  teams,
-  defaultTeam,
-  onClose,
-  onInvited,
-}: {
-  teams: Team[]
-  defaultTeam?: string
-  onClose: () => void
-  onInvited: () => void
+function InviteModal({ teams, defaultTeam, onClose, onInvited }: {
+  teams: Team[]; defaultTeam?: string; onClose: () => void; onInvited: () => void
 }) {
-  const [name,     setName]     = useState('')
-  const [email,    setEmail]    = useState('')
-  const [username, setUsername] = useState('')
-  const [teamId,   setTeamId]   = useState(defaultTeam ?? teams[0]?.id ?? '')
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState('')
-  const [success,  setSuccess]  = useState(false)
+  const [name,    setName]    = useState('')
+  const [email,   setEmail]   = useState('')
+  const [teamId,  setTeamId]  = useState(defaultTeam ?? teams[0]?.id ?? '')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
+  const [success, setSuccess] = useState(false)
 
-  const isAdmin = !defaultTeam  // admin sees team picker; regular member has it locked
+  const isAdmin = !defaultTeam
 
   async function handleInvite() {
-    if (!name.trim() || !email.trim() || !username.trim()) { setError('Name, email, and username are required'); return }
+    if (!name.trim() || !email.trim()) { setError('Name and email are required'); return }
     if (!teamId) { setError('Please select a team'); return }
     setSaving(true); setError('')
     try {
-      const [cognito, ssm] = await Promise.all([getCognito(), getSSM()])
-      await cognito.send(new AdminCreateUserCommand({
+      const c = await getCognito()
+      const resp = await c.send(new AdminCreateUserCommand({
         UserPoolId:     USER_POOL_ID,
         Username:       email.trim().toLowerCase(),
         UserAttributes: [
           { Name: 'email',          Value: email.trim().toLowerCase() },
-          { Name: 'name',           Value: username.trim() },
+          { Name: 'name',           Value: name.trim() },
           { Name: 'email_verified', Value: 'true' },
         ],
         DesiredDeliveryMediums: ['EMAIL'],
       }))
-      await ssm.send(new PutParameterCommand({
-        Name: `${SSM_MEMBERS}/${username.trim()}/TEAM`, Value: teamId, Type: 'String', Overwrite: true,
-      }))
+      const username = resp.User?.Username ?? email.trim().toLowerCase()
+      await c.send(new AdminAddUserToGroupCommand({ UserPoolId: USER_POOL_ID, Username: username, GroupName: teamId }))
       setSuccess(true)
       setTimeout(onInvited, 1500)
     } catch (e: unknown) {
@@ -516,11 +467,7 @@ function InviteModal({
     } finally { setSaving(false) }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '8px 12px', background: '#F8FAFC',
-    border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, color: '#0F172A',
-    outline: 'none', boxSizing: 'border-box',
-  }
+  const inp: React.CSSProperties = { width: '100%', padding: '8px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, color: '#0F172A', outline: 'none', boxSizing: 'border-box' }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={onClose}>
@@ -529,7 +476,6 @@ function InviteModal({
           <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>Invite Team Member</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
         </div>
-
         {success ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>✉️</div>
@@ -540,28 +486,24 @@ function InviteModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Full Name</label>
-              <input style={inputStyle} placeholder="Jane Doe" value={name} onChange={e => setName(e.target.value)} />
+              <input style={inp} placeholder="Jane Doe" value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Work Email</label>
-              <input style={inputStyle} type="email" placeholder="jane@company.com" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Username <span style={{ color: '#94A3B8', fontWeight: 400 }}>(e.g. VA1234 — used as SSM key)</span></label>
-              <input style={inputStyle} placeholder="VA1234" value={username} onChange={e => setUsername(e.target.value)} />
+              <input style={inp} type="email" placeholder="jane@company.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             {isAdmin ? (
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Assign to Team</label>
-                <select value={teamId} onChange={e => setTeamId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <select value={teamId} onChange={e => setTeamId(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
                   <option value="">— Select a team —</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.description || t.id} ({t.id})</option>)}
                 </select>
               </div>
             ) : (
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Team</label>
-                <div style={{ ...inputStyle, color: '#64748B', background: '#F1F5F9', cursor: 'default' }}>{teamId}</div>
+                <div style={{ ...inp, color: '#64748B', background: '#F1F5F9' }}>{teamId}</div>
               </div>
             )}
             {error && <div style={{ fontSize: 12, color: '#991B1B' }}>✗ {error}</div>}
@@ -569,10 +511,7 @@ function InviteModal({
               A temporary password will be sent via Cognito. The user must change it on first login.
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
-              <button onClick={onClose}
-                style={{ padding: '8px 16px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, color: '#64748B', cursor: 'pointer' }}>
-                Cancel
-              </button>
+              <button onClick={onClose} style={{ padding: '8px 16px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, color: '#64748B', cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleInvite} disabled={saving}
                 style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1, boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}>
                 {saving ? 'Sending invite…' : 'Send Invite'}

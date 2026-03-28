@@ -1,13 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signIn, signOut, confirmSignIn, fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
-import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
-
-const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+import { signIn, signOut, confirmSignIn, fetchAuthSession } from '@aws-amplify/auth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [team,        setTeam]        = useState('')
   const [email,       setEmail]       = useState('')
   const [password,    setPassword]    = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -16,34 +12,28 @@ export default function LoginPage() {
   const [error,       setError]       = useState('')
   const [loading,     setLoading]     = useState(false)
 
+  async function getTeamFromSession(): Promise<string> {
+    const session = await fetchAuthSession()
+    const groups = (session.tokens?.idToken?.payload['cognito:groups'] as string[]) ?? []
+    return groups[0] ?? ''
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!team.trim()) { setError('Please enter your team ID'); return }
     setLoading(true)
     try {
       const result = await signIn({ username: email.trim().toLowerCase(), password })
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         setStep('new-password')
       } else {
-        // Validate team membership — use name attribute (e.g. va1234) as SSM key
-        const attrs = await fetchUserAttributes()
-        const username = attrs.name ?? ''
-        try {
-          const session = await fetchAuthSession()
-          const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
-          const resp = await ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/TEAM` }))
-          const assignedTeam = (resp.Parameter?.Value ?? '').toLowerCase()
-          const enteredTeam = team.trim().toLowerCase()
-          if (assignedTeam && assignedTeam !== enteredTeam) {
-            await signOut()
-            setError('You are not a member of this team')
-            return
-          }
-        } catch {
-          // No team assigned yet — allow through (super admin accounts)
+        const team = await getTeamFromSession()
+        if (!team) {
+          await signOut()
+          setError('You have not been assigned to a team yet. Contact your admin.')
+          return
         }
-        navigate(team.trim().toLowerCase() === 'admin' ? '/members' : '/agent')
+        navigate(team.toLowerCase() === 'admin' ? '/members' : '/agent')
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed')
@@ -60,7 +50,8 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await confirmSignIn({ challengeResponse: newPassword })
-      navigate('/agent')
+      const team = await getTeamFromSession()
+      navigate(team.toLowerCase() === 'admin' ? '/members' : '/agent')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to set password')
     } finally {
@@ -78,7 +69,6 @@ export default function LoginPage() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #0EA5E9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {/* decorative blobs */}
       <div style={{ position: 'absolute', top: '10%', left: '15%', width: 300, height: 300, background: 'rgba(255,255,255,0.06)', borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '15%', right: '10%', width: 250, height: 250, background: 'rgba(255,255,255,0.05)', borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
@@ -94,10 +84,6 @@ export default function LoginPage() {
 
         {step === 'login' ? (
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input type="text" value={team} onChange={e => setTeam(e.target.value)}
-              placeholder="Team ID (e.g. teama)" required style={inputStyle}
-              onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
-              onBlur={e => (e.currentTarget.style.borderColor = '#E2E8F0')} />
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="your@company.com" required autoFocus style={inputStyle}
               onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
