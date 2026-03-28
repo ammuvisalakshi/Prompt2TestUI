@@ -7,27 +7,11 @@ import {
   ListUsersCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { SSMClient, GetParametersByPathCommand, PutParameterCommand, DeleteParameterCommand } from '@aws-sdk/client-ssm'
+import { useTeam } from '../context/TeamContext'
 
 const AWS_REGION    = import.meta.env.VITE_AWS_REGION as string
 const USER_POOL_ID  = import.meta.env.VITE_USER_POOL_ID as string
 const SSM_MEMBERS   = '/prompt2test/config/members'
-
-const ROLES = ['Admin', 'QA Lead', 'QA Engineer', 'Developer'] as const
-type Role = typeof ROLES[number]
-
-const ROLE_COLORS: Record<string, React.CSSProperties> = {
-  Admin:        { background: 'rgba(124,58,237,0.1)',  color: '#6D28D9', border: '1px solid #DDD6FE' },
-  'QA Lead':    { background: 'rgba(79,70,229,0.08)', color: '#4338CA', border: '1px solid #C7D2FE' },
-  'QA Engineer':{ background: 'rgba(5,150,105,0.08)', color: '#065F46', border: '1px solid #A7F3D0' },
-  Developer:    { background: 'rgba(29,78,216,0.08)', color: '#1E40AF', border: '1px solid #BFDBFE' },
-}
-
-const ROLE_ACCESS: Record<string, string> = {
-  Admin:        'All · L1 config',
-  'QA Lead':    'Promote · L2+L3 config',
-  'QA Engineer':'Author · view inventory',
-  Developer:    'View · run tests',
-}
 
 const AVATAR_COLORS = ['#7C3AED', '#6B21A8', '#166534', '#1E40AF', '#B45309', '#9F1239']
 
@@ -35,7 +19,7 @@ type Member = {
   username: string
   name: string
   email: string
-  role: string
+  team: string
   status: string   // CONFIRMED | FORCE_CHANGE_PASSWORD | UNCONFIRMED
 }
 
@@ -51,9 +35,9 @@ async function getSSMClient() {
   return new SSMClient({ region: AWS_REGION, credentials: session.credentials })
 }
 
-async function loadRolesFromSSM(): Promise<Record<string, string>> {
+async function loadTeamsFromSSM(): Promise<Record<string, string>> {
   const client = await getSSMClient()
-  const roles: Record<string, string> = {}
+  const teams: Record<string, string> = {}
   let nextToken: string | undefined
   do {
     const resp = await client.send(new GetParametersByPathCommand({
@@ -61,18 +45,19 @@ async function loadRolesFromSSM(): Promise<Record<string, string>> {
     }))
     for (const p of resp.Parameters ?? []) {
       const parts = p.Name!.split('/')
-      if (parts[parts.length - 1] === 'ROLE') {
-        roles[parts[parts.length - 2]] = p.Value ?? ''
+      if (parts[parts.length - 1] === 'TEAM') {
+        teams[parts[parts.length - 2]] = p.Value ?? ''
       }
     }
     nextToken = resp.NextToken
   } while (nextToken)
-  return roles
+  return teams
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
+  const { team: currentUserTeam } = useTeam()
   const [members, setMembers]       = useState<Member[]>([])
   const [loading, setLoading]       = useState(true)
   const [showModal, setShowModal]   = useState(false)
@@ -80,7 +65,7 @@ export default function MembersPage() {
   async function loadMembers() {
     setLoading(true)
     try {
-      const [cognitoClient, roles] = await Promise.all([getCognitoClient(), loadRolesFromSSM()])
+      const [cognitoClient, teams] = await Promise.all([getCognitoClient(), loadTeamsFromSSM()])
       const resp = await cognitoClient.send(new ListUsersCommand({ UserPoolId: USER_POOL_ID, Limit: 60 }))
       const list: Member[] = (resp.Users ?? []).map(u => {
         const attr = (name: string) => u.Attributes?.find(a => a.Name === name)?.Value ?? ''
@@ -91,7 +76,7 @@ export default function MembersPage() {
           : email.split('@')[0]
         return {
           username, name, email,
-          role:   roles[username] ?? 'QA Engineer',
+          team:   teams[username] ?? '',
           status: u.UserStatus ?? 'UNCONFIRMED',
         }
       })
@@ -111,7 +96,7 @@ export default function MembersPage() {
       const [cognitoClient, ssmClient] = await Promise.all([getCognitoClient(), getSSMClient()])
       await Promise.all([
         cognitoClient.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: username })),
-        ssmClient.send(new DeleteParameterCommand({ Name: `${SSM_MEMBERS}/${username}/ROLE` })).catch(() => {}),
+        ssmClient.send(new DeleteParameterCommand({ Name: `${SSM_MEMBERS}/${username}/TEAM` })).catch(() => {}),
       ])
       setMembers(prev => prev.filter(m => m.username !== username))
     } catch (e) {
@@ -119,6 +104,10 @@ export default function MembersPage() {
       alert('Failed to remove member. See console for details.')
     }
   }
+
+  const filteredMembers = currentUserTeam
+    ? members.filter(m => m.team.toLowerCase() === currentUserTeam.toLowerCase())
+    : members
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', background: '#FAFBFF', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -129,7 +118,7 @@ export default function MembersPage() {
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 4, letterSpacing: '-0.3px' }}>Team Members</div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-              {loading ? 'Loading…' : `${members.length} member${members.length !== 1 ? 's' : ''} · Cognito SSO`}
+              {loading ? 'Loading…' : `${filteredMembers.length} member${filteredMembers.length !== 1 ? 's' : ''} · Cognito SSO`}
             </div>
           </div>
           <button onClick={() => setShowModal(true)}
@@ -146,7 +135,7 @@ export default function MembersPage() {
           <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' }}>
             {loading ? (
               <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>Loading members…</div>
-            ) : members.length === 0 ? (
+            ) : filteredMembers.length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>
                 No members yet. Click <strong style={{ color: '#64748B' }}>+ Invite member</strong> to add someone.
               </div>
@@ -155,14 +144,13 @@ export default function MembersPage() {
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EBF0' }}>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Member</th>
-                    <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</th>
-                    <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access</th>
+                    <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Team</th>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map((m, i) => {
+                  {filteredMembers.map((m, i) => {
                     const initials = m.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
                     const color = AVATAR_COLORS[i % AVATAR_COLORS.length]
                     const isPending = m.status === 'FORCE_CHANGE_PASSWORD'
@@ -182,12 +170,7 @@ export default function MembersPage() {
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, fontWeight: 600, ...ROLE_COLORS[m.role] }}>
-                            {m.role}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748B' }}>{ROLE_ACCESS[m.role] ?? '—'}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748B' }}>{m.team || '—'}</td>
                         <td style={{ padding: '12px 16px' }}>
                           {isPending ? (
                             <span style={{ fontSize: 11, padding: '2px 8px', background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A', borderRadius: 20, fontWeight: 600 }}>Invite pending</span>
@@ -229,7 +212,7 @@ export default function MembersPage() {
 function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: () => void }) {
   const [name,    setName]    = useState('')
   const [email,   setEmail]   = useState('')
-  const [role,    setRole]    = useState<Role>('QA Engineer')
+  const [team,    setTeam]    = useState('')
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
   const [success, setSuccess] = useState(false)
@@ -252,7 +235,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
       }))
       const username = resp.User?.Username ?? email.trim().toLowerCase()
       await ssmClient.send(new PutParameterCommand({
-        Name: `${SSM_MEMBERS}/${username}/ROLE`, Value: role, Type: 'String', Overwrite: true,
+        Name: `${SSM_MEMBERS}/${username}/TEAM`, Value: team.trim(), Type: 'String', Overwrite: true,
       }))
       setSuccess(true)
       setTimeout(onInvited, 1500)
@@ -296,11 +279,8 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
               <input style={inputStyle} placeholder="jane@company.com" type="email" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Role</label>
-              <select style={{ ...inputStyle, background: '#F8FAFC' }} value={role} onChange={e => setRole(e.target.value as Role)}>
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <div style={{ marginTop: 4, fontSize: 11, color: '#94A3B8' }}>{ROLE_ACCESS[role]}</div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Team ID</label>
+              <input style={inputStyle} placeholder="e.g. teama" value={team} onChange={e => setTeam(e.target.value)} />
             </div>
 
             {error && <div style={{ fontSize: 12, color: '#991B1B' }}>✗ {error}</div>}

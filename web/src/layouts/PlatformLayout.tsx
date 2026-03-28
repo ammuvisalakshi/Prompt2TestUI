@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
-import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
+import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 import { EnvContext, ENVS, type Env } from '../context/EnvContext'
+import { TeamContext } from '../context/TeamContext'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
@@ -65,7 +66,7 @@ export default function PlatformLayout() {
   const navigate = useNavigate()
   const [initials,     setInitials]     = useState('?')
   const [displayName,  setDisplayName]  = useState('')
-  const [role,         setRole]         = useState('')
+  const [team,         setTeam]         = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [runs,         setRuns]         = useState<RunEntry[]>([])
   const [env,          setEnv]          = useState<Env>('dev')
@@ -100,9 +101,13 @@ export default function PlatformLayout() {
         try {
           const session = await fetchAuthSession()
           const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
-          const resp = await ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/ROLE` }))
-          setRole(resp.Parameter?.Value ?? '')
-        } catch { /* no role stored yet */ }
+          const resp = await ssm.send(new GetParametersByPathCommand({ Path: `/prompt2test/config/members/${username}`, Recursive: true }))
+          for (const p of resp.Parameters ?? []) {
+            const parts = p.Name!.split('/')
+            const key = parts[parts.length - 1]
+            if (key === 'TEAM') setTeam(p.Value ?? '')
+          }
+        } catch { /* no params stored yet */ }
       }
     }).catch(() => {})
   }, [])
@@ -240,7 +245,7 @@ export default function PlatformLayout() {
               </div>
               <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                {role && <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{role}</div>}
+                {team && <div style={{ fontSize: 11, color: '#0EA5E9', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team}</div>}
               </div>
             </button>
 
@@ -273,9 +278,11 @@ export default function PlatformLayout() {
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <EnvContext.Provider value={{ env, setEnv }}>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <Outlet />
-        </div>
+        <TeamContext.Provider value={{ team }}>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <Outlet />
+          </div>
+        </TeamContext.Provider>
       </EnvContext.Provider>
     </div>
   )

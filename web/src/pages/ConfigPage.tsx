@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { fetchAuthSession } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand, PutParameterCommand, DeleteParameterCommand } from '@aws-sdk/client-ssm'
 import { useEnv } from '../context/EnvContext'
+import { useTeam } from '../context/TeamContext'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const SSM_PREFIX = '/prompt2test/config'
@@ -46,6 +47,7 @@ async function deleteParam(name: string) {
 
 export default function ConfigPage() {
   const { env } = useEnv()
+  const { team } = useTeam()
   const [tab, setTab] = useState<'services' | 'accounts'>('services')
 
   const [svcRows,   setSvcRows]   = useState<Record<string, ParamRow[]>>({})
@@ -61,7 +63,7 @@ export default function ConfigPage() {
   const loadServices = useCallback(async () => {
     setSvcLoading(true)
     try {
-      const flat = await loadParamsForPath(`${SSM_PREFIX}/${env}/services`, true)
+      const flat = await loadParamsForPath(`${SSM_PREFIX}/${env}/teams/${team}/services`, true)
       const map: Record<string, Record<string, string>> = {}
       for (const [k, v] of Object.entries(flat)) {
         const slash = k.indexOf('/')
@@ -78,7 +80,7 @@ export default function ConfigPage() {
       setSvcRows(rows)
     } catch (e) { console.error('Load services failed:', e) }
     finally { setSvcLoading(false) }
-  }, [env])
+  }, [env, team])
 
   const loadAccounts = useCallback(async () => {
     setAcctLoading(true)
@@ -119,7 +121,7 @@ export default function ConfigPage() {
         return
       }
       await Promise.all(toSave.map(r =>
-        saveParam(`${SSM_PREFIX}/${env}/services/${svc}/${r.key.trim().toUpperCase()}`, r.value.trim())
+        saveParam(`${SSM_PREFIX}/${env}/teams/${team}/services/${svc}/${r.key.trim().toUpperCase()}`, r.value.trim())
       ))
       setSvcStatus(p => ({ ...p, [svc]: { type: 'saved' } }))
       setTimeout(() => setSvcStatus(p => ({ ...p, [svc]: { type: 'idle' } })), 3000)
@@ -135,7 +137,7 @@ export default function ConfigPage() {
     try {
       const rows = svcRows[svc] ?? []
       await Promise.all(rows.map(r =>
-        deleteParam(`${SSM_PREFIX}/${env}/services/${svc}/${r.key.trim().toUpperCase()}`).catch(() => {})
+        deleteParam(`${SSM_PREFIX}/${env}/teams/${team}/services/${svc}/${r.key.trim().toUpperCase()}`).catch(() => {})
       ))
       setSvcRows(p => { const next = { ...p }; delete next[svc]; return next })
     } catch (e) { console.error('Delete service failed:', e) }
@@ -210,6 +212,7 @@ export default function ConfigPage() {
                     key={svc}
                     svc={svc}
                     env={env}
+                    team={team}
                     rows={svcRows[svc]}
                     saving={svcSaving[svc] ?? false}
                     status={svcStatus[svc] ?? { type: 'idle' }}
@@ -218,7 +221,7 @@ export default function ConfigPage() {
                     onDelete={() => deleteService(svc)}
                     onDeleteRow={key => {
                       if (!key.trim()) return
-                      deleteParam(`${SSM_PREFIX}/${env}/services/${svc}/${key.trim().toUpperCase()}`).catch(console.error)
+                      deleteParam(`${SSM_PREFIX}/${env}/teams/${team}/services/${svc}/${key.trim().toUpperCase()}`).catch(console.error)
                     }}
                   />
                 ))}
@@ -299,10 +302,11 @@ export default function ConfigPage() {
 // ── Service Card ───────────────────────────────────────────────────────────
 
 function ServiceCard({
-  svc, env, rows, saving, status, onChange, onSave, onDelete, onDeleteRow,
+  svc, env, team, rows, saving, status, onChange, onSave, onDelete, onDeleteRow,
 }: {
   svc: string
   env: string
+  team: string
   rows: ParamRow[]
   saving: boolean
   status: { type: 'idle' | 'saved' | 'error'; msg?: string }
@@ -326,7 +330,7 @@ function ServiceCard({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', textTransform: 'capitalize' }}>{svc}</div>
-          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace' }}>/…/{env}/services/{svc}/*</span>
+          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace' }}>/…/{env}/teams/{team}/services/{svc}/*</span>
         </div>
         <button onClick={onDelete}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 18, lineHeight: 1, padding: 0 }}

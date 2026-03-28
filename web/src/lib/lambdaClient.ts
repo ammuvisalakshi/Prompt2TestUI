@@ -70,8 +70,9 @@ export async function saveTestCase(params: {
   planSteps?: object[]
   tags?: string[]
   createdBy?: string
+  team?: string
 }): Promise<string> {
-  const res = await invokeLambda('p2t-testcase-writer', { action: 'save_test_case', ...params }) as { id: string }
+  const res = await invokeLambda('p2t-testcase-writer', { action: 'save_test_case', ...params, team: params.team ?? '' }) as { id: string }
   return res.id
 }
 
@@ -81,17 +82,18 @@ export async function saveRunRecord(params: {
   result: 'PASS' | 'FAIL'
   summary?: string
   runBy?: string
+  team?: string
 }): Promise<string> {
-  const res = await invokeLambda('p2t-testcase-writer', { action: 'save_run_record', ...params }) as { id: string }
+  const res = await invokeLambda('p2t-testcase-writer', { action: 'save_run_record', ...params, team: params.team ?? '' }) as { id: string }
   return res.id
 }
 
-export async function listTestCases(env: string): Promise<TestCase[]> {
-  return invokeLambda('p2t-testcase-reader', { action: 'list_test_cases', env }) as Promise<TestCase[]>
+export async function listTestCases(env: string, team = ''): Promise<TestCase[]> {
+  return invokeLambda('p2t-testcase-reader', { action: 'list_test_cases', env, team }) as Promise<TestCase[]>
 }
 
-export async function listRunRecords(env: string): Promise<RunRecord[]> {
-  return invokeLambda('p2t-testcase-reader', { action: 'list_run_records', env }) as Promise<RunRecord[]>
+export async function listRunRecords(env: string, team = ''): Promise<RunRecord[]> {
+  return invokeLambda('p2t-testcase-reader', { action: 'list_run_records', env, team }) as Promise<RunRecord[]>
 }
 
 export async function getTestCase(id: string): Promise<TestCase & { steps: object[]; planSteps: object[] }> {
@@ -114,8 +116,8 @@ export async function deleteTestCase(id: string): Promise<void> {
   await invokeLambda('p2t-testcase-writer', { action: 'delete_test_case', id })
 }
 
-export async function searchTestCases(query: string, env: string, threshold = 0.75): Promise<(TestCase & { similarity: number })[]> {
-  return invokeLambda('p2t-testcase-reader', { action: 'search', query, env, threshold }) as Promise<(TestCase & { similarity: number })[]>
+export async function searchTestCases(query: string, env: string, team = '', threshold = 0.75): Promise<(TestCase & { similarity: number })[]> {
+  return invokeLambda('p2t-testcase-reader', { action: 'search', query, env, team, threshold }) as Promise<(TestCase & { similarity: number })[]>
 }
 
 export async function updateReplayScript(id: string, replayScript: object[]): Promise<void> {

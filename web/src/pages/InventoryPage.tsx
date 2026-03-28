@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { fetchAuthSession } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 import { useEnv } from '../context/EnvContext'
+import { useTeam } from '../context/TeamContext'
 import { listTestCases, listRunRecords, deleteTestCase, updateTestCaseService, type TestCase, type RunRecord } from '../lib/lambdaClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -28,6 +29,7 @@ type Tab = 'cases' | 'runs'
 
 export default function InventoryPage() {
   const { env } = useEnv()
+  const { team } = useTeam()
   const [tab, setTab] = useState<Tab>('cases')
   const [cases, setCases] = useState<TestCase[]>([])
   const [runs, setRuns] = useState<RunRecord[]>([])
@@ -48,14 +50,14 @@ export default function InventoryPage() {
     setLoading(true)
     setError(null)
     try {
-      if (tab === 'cases') setCases(await listTestCases(env))
-      else setRuns(await listRunRecords(env))
+      if (tab === 'cases') setCases(await listTestCases(env, team))
+      else setRuns(await listRunRecords(env, team))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
-  }, [env, tab])
+  }, [env, tab, team])
 
   useEffect(() => { load() }, [load])
 

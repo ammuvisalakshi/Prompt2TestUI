@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signIn, signOut, confirmSignIn } from '@aws-amplify/auth'
+import { fetchAuthSession } from '@aws-amplify/auth'
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
+
+const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [team,        setTeam]        = useState('')
   const [email,       setEmail]       = useState('')
   const [password,    setPassword]    = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -15,6 +20,7 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (!team.trim()) { setError('Please enter your team ID'); return }
     setLoading(true)
     try {
       await signOut().catch(() => {})
@@ -22,6 +28,22 @@ export default function LoginPage() {
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         setStep('new-password')
       } else {
+        // Validate team membership
+        const username = email.trim().toLowerCase()
+        try {
+          const session = await fetchAuthSession()
+          const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
+          const resp = await ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/TEAM` }))
+          const assignedTeam = (resp.Parameter?.Value ?? '').toLowerCase().replace(/\s+/g, '')
+          const enteredTeam = team.trim().toLowerCase().replace(/\s+/g, '')
+          if (assignedTeam && assignedTeam !== enteredTeam) {
+            await signOut()
+            setError('You are not a member of this team')
+            return
+          }
+        } catch {
+          // No team assigned yet — allow through (super admin accounts)
+        }
         navigate('/agent')
       }
     } catch (err: unknown) {
@@ -73,6 +95,10 @@ export default function LoginPage() {
 
         {step === 'login' ? (
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input type="text" value={team} onChange={e => setTeam(e.target.value)}
+              placeholder="Team ID (e.g. teama)" required style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E2E8F0')} />
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="your@company.com" required autoFocus style={inputStyle}
               onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}

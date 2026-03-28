@@ -4,6 +4,7 @@ import { fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 
 import { useEnv } from '../context/EnvContext'
+import { useTeam } from '../context/TeamContext'
 import { saveTestCase, updateTestCasePlanSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
@@ -70,6 +71,7 @@ export default function AgentPage() {
   const [saveService, setSaveService] = useState('')
   const [planSteps, setPlanSteps] = useState<StepItem[]>([])
   const { env } = useEnv()
+  const { team } = useTeam()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
 
@@ -436,6 +438,7 @@ export default function AgentPage() {
                           steps: [],
                           planSteps,
                           createdBy: userName,
+                          team,
                         })
                         savedTcId.current = id
                         setTcSaved('saved')
