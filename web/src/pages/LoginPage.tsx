@@ -44,7 +44,7 @@ export default function LoginPage() {
         } catch {
           // No team assigned yet — allow through (super admin accounts)
         }
-        navigate('/agent')
+        navigate(team.trim().toLowerCase() === 'admin' ? '/members' : '/agent')
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed')

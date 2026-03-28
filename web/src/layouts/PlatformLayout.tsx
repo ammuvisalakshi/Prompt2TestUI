@@ -141,95 +141,104 @@ export default function PlatformLayout() {
           <span style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.4px' }}>Prompt2Test</span>
         </div>
 
-        {/* Author Agent — primary action */}
-        <div style={{ padding: '12px 12px 4px' }}>
-          <NavLink
-            to="/agent"
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none',
-              ...(isActive
-                ? { background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', boxShadow: '0 2px 10px rgba(124,58,237,0.35)' }
-                : { color: '#64748B' }
-              ),
-            })}
-          >
-            <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}>
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-            Author Agent
-          </NavLink>
-        </div>
-
-        {/* Environment selector */}
-        <div style={{ padding: '12px 12px 4px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 2px', marginBottom: 6 }}>Environment</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-            {ENVS.map(e => {
-              const s = ENV_STYLE[e]
-              const isActive = env === e
-              return (
-                <button key={e} onClick={() => setEnv(e)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 7,
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                    ...(isActive ? s.active : { background: '#F8FAFC', border: '1.5px solid #E8EBF0', color: '#94A3B8' }),
-                  }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: isActive ? s.dot : '#CBD5E1' }} />
-                  {e.toUpperCase()}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Workspace nav */}
-        <div style={{ padding: '16px 14px 4px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Workspace</div>
-        </div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0 12px' }}>
-          {NAV.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8,
-                fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: 'pointer', textDecoration: 'none',
-                ...(isActive
-                  ? { background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE' }
-                  : { color: '#64748B' }
-                ),
-              })}
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* Run History */}
-        <div style={{ padding: '20px 14px 4px', flexShrink: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Run History</div>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }}>
-          {runs.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#CBD5E1', padding: '8px 10px', fontStyle: 'italic' }}>No runs yet</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {runs.slice().reverse().map(run => (
-                <div key={run.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-                  <span style={{ marginTop: 1, flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, ...(run.passed ? { background: '#DCFCE7', color: '#166534' } : { background: '#FEE2E2', color: '#991B1B' }) }}>
-                    {run.passed ? 'PASS' : 'FAIL'}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{run.description}</div>
-                    <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{timeAgo(run.timestamp)}</div>
-                  </div>
-                </div>
-              ))}
+        {team.toLowerCase() !== 'admin' && (
+          <>
+            {/* Author Agent — primary action */}
+            <div style={{ padding: '12px 12px 4px' }}>
+              <NavLink
+                to="/agent"
+                style={({ isActive }) => ({
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none',
+                  ...(isActive
+                    ? { background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', boxShadow: '0 2px 10px rgba(124,58,237,0.35)' }
+                    : { color: '#64748B' }
+                  ),
+                })}
+              >
+                <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}>
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                Author Agent
+              </NavLink>
             </div>
-          )}
-        </div>
+
+            {/* Environment selector */}
+            <div style={{ padding: '12px 12px 4px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 2px', marginBottom: 6 }}>Environment</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                {ENVS.map(e => {
+                  const s = ENV_STYLE[e]
+                  const isActive = env === e
+                  return (
+                    <button key={e} onClick={() => setEnv(e)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 7,
+                        fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                        ...(isActive ? s.active : { background: '#F8FAFC', border: '1.5px solid #E8EBF0', color: '#94A3B8' }),
+                      }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: isActive ? s.dot : '#CBD5E1' }} />
+                      {e.toUpperCase()}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Workspace nav */}
+            <div style={{ padding: '16px 14px 4px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Workspace</div>
+            </div>
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0 12px' }}>
+              {NAV.map(item => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  style={({ isActive }) => ({
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8,
+                    fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: 'pointer', textDecoration: 'none',
+                    ...(isActive
+                      ? { background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE' }
+                      : { color: '#64748B' }
+                    ),
+                  })}
+                >
+                  {item.icon}
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          </>
+        )}
+
+        {team.toLowerCase() !== 'admin' && (
+          <>
+            {/* Run History */}
+            <div style={{ padding: '20px 14px 4px', flexShrink: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Run History</div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }}>
+              {runs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#CBD5E1', padding: '8px 10px', fontStyle: 'italic' }}>No runs yet</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {runs.slice().reverse().map(run => (
+                    <div key={run.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+                      <span style={{ marginTop: 1, flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, ...(run.passed ? { background: '#DCFCE7', color: '#166534' } : { background: '#FEE2E2', color: '#991B1B' }) }}>
+                        {run.passed ? 'PASS' : 'FAIL'}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{run.description}</div>
+                        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{timeAgo(run.timestamp)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        {team.toLowerCase() === 'admin' && <div style={{ flex: 1 }} />}
 
         {/* Avatar / profile at bottom */}
         <div style={{ padding: 12, flexShrink: 0, borderTop: '1px solid #F1F5F9' }}>
