@@ -22,7 +22,6 @@ export default function LoginPage() {
     if (!team.trim()) { setError('Please enter your team ID'); return }
     setLoading(true)
     try {
-      await signOut().catch(() => {})
       const result = await signIn({ username: email.trim().toLowerCase(), password })
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         setStep('new-password')
