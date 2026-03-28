@@ -3,7 +3,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { EnvContext, ENVS, type Env } from '../context/EnvContext'
-import { TeamContext } from '../context/TeamContext'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
@@ -67,7 +66,6 @@ export default function PlatformLayout() {
   const [initials,     setInitials]     = useState('?')
   const [displayName,  setDisplayName]  = useState('')
   const [role,         setRole]         = useState('')
-  const [team,         setTeam]         = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [runs,         setRuns]         = useState<RunEntry[]>([])
   const [env,          setEnv]          = useState<Env>('dev')
@@ -102,13 +100,9 @@ export default function PlatformLayout() {
         try {
           const session = await fetchAuthSession()
           const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
-          const [roleResp, teamResp] = await Promise.allSettled([
-            ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/ROLE` })),
-            ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/TEAM` })),
-          ])
-          if (roleResp.status === 'fulfilled') setRole(roleResp.value.Parameter?.Value ?? '')
-          if (teamResp.status === 'fulfilled') setTeam(teamResp.value.Parameter?.Value ?? '')
-        } catch { /* no metadata stored yet */ }
+          const resp = await ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/ROLE` }))
+          setRole(resp.Parameter?.Value ?? '')
+        } catch { /* no role stored yet */ }
       }
     }).catch(() => {})
   }, [])
@@ -246,7 +240,6 @@ export default function PlatformLayout() {
               </div>
               <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                {team && <div style={{ fontSize: 11, color: '#0EA5E9', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team}</div>}
                 {role && <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{role}</div>}
               </div>
             </button>
@@ -280,11 +273,9 @@ export default function PlatformLayout() {
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <EnvContext.Provider value={{ env, setEnv }}>
-        <TeamContext.Provider value={{ team, role }}>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <Outlet />
-          </div>
-        </TeamContext.Provider>
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <Outlet />
+        </div>
       </EnvContext.Provider>
     </div>
   )

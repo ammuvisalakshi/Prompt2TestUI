@@ -36,7 +36,6 @@ type Member = {
   name: string
   email: string
   role: string
-  team: string
   status: string   // CONFIRMED | FORCE_CHANGE_PASSWORD | UNCONFIRMED
 }
 
@@ -52,9 +51,9 @@ async function getSSMClient() {
   return new SSMClient({ region: AWS_REGION, credentials: session.credentials })
 }
 
-async function loadMemberMetaFromSSM(): Promise<Record<string, { role: string; team: string }>> {
+async function loadRolesFromSSM(): Promise<Record<string, string>> {
   const client = await getSSMClient()
-  const meta: Record<string, { role: string; team: string }> = {}
+  const roles: Record<string, string> = {}
   let nextToken: string | undefined
   do {
     const resp = await client.send(new GetParametersByPathCommand({
@@ -62,15 +61,13 @@ async function loadMemberMetaFromSSM(): Promise<Record<string, { role: string; t
     }))
     for (const p of resp.Parameters ?? []) {
       const parts = p.Name!.split('/')
-      const field = parts[parts.length - 1]
-      const username = parts[parts.length - 2]
-      if (!meta[username]) meta[username] = { role: '', team: '' }
-      if (field === 'ROLE') meta[username].role = p.Value ?? ''
-      if (field === 'TEAM') meta[username].team = p.Value ?? ''
+      if (parts[parts.length - 1] === 'ROLE') {
+        roles[parts[parts.length - 2]] = p.Value ?? ''
+      }
     }
     nextToken = resp.NextToken
   } while (nextToken)
-  return meta
+  return roles
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -83,19 +80,18 @@ export default function MembersPage() {
   async function loadMembers() {
     setLoading(true)
     try {
-      const [cognitoClient, meta] = await Promise.all([getCognitoClient(), loadMemberMetaFromSSM()])
+      const [cognitoClient, roles] = await Promise.all([getCognitoClient(), loadRolesFromSSM()])
       const resp = await cognitoClient.send(new ListUsersCommand({ UserPoolId: USER_POOL_ID, Limit: 60 }))
       const list: Member[] = (resp.Users ?? []).map(u => {
-        const attr = (n: string) => u.Attributes?.find((a: { Name?: string }) => a.Name === n)?.Value ?? ''
+        const attr = (name: string) => u.Attributes?.find(a => a.Name === name)?.Value ?? ''
         const username = u.Username ?? ''
         const email = attr('email') || username
-        const name  = attr('name') || (attr('given_name')
+        const name  = attr('name') || attr('given_name')
           ? `${attr('given_name')} ${attr('family_name')}`.trim()
-          : email.split('@')[0])
+          : email.split('@')[0]
         return {
           username, name, email,
-          role:   meta[username]?.role ?? 'QA Engineer',
-          team:   meta[username]?.team ?? '',
+          role:   roles[username] ?? 'QA Engineer',
           status: u.UserStatus ?? 'UNCONFIRMED',
         }
       })
@@ -116,7 +112,6 @@ export default function MembersPage() {
       await Promise.all([
         cognitoClient.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: username })),
         ssmClient.send(new DeleteParameterCommand({ Name: `${SSM_MEMBERS}/${username}/ROLE` })).catch(() => {}),
-        ssmClient.send(new DeleteParameterCommand({ Name: `${SSM_MEMBERS}/${username}/TEAM` })).catch(() => {}),
       ])
       setMembers(prev => prev.filter(m => m.username !== username))
     } catch (e) {
@@ -160,7 +155,6 @@ export default function MembersPage() {
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EBF0' }}>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Member</th>
-                    <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Team</th>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</th>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access</th>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
@@ -187,15 +181,6 @@ export default function MembersPage() {
                               <div style={{ fontSize: 12, color: '#94A3B8' }}>{m.email}</div>
                             </div>
                           </div>
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          {m.team ? (
-                            <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, fontWeight: 600, background: 'rgba(14,165,233,0.08)', color: '#0284C7', border: '1px solid #BAE6FD' }}>
-                              {m.team}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 12, color: '#CBD5E1' }}>—</span>
-                          )}
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, fontWeight: 600, ...ROLE_COLORS[m.role] }}>
@@ -244,7 +229,6 @@ export default function MembersPage() {
 function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: () => void }) {
   const [name,    setName]    = useState('')
   const [email,   setEmail]   = useState('')
-  const [team,    setTeam]    = useState('')
   const [role,    setRole]    = useState<Role>('QA Engineer')
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
@@ -267,10 +251,9 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
         DesiredDeliveryMediums: ['EMAIL'],
       }))
       const username = resp.User?.Username ?? email.trim().toLowerCase()
-      await Promise.all([
-        ssmClient.send(new PutParameterCommand({ Name: `${SSM_MEMBERS}/${username}/ROLE`, Value: role, Type: 'String', Overwrite: true })),
-        team.trim() && ssmClient.send(new PutParameterCommand({ Name: `${SSM_MEMBERS}/${username}/TEAM`, Value: team.trim(), Type: 'String', Overwrite: true })),
-      ])
+      await ssmClient.send(new PutParameterCommand({
+        Name: `${SSM_MEMBERS}/${username}/ROLE`, Value: role, Type: 'String', Overwrite: true,
+      }))
       setSuccess(true)
       setTimeout(onInvited, 1500)
     } catch (e: unknown) {
@@ -311,10 +294,6 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Work Email</label>
               <input style={inputStyle} placeholder="jane@company.com" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Team <span style={{ color: '#CBD5E1', fontWeight: 400 }}>(optional)</span></label>
-              <input style={inputStyle} placeholder="e.g. Platform, Payments, Auth" value={team} onChange={e => setTeam(e.target.value)} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#64748B', marginBottom: 4 }}>Role</label>
