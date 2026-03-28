@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
-import { EnvContext, ENVS, ENV_COLORS, ENV_DOT, type Env } from '../context/EnvContext'
+import { EnvContext, ENVS, type Env } from '../context/EnvContext'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 
@@ -18,7 +18,7 @@ const NAV = [
     to: '/inventory',
     label: 'Test Inventory',
     icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2 flex-shrink-0">
+      <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}>
         <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
       </svg>
     ),
@@ -27,7 +27,7 @@ const NAV = [
     to: '/config',
     label: 'Config & Accounts',
     icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2 flex-shrink-0">
+      <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}>
         <circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
       </svg>
     ),
@@ -36,12 +36,19 @@ const NAV = [
     to: '/members',
     label: 'Members',
     icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2 flex-shrink-0">
+      <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}>
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
       </svg>
     ),
   },
 ]
+
+const ENV_STYLE: Record<Env, { active: React.CSSProperties; dot: string }> = {
+  dev:  { active: { background: '#ECFDF5', border: '1.5px solid #A7F3D0', color: '#059669' }, dot: '#10B981' },
+  qa:   { active: { background: '#EFF6FF', border: '1.5px solid #BFDBFE', color: '#1D4ED8' }, dot: '#3B82F6' },
+  uat:  { active: { background: '#FFFBEB', border: '1.5px solid #FDE68A', color: '#D97706' }, dot: '#F59E0B' },
+  prod: { active: { background: '#FEF2F2', border: '1.5px solid #FECACA', color: '#DC2626' }, dot: '#EF4444' },
+}
 
 function timeAgo(ts: string) {
   const diff = Date.now() - new Date(ts).getTime()
@@ -62,7 +69,7 @@ export default function PlatformLayout() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [runs,         setRuns]         = useState<RunEntry[]>([])
   const [env,          setEnv]          = useState<Env>('dev')
-  const [sidebarWidth, setSidebarWidth] = useState(220)
+  const [sidebarWidth, setSidebarWidth] = useState(224)
   const dragging = useRef(false)
 
   const onDragStart = useCallback((e: React.MouseEvent) => {
@@ -70,11 +77,9 @@ export default function PlatformLayout() {
     dragging.current = true
     const startX = e.clientX
     const startW = sidebarWidth
-
     function onMove(ev: MouseEvent) {
       if (!dragging.current) return
-      const next = Math.min(400, Math.max(160, startW + ev.clientX - startX))
-      setSidebarWidth(next)
+      setSidebarWidth(Math.min(400, Math.max(160, startW + ev.clientX - startX)))
     }
     function onUp() {
       dragging.current = false
@@ -90,7 +95,6 @@ export default function PlatformLayout() {
       const name = attrs.name || attrs.email || ''
       setInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
       setDisplayName(attrs.name || attrs.email?.split('@')[0] || '')
-
       const username = attrs.email ?? ''
       if (username) {
         try {
@@ -103,7 +107,6 @@ export default function PlatformLayout() {
     }).catch(() => {})
   }, [])
 
-  // Load + keep run history in sync with localStorage
   useEffect(() => {
     function load() {
       try {
@@ -122,35 +125,31 @@ export default function PlatformLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #0D0821 0%, #130D35 45%, #0A1628 100%)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#F0F4FF' }}>
 
       {/* ── Left Sidebar ──────────────────────────────────────────────── */}
-      <div style={{ width: sidebarWidth, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: sidebarWidth, background: 'white', borderRight: '1px solid #E8EBF0', flexShrink: 0, display: 'flex', flexDirection: 'column', boxShadow: '2px 0 8px rgba(0,0,0,0.04)' }}>
 
         {/* Logo */}
-        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }} className="flex items-center gap-2 px-4 h-[52px] flex-shrink-0">
-          <img src="/favicon.svg" width="24" height="24" alt="Prompt2Test" />
-          <span className="text-[15px] font-bold text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(167,139,250,0.5)' }}>Prompt2Test</span>
+        <div style={{ borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', height: 56, flexShrink: 0 }}>
+          <img src="/favicon.svg" width="26" height="26" alt="Prompt2Test" />
+          <span style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.4px' }}>Prompt2Test</span>
         </div>
 
         {/* Author Agent — primary action */}
-        <div className="px-3 pt-3 pb-1">
+        <div style={{ padding: '12px 12px 4px' }}>
           <NavLink
             to="/agent"
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-all ${
-                isActive
-                  ? 'text-purple-300'
-                  : 'text-slate-400 hover:text-white'
-              }`
-            }
-            style={({ isActive }) => isActive ? {
-              background: 'rgba(139,92,246,0.2)',
-              border: '1px solid rgba(139,92,246,0.35)',
-              boxShadow: '0 0 12px rgba(139,92,246,0.15)'
-            } : {}}
+            style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none',
+              ...(isActive
+                ? { background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', boxShadow: '0 2px 10px rgba(124,58,237,0.35)' }
+                : { color: '#64748B' }
+              ),
+            })}
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-2 flex-shrink-0">
+            <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}>
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
             Author Agent
@@ -158,41 +157,44 @@ export default function PlatformLayout() {
         </div>
 
         {/* Environment selector */}
-        <div className="px-3 pt-3 pb-1">
-          <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-1 mb-1.5">Environment</div>
-          <div className="grid grid-cols-2 gap-1">
-            {ENVS.map(e => (
-              <button key={e} onClick={() => setEnv(e)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold cursor-pointer transition-all ${
-                  env === e ? ENV_COLORS[e] : 'text-slate-500 hover:text-slate-300'
-                }`}
-                style={env === e ? { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${env === e ? ENV_DOT[e] : 'bg-slate-600'}`} />
-                {e.toUpperCase()}
-              </button>
-            ))}
+        <div style={{ padding: '12px 12px 4px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 2px', marginBottom: 6 }}>Environment</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+            {ENVS.map(e => {
+              const s = ENV_STYLE[e]
+              const isActive = env === e
+              return (
+                <button key={e} onClick={() => setEnv(e)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 7,
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                    ...(isActive ? s.active : { background: '#F8FAFC', border: '1.5px solid #E8EBF0', color: '#94A3B8' }),
+                  }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: isActive ? s.dot : '#CBD5E1' }} />
+                  {e.toUpperCase()}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* Workspace nav */}
-        <div className="px-4 pt-4 pb-1">
-          <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Workspace</div>
+        <div style={{ padding: '16px 14px 4px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Workspace</div>
         </div>
-        <nav className="flex flex-col gap-0.5 px-3">
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0 12px' }}>
           {NAV.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium cursor-pointer transition-all ${
-                  isActive ? 'text-purple-300' : 'text-slate-400 hover:text-white'
-                }`
-              }
-              style={({ isActive }) => isActive ? {
-                background: 'rgba(139,92,246,0.15)',
-                border: '1px solid rgba(139,92,246,0.25)',
-              } : {}}
+              style={({ isActive }) => ({
+                display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8,
+                fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: 'pointer', textDecoration: 'none',
+                ...(isActive
+                  ? { background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE' }
+                  : { color: '#64748B' }
+                ),
+              })}
             >
               {item.icon}
               {item.label}
@@ -201,22 +203,22 @@ export default function PlatformLayout() {
         </nav>
 
         {/* Run History */}
-        <div className="px-4 pt-5 pb-1 flex-shrink-0">
-          <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Run History</div>
+        <div style={{ padding: '20px 14px 4px', flexShrink: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Run History</div>
         </div>
-        <div className="flex-1 overflow-y-auto px-3 pb-3">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }}>
           {runs.length === 0 ? (
-            <div className="text-[12px] text-slate-600 px-3 py-2 italic">No runs yet</div>
+            <div style={{ fontSize: 12, color: '#CBD5E1', padding: '8px 10px', fontStyle: 'italic' }}>No runs yet</div>
           ) : (
-            <div className="flex flex-col gap-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {runs.slice().reverse().map(run => (
-                <div key={run.id} className="flex items-start gap-2 px-3 py-2 rounded-lg cursor-default transition-colors" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <span className={`mt-0.5 flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${run.passed ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                <div key={run.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+                  <span style={{ marginTop: 1, flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, ...(run.passed ? { background: '#DCFCE7', color: '#166534' } : { background: '#FEE2E2', color: '#991B1B' }) }}>
                     {run.passed ? 'PASS' : 'FAIL'}
                   </span>
-                  <div className="min-w-0">
-                    <div className="text-[12px] text-slate-300 truncate leading-tight">{run.description}</div>
-                    <div className="text-[11px] text-slate-600 mt-0.5">{timeAgo(run.timestamp)}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{run.description}</div>
+                    <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{timeAgo(run.timestamp)}</div>
                   </div>
                 </div>
               ))}
@@ -225,28 +227,32 @@ export default function PlatformLayout() {
         </div>
 
         {/* Avatar / profile at bottom */}
-        <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="relative">
+        <div style={{ padding: 12, flexShrink: 0, borderTop: '1px solid #F1F5F9' }}>
+          <div style={{ position: 'relative' }}>
             <button
               onClick={() => setDropdownOpen(o => !o)}
-              className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg transition-colors cursor-pointer hover:bg-white/5"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 8px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#A855F7] to-[#7C3AED] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ boxShadow: '0 0 10px rgba(168,85,247,0.4)' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0, boxShadow: '0 2px 8px rgba(124,58,237,0.3)' }}>
                 {initials}
               </div>
-              <div className="flex-1 min-w-0 text-left">
-                <div className="text-[13px] font-semibold text-slate-200 truncate">{displayName}</div>
-                {role && <div className="text-[11px] text-purple-400 font-medium truncate">{role}</div>}
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+                {role && <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{role}</div>}
               </div>
             </button>
 
             {dropdownOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                <div className="absolute bottom-full left-0 mb-1 z-50 w-48 rounded-xl shadow-2xl py-1 overflow-hidden" style={{ background: 'rgba(20,10,50,0.95)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)' }}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setDropdownOpen(false)} />
+                <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 4, zIndex: 50, width: 192, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0', overflow: 'hidden', background: 'white', border: '1px solid #E8EBF0' }}>
                   <button
                     onClick={handleSignOut}
-                    className="w-full text-left px-4 py-2 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 cursor-pointer transition-colors"
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 16px', fontSize: 13, color: '#64748B', background: 'none', border: 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC'; (e.currentTarget as HTMLButtonElement).style.color = '#0F172A' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; (e.currentTarget as HTMLButtonElement).style.color = '#64748B' }}
                   >
                     Sign out
                   </button>
@@ -260,15 +266,14 @@ export default function PlatformLayout() {
       {/* ── Drag handle ───────────────────────────────────────────────── */}
       <div
         onMouseDown={onDragStart}
-        className="w-px flex-shrink-0 cursor-col-resize transition-colors"
-        style={{ background: 'rgba(255,255,255,0.06)' }}
-        onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(139,92,246,0.5)'}
-        onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'}
+        style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'transparent' }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#C7D2FE')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       />
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <EnvContext.Provider value={{ env, setEnv }}>
-        <div className="flex-1 overflow-hidden">
+        <div style={{ flex: 1, overflow: 'hidden' }}>
           <Outlet />
         </div>
       </EnvContext.Provider>

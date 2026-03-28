@@ -158,11 +158,11 @@ export default function AgentPage() {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#FAFBFF' }}>
       {/* Agent topbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', height: 52, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>Author Agent</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#C084FC', background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.35)', padding: '2px 8px', borderRadius: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', height: 52, background: 'white', borderBottom: '1px solid #E8EBF0', flexShrink: 0 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>Author Agent</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#6D28D9', background: '#EDE9FE', border: '1px solid #DDD6FE', padding: '2px 8px', borderRadius: 20 }}>
           Bedrock · {env.toUpperCase()}
         </span>
       </div>
@@ -170,18 +170,18 @@ export default function AgentPage() {
       {/* Main workspace */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Chat panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: 'rgba(255,255,255,0.03)', width: 440 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #E8EBF0', flexShrink: 0, background: 'white', width: 440 }}>
           <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 4 }}>
                   {msg.role === 'user' ? (userName || 'You') : 'Prompt2Test'}
                 </div>
                 <div style={{
                   maxWidth: '85%', padding: '10px 14px', borderRadius: 14, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-line',
                   ...(msg.role === 'user'
-                    ? { background: '#7C3AED', color: 'white', borderBottomRightRadius: 4 }
-                    : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.8)', borderBottomLeftRadius: 4 }
+                    ? { background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', borderBottomRightRadius: 4 }
+                    : { background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#334155', borderBottomLeftRadius: 4 }
                   ),
                 }}>
                   {msg.text}
@@ -190,9 +190,9 @@ export default function AgentPage() {
                   <button
                     onClick={() => setInput(msg.text)}
                     title="Edit & resend"
-                    style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#C084FC')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
+                    style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#7C3AED')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}
                   >
                     <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}>
                       <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
@@ -205,8 +205,8 @@ export default function AgentPage() {
           </div>
 
           {/* Input */}
-          <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)', flexShrink: 0 }}>
-            <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+          <div style={{ padding: '12px', borderTop: '1px solid #E8EBF0', background: 'white', flexShrink: 0 }}>
+            <div style={{ border: '1px solid #E2E8F0', borderRadius: 14, background: '#F8FAFC', overflow: 'hidden' }}>
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
@@ -214,7 +214,7 @@ export default function AgentPage() {
                 placeholder="Paste your scenario here…"
                 rows={3}
                 disabled={loading}
-                style={{ width: '100%', background: 'transparent', padding: '12px 16px 4px', fontSize: 14, color: 'rgba(255,255,255,0.85)', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', opacity: loading ? 0.6 : 1 }}
+                style={{ width: '100%', background: 'transparent', padding: '12px 16px 4px', fontSize: 14, color: '#0F172A', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', opacity: loading ? 0.6 : 1 }}
               />
 
               {/* Bottom toolbar */}
@@ -224,8 +224,8 @@ export default function AgentPage() {
                   <div style={{ position: 'relative' }}>
                     <button
                       onClick={() => setModeOpen(o => !o)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#64748B', background: 'none', border: 'none', cursor: 'pointer' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                     >
                       <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -236,19 +236,19 @@ export default function AgentPage() {
                     {modeOpen && (
                       <>
                         <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setModeOpen(false)} />
-                        <div style={{ position: 'absolute', bottom: '100%', marginBottom: 8, left: 0, zIndex: 50, width: 208, background: 'rgba(20,10,50,0.97)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(16px)', padding: '4px 0', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', bottom: '100%', marginBottom: 8, left: 0, zIndex: 50, width: 208, background: 'white', border: '1px solid #E8EBF0', borderRadius: 14, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', padding: '4px 0', overflow: 'hidden' }}>
                           <button onClick={() => setModeOpen(false)}
                             style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                            <div style={{ color: '#C084FC', flexShrink: 0 }}>
+                            <div style={{ color: '#7C3AED', flexShrink: 0 }}>
                               <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                             </div>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: '#C084FC' }}>Plan</div>
-                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Review steps before running</div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#4F46E5' }}>Plan</div>
+                              <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Review steps before running</div>
                             </div>
-                            <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: '#C084FC', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: '#4F46E5', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
                           </button>
                         </div>
                       </>
@@ -260,7 +260,7 @@ export default function AgentPage() {
                     <button
                       onClick={() => { if (!loading) setTcService('') }}
                       title="Change service"
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#C084FC', background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#6D28D9', background: '#EDE9FE', border: '1px solid #DDD6FE', cursor: 'pointer' }}
                     >
                       <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
                       {tcService}
@@ -271,7 +271,7 @@ export default function AgentPage() {
 
                 {/* Send button */}
                 <button onClick={send} disabled={loading || !input.trim()}
-                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#7C3AED', color: 'white', border: 'none', borderRadius: 8, cursor: (loading || !input.trim()) ? 'default' : 'pointer', opacity: (loading || !input.trim()) ? 0.4 : 1, flexShrink: 0 }}>
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', borderRadius: 8, cursor: (loading || !input.trim()) ? 'default' : 'pointer', opacity: (loading || !input.trim()) ? 0.4 : 1, flexShrink: 0, boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}>
                   <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}>
                     <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
                   </svg>
@@ -282,10 +282,10 @@ export default function AgentPage() {
         </div>
 
         {/* Plan panel */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#FAFBFF' }}>
           <>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #E8EBF0', background: 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Test Steps
               </div>
               {planSteps.length > 0 && !showSaveDialog && (
@@ -311,7 +311,7 @@ export default function AgentPage() {
                     }
                   }}
                   disabled={loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'rgba(139,92,246,0.15)', color: '#C084FC', border: '1px solid rgba(139,92,246,0.3)', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.4 : 1 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.4 : 1 }}
                 >
                   <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
                   Generate Final
@@ -324,57 +324,60 @@ export default function AgentPage() {
               {/* State 1: No service selected — show service picker chips */}
               {!tcService ? (
                 <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Pick a Service</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Pick a Service</div>
                   {servicesLoading ? (
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>Loading services…</div>
+                    <div style={{ fontSize: 13, color: '#94A3B8' }}>Loading services…</div>
                   ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       <button
                         onClick={() => setTcService('exploratory')}
-                        style={{ padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(139,92,246,0.5)'; (e.currentTarget as HTMLButtonElement).style.color = '#C084FC' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.55)' }}
+                        style={{ padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid #C7D2FE'; (e.currentTarget as HTMLButtonElement).style.color = '#4F46E5'; (e.currentTarget as HTMLButtonElement).style.background = '#EEF2FF' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid #E2E8F0'; (e.currentTarget as HTMLButtonElement).style.color = '#64748B'; (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
                       >
                         Exploratory
                       </button>
                       {availableServices.map(svc => (
                         <button key={svc} onClick={() => setTcService(svc)}
-                          style={{ padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(139,92,246,0.5)'; (e.currentTarget as HTMLButtonElement).style.color = '#C084FC' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.55)' }}
+                          style={{ padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid #C7D2FE'; (e.currentTarget as HTMLButtonElement).style.color = '#4F46E5'; (e.currentTarget as HTMLButtonElement).style.background = '#EEF2FF' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.border = '1px solid #E2E8F0'; (e.currentTarget as HTMLButtonElement).style.color = '#64748B'; (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
                         >
                           {svc}
                         </button>
                       ))}
                     </div>
                   )}
-                  <p style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>
+                  <p style={{ marginTop: 16, fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>
                     Select a service, then paste your scenario in the chat to start enriching it.
                   </p>
                 </div>
               ) : planSteps.length > 0 ? (
                 /* State 2: Steps exist — show MTM-style step table */
                 <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-                    Test Steps &nbsp;·&nbsp; <span style={{ color: '#C084FC', textTransform: 'none', fontWeight: 600 }}>{tcService}</span>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                    Test Steps &nbsp;·&nbsp; <span style={{ color: '#4F46E5', textTransform: 'none', fontWeight: 600 }}>{tcService}</span>
                   </div>
-                  <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ borderRadius: 10, overflow: 'hidden', background: 'white', border: '1px solid #E8EBF0', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
-                        <tr style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                          <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em', width: 32 }}>#</th>
-                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
-                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
+                        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EBF0' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', width: 32 }}>#</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Result</th>
                         </tr>
                       </thead>
                       <tbody>
                         {planSteps.map((s, i) => (
-                          <tr key={s.step} style={{ borderBottom: i < planSteps.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                          <tr key={s.step} style={{ borderBottom: i < planSteps.length - 1 ? '1px solid #E8EBF0' : 'none', background: i % 2 === 0 ? 'transparent' : '#FAFBFF' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                            onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : '#FAFBFF')}
+                          >
                             <td style={{ padding: '10px', textAlign: 'center', verticalAlign: 'top' }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'rgba(139,92,246,0.25)', color: '#C084FC', fontSize: 10, fontWeight: 700, border: '1px solid rgba(139,92,246,0.4)' }}>{s.step}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 10, fontWeight: 700 }}>{s.step}</span>
                             </td>
-                            <td style={{ padding: '10px 12px', color: '#e2e8f0', lineHeight: 1.6, verticalAlign: 'top' }}>{s.action}</td>
-                            <td style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, verticalAlign: 'top' }}>{s.expected}</td>
+                            <td style={{ padding: '10px 12px', color: '#0F172A', lineHeight: 1.6, verticalAlign: 'top' }}>{s.action}</td>
+                            <td style={{ padding: '10px 12px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>{s.expected}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -384,10 +387,10 @@ export default function AgentPage() {
               ) : (
                 /* State 2 empty: service selected, no steps yet */
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 24px', gap: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
-                    Service: <span style={{ color: '#C084FC' }}>{tcService}</span>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#64748B' }}>
+                    Service: <span style={{ color: '#4F46E5' }}>{tcService}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>
                     Paste your scenario in the chat.<br />Steps will appear here as I refine them.
                   </div>
                 </div>
@@ -395,11 +398,11 @@ export default function AgentPage() {
 
               {/* Save dialog */}
               {showSaveDialog && (
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ borderTop: '1px solid #E8EBF0', background: '#F8FAFC', padding: '12px 16px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Save Test Case</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Save Test Case</div>
                     {(saveService || tcService) && (
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'rgba(139,92,246,0.2)', color: '#C084FC', border: '1px solid rgba(139,92,246,0.35)' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#EDE9FE', color: '#6D28D9', border: '1px solid #DDD6FE' }}>
                         {saveService || tcService}
                       </span>
                     )}
@@ -409,14 +412,14 @@ export default function AgentPage() {
                     onChange={e => setSaveTitleInput(e.target.value)}
                     placeholder="Title"
                     disabled={tcSaved === 'saved'}
-                    style={{ width: '100%', padding: '6px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: 'white', outline: 'none', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
+                    style={{ width: '100%', padding: '6px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
                   />
                   <input
                     value={saveTcIdInput}
                     onChange={e => setSaveTcIdInput(e.target.value)}
                     placeholder="Test Case ID (e.g. TC-001)"
                     disabled={tcSaved === 'saved'}
-                    style={{ width: '100%', padding: '6px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: 'white', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
+                    style={{ width: '100%', padding: '6px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
                   />
                   <button
                     onClick={async () => {
@@ -444,8 +447,8 @@ export default function AgentPage() {
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       padding: '6px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tcSaved !== 'idle' || !saveTitleInput.trim() ? 'default' : 'pointer',
                       ...(tcSaved === 'saved'
-                        ? { background: 'rgba(16,185,129,0.2)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,0.3)' }
-                        : { background: 'rgba(139,92,246,0.2)', color: '#C084FC', border: '1px solid rgba(139,92,246,0.35)', opacity: (tcSaved !== 'idle' || !saveTitleInput.trim()) ? 0.4 : 1 }
+                        ? { background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0' }
+                        : { background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', boxShadow: '0 2px 8px rgba(124,58,237,0.35)', opacity: (tcSaved !== 'idle' || !saveTitleInput.trim()) ? 0.4 : 1 }
                       ),
                     }}
                   >
@@ -463,7 +466,7 @@ export default function AgentPage() {
                   {tcSaved === 'saved' && savedTcId.current && (
                     <button
                       onClick={() => window.open(`/test-case/${savedTcId.current}`, '_blank')}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 0 16px rgba(139,92,246,0.3)' }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
                     >
                       <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
                       View Test Case →

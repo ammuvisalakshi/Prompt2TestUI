@@ -49,64 +49,60 @@ export default function LoginPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 14px',
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 10, fontSize: 14, color: 'white', outline: 'none',
-    boxSizing: 'border-box',
-  }
-
-  function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.border = '1px solid rgba(139,92,246,0.6)'
-  }
-  function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)'
+    background: '#F8FAFC',
+    border: '1.5px solid #E2E8F0',
+    borderRadius: 10, fontSize: 14, color: '#0F172A', outline: 'none',
+    boxSizing: 'border-box', transition: 'border-color 0.15s',
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #0D0821 0%, #130D35 45%, #0A1628 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '44px 40px', width: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #0EA5E9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* decorative blobs */}
+      <div style={{ position: 'absolute', top: '10%', left: '15%', width: 300, height: 300, background: 'rgba(255,255,255,0.06)', borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '15%', right: '10%', width: 250, height: 250, background: 'rgba(255,255,255,0.05)', borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
+      <div style={{ background: 'white', borderRadius: 20, padding: '44px 40px', width: 420, textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08)', position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
-          <img src="/favicon.svg" width="36" height="36" alt="Prompt2Test" />
-          <span style={{ fontSize: 26, fontWeight: 700, color: 'white', textShadow: '0 0 20px rgba(167,139,250,0.5)' }}>Prompt2Test</span>
+          <img src="/favicon.svg" width="34" height="34" alt="Prompt2Test" />
+          <span style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.5px' }}>Prompt2Test</span>
         </div>
-        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>AI-powered test authoring &amp; automation platform</div>
-        <div style={{ display: 'inline-block', fontSize: 12, color: '#C084FC', border: '1px solid rgba(139,92,246,0.4)', background: 'rgba(139,92,246,0.1)', padding: '3px 12px', borderRadius: 20, marginBottom: 28 }}>
+        <div style={{ fontSize: 14, color: '#64748B', marginBottom: 20 }}>AI-powered test authoring &amp; automation</div>
+        <div style={{ display: 'inline-block', fontSize: 12, color: '#7C3AED', border: '1px solid #DDD6FE', background: '#EDE9FE', padding: '3px 12px', borderRadius: 20, marginBottom: 28, fontWeight: 600 }}>
           Bedrock Agent Core · AWS · Team workspace
         </div>
 
         {step === 'login' ? (
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="your@company.com" required autoFocus
-              style={{ ...inputStyle, color: 'white' }}
-              onFocus={onFocus} onBlur={onBlur} />
+              placeholder="your@company.com" required autoFocus style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E2E8F0')} />
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="Password" required
-              style={{ ...inputStyle, color: 'white' }}
-              onFocus={onFocus} onBlur={onBlur} />
-            {error && <div style={{ fontSize: 13, color: '#F87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', textAlign: 'left' }}>{error}</div>}
+              placeholder="Password" required style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E2E8F0')} />
+            {error && <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', textAlign: 'left' }}>{error}</div>}
             <button type="submit" disabled={loading}
-              style={{ width: '100%', padding: 10, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: 4, boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}>
+              style={{ width: '100%', padding: 11, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: 4, boxShadow: '0 4px 14px rgba(124,58,237,0.4)' }}>
               {loading ? 'Signing in…' : 'Sign in →'}
             </button>
           </form>
         ) : (
           <form onSubmit={handleNewPassword} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, color: '#FCD34D', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', textAlign: 'left', marginBottom: 4 }}>
+            <div style={{ fontSize: 13, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', textAlign: 'left', marginBottom: 4 }}>
               Your temporary password has expired. Please set a permanent password to continue.
             </div>
             <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-              placeholder="New password" required autoFocus
-              style={{ ...inputStyle, color: 'white' }}
-              onFocus={onFocus} onBlur={onBlur} />
+              placeholder="New password" required autoFocus style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E2E8F0')} />
             <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
-              placeholder="Confirm new password" required
-              style={{ ...inputStyle, color: 'white' }}
-              onFocus={onFocus} onBlur={onBlur} />
-            {error && <div style={{ fontSize: 13, color: '#F87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', textAlign: 'left' }}>{error}</div>}
+              placeholder="Confirm new password" required style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E2E8F0')} />
+            {error && <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', textAlign: 'left' }}>{error}</div>}
             <button type="submit" disabled={loading}
-              style={{ width: '100%', padding: 10, background: 'linear-gradient(135deg, #7C3AED, #A855F7)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: 4, boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}>
+              style={{ width: '100%', padding: 11, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: 4, boxShadow: '0 4px 14px rgba(124,58,237,0.4)' }}>
               {loading ? 'Setting password…' : 'Set password & continue →'}
             </button>
           </form>

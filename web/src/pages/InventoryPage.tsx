@@ -125,24 +125,24 @@ export default function InventoryPage() {
   const confirmTc = cases.find(tc => tc.id === confirmDeleteId)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: 'transparent' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#FAFBFF' }}>
 
       {/* Delete confirm modal */}
       {confirmDeleteId && confirmTc && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDeleteId(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-            <div className="rounded-2xl shadow-2xl p-5 w-80 pointer-events-auto" style={{ background: 'rgba(15,8,33,0.95)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
-              <div className="text-[15px] font-semibold text-white mb-1">Delete test case?</div>
-              <div className="text-[13px] text-slate-400 mb-4 line-clamp-2">{confirmTc.description}</div>
-              <p className="text-[12px] text-slate-600 mb-4">This will also delete all run records for this test case.</p>
-              <div className="flex gap-2">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setConfirmDeleteId(null)} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{ background: 'white', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', padding: 20, width: 320, pointerEvents: 'auto', border: '1px solid #E8EBF0' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 4 }}>Delete test case?</div>
+              <div style={{ fontSize: 13, color: '#64748B', marginBottom: 8, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{confirmTc.description}</div>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>This will also delete all run records for this test case.</p>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => handleDelete(confirmDeleteId)} disabled={deletingId === confirmDeleteId}
-                  className="flex-1 py-2 rounded-xl text-white text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-colors" style={{ background: 'rgba(239,68,68,0.8)', border: '1px solid rgba(239,68,68,0.5)' }}>
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: deletingId === confirmDeleteId ? 0.5 : 1 }}>
                   {deletingId === confirmDeleteId ? 'Deleting…' : 'Delete'}
                 </button>
                 <button onClick={() => setConfirmDeleteId(null)}
-                  className="flex-1 py-2 rounded-xl text-slate-300 text-[13px] font-semibold hover:text-white cursor-pointer transition-colors" style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}>
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>
@@ -154,37 +154,37 @@ export default function InventoryPage() {
       {/* Assign service modal */}
       {assignTc && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => { setAssignTc(null); setAssignService('') }} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-            <div className="rounded-2xl shadow-2xl p-5 w-96 pointer-events-auto" style={{ background: 'rgba(15,8,33,0.95)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
-              <div className="text-[15px] font-semibold text-white mb-1">Assign Service</div>
-              <div className="text-[13px] text-slate-400 mb-4 line-clamp-1">{assignTc.description}</div>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => { setAssignTc(null); setAssignService('') }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{ background: 'white', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', padding: 20, width: 384, pointerEvents: 'auto', border: '1px solid #E8EBF0' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 4 }}>Assign Service</div>
+              <div style={{ fontSize: 13, color: '#64748B', marginBottom: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{assignTc.description}</div>
               {servicesLoading ? (
-                <div className="text-[13px] text-slate-500 py-4 text-center">Loading services…</div>
+                <div style={{ fontSize: 13, color: '#94A3B8', padding: '16px 0', textAlign: 'center' }}>Loading services…</div>
               ) : availableServices.length === 0 ? (
-                <div className="text-[13px] text-slate-500 py-2">No services configured for {env.toUpperCase()} yet. Add them in Config &amp; Accounts.</div>
+                <div style={{ fontSize: 13, color: '#94A3B8', paddingBottom: 8 }}>No services configured for {env.toUpperCase()} yet. Add them in Config &amp; Accounts.</div>
               ) : (
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                   {availableServices.map(svc => (
                     <button key={svc} onClick={() => setAssignService(svc)}
-                      className="px-3 py-1.5 rounded-full text-[13px] font-semibold cursor-pointer transition-all"
-                      style={assignService === svc
-                        ? { background: 'rgba(139,92,246,0.3)', border: '1px solid rgba(139,92,246,0.6)', color: '#c4b5fd' }
-                        : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}>
+                      style={{
+                        padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                        ...(assignService === svc
+                          ? { background: '#EDE9FE', border: '1px solid #DDD6FE', color: '#6D28D9' }
+                          : { background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }),
+                      }}>
                       {svc}
                     </button>
                   ))}
                 </div>
               )}
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={handleAssignService} disabled={assignSaving || !assignService.trim()}
-                  className="flex-1 py-2 rounded-xl text-white text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-all"
-                  style={{ background: 'rgba(139,92,246,0.5)', border: '1px solid rgba(139,92,246,0.6)', boxShadow: '0 0 16px rgba(139,92,246,0.3)' }}>
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: assignSaving || !assignService.trim() ? 0.5 : 1, boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}>
                   {assignSaving ? 'Saving…' : 'Assign'}
                 </button>
                 <button onClick={() => { setAssignTc(null); setAssignService('') }}
-                  className="flex-1 py-2 rounded-xl text-slate-300 text-[13px] font-semibold hover:text-white cursor-pointer transition-colors"
-                  style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}>
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>
@@ -193,99 +193,106 @@ export default function InventoryPage() {
         </>
       )}
 
-      <div className="flex-1 overflow-y-auto p-5 pb-8">
-        {/* Stats */}
-        {tab === 'cases' && (
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            {[
-              { label: 'Total TCs',    value: cases.length,      color: 'text-white',        glow: 'rgba(139,92,246,0.3)' },
-              { label: 'Services',     value: services.length,   color: 'text-purple-300',   glow: 'rgba(139,92,246,0.2)' },
-              { label: 'Smoke tagged', value: smoke,             color: 'text-emerald-400',  glow: 'rgba(52,211,153,0.2)' },
-              { label: failures > 0 ? 'Failures' : 'All passing', value: failures > 0 ? failures : '✓', color: failures > 0 ? 'text-red-400' : 'text-emerald-400', glow: failures > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(52,211,153,0.15)' },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: `0 0 20px ${s.glow}` }}>
-                <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                <div className="text-[13px] text-slate-500 mt-0.5">{s.label}</div>
-              </div>
-            ))}
+      {/* Hero strip */}
+      <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #0EA5E9 100%)', padding: '20px 24px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: 'white', margin: 0, letterSpacing: '-0.3px' }}>Test Inventory</h1>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Manage test cases and run records · {env.toUpperCase()}</div>
           </div>
-        )}
+          {tab === 'cases' && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { label: 'Total TCs', value: cases.length },
+                { label: 'Services', value: services.length },
+                { label: 'Smoke', value: smoke },
+                { label: failures > 0 ? 'Failures' : 'All passing', value: failures > 0 ? failures : '✓' },
+              ].map(s => (
+                <div key={s.label} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, padding: '8px 14px', textAlign: 'center', minWidth: 64 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{s.value}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
-        <div className="rounded-xl overflow-visible" style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E8EBF0', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'visible' }}>
+
           {/* Tab bar */}
-          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="flex gap-1 flex-shrink-0">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #F1F5F9' }}>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
               {(['cases', 'runs'] as Tab[]).map(t => (
                 <button key={t} onClick={() => setTab(t)}
-                  className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all cursor-pointer ${
-                    tab === t ? 'text-purple-300' : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                  style={tab === t ? { background: 'rgba(139,92,246,0.18)', border: '1px solid rgba(139,92,246,0.3)' } : {}}>
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                    ...(tab === t
+                      ? { background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE' }
+                      : { background: 'transparent', border: '1px solid transparent', color: '#94A3B8' }),
+                  }}>
                   {t === 'cases' ? `Test Cases — ${env.toUpperCase()}` : 'Run Records'}
                 </button>
               ))}
             </div>
             {tab === 'cases' && (
-              <div className="relative flex-1 max-w-xs">
-                <svg viewBox="0 0 24 24" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 stroke-current fill-none stroke-2 text-slate-500 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <div style={{ position: 'relative', flex: 1, maxWidth: 280 }}>
+                <svg viewBox="0 0 24 24" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, stroke: '#94A3B8', fill: 'none', strokeWidth: 2, pointerEvents: 'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" placeholder="Search by ID, title…" value={search} onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-[13px] rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none transition-all"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  onFocus={e => { e.currentTarget.style.border = '1px solid rgba(139,92,246,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(139,92,246,0.15)' }}
-                  onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none' }}
+                  style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 6, paddingBottom: 6, fontSize: 13, borderRadius: 8, color: '#334155', background: '#F8FAFC', border: '1px solid #E2E8F0', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => { e.currentTarget.style.border = '1px solid #A5B4FC'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)' }}
+                  onBlur={e => { e.currentTarget.style.border = '1px solid #E2E8F0'; e.currentTarget.style.boxShadow = 'none' }}
                 />
               </div>
             )}
-            {search && <button onClick={() => setSearch('')} className="text-[12px] text-slate-500 hover:text-slate-300 cursor-pointer flex-shrink-0">Clear</button>}
+            {search && (
+              <button onClick={() => setSearch('')} style={{ fontSize: 12, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>Clear</button>
+            )}
           </div>
 
           {/* Table toolbar */}
-          {(tab === 'cases' || tab === 'runs') && (
-            <div className="flex items-center justify-end gap-2 px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)' }}>
-              {tab === 'cases' && services.length > 0 && (
-                <button
-                  onClick={() => {
-                    const allCollapsed = services.every(s => collapsedServices.has(s))
-                    setCollapsedServices(allCollapsed ? new Set() : new Set(services))
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  {services.every(s => collapsedServices.has(s)) ? (
-                    <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
-                  ) : (
-                    <><svg viewBox="0 0 24 24" className="w-3 h-3 stroke-current fill-none stroke-2"><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
-                  )}
-                </button>
-              )}
-              <button onClick={load} disabled={loading}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-slate-400 hover:text-purple-300 transition-colors cursor-pointer disabled:opacity-40"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <svg viewBox="0 0 24 24" className={`w-3 h-3 stroke-current fill-none stroke-2 ${loading ? 'animate-spin' : ''}`}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                {loading ? 'Loading…' : 'Refresh'}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, padding: '8px 16px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF' }}>
+            {tab === 'cases' && services.length > 0 && (
+              <button
+                onClick={() => {
+                  const allCollapsed = services.every(s => collapsedServices.has(s))
+                  setCollapsedServices(allCollapsed ? new Set() : new Set(services))
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#64748B', background: 'white', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+              >
+                {services.every(s => collapsedServices.has(s)) ? (
+                  <><svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polyline points="6 9 12 15 18 9"/></svg>Expand all</>
+                ) : (
+                  <><svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><polyline points="18 15 12 9 6 15"/></svg>Collapse all</>
+                )}
               </button>
-            </div>
-          )}
+            )}
+            <button onClick={load} disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#64748B', background: 'white', border: '1px solid #E2E8F0', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}>
+              <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2, animation: loading ? 'spin 1s linear infinite' : 'none' }}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              {loading ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
 
           {error && (
-            <div className="px-4 py-3 text-[13px] text-red-600 bg-red-50 border-b border-red-100">{error}</div>
+            <div style={{ padding: '10px 16px', fontSize: 13, color: '#DC2626', background: '#FEF2F2', borderBottom: '1px solid #FECACA' }}>{error}</div>
           )}
 
           {tab === 'cases' ? (
             cases.length === 0 && !loading ? (
-              <div className="px-4 py-8 text-center text-[14px] text-slate-500">No test cases yet for {env.toUpperCase()}</div>
+              <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 14, color: '#94A3B8' }}>No test cases yet for {env.toUpperCase()}</div>
             ) : (
-              <table className="w-full border-collapse">
-                {/* Sticky header */}
-                <thead className="sticky top-0 z-10">
-                  <tr style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest w-28">ID</th>
-                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Title</th>
-                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest w-32">Created By</th>
-                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest w-32">Last Run By</th>
-                    <th className="text-left px-3 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest w-24">Result</th>
-                    <th className="text-center px-3 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest w-20">State</th>
-                    <th className="w-12"></th>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EBF0' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', width: 112 }}>ID</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Title</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', width: 128 }}>Created By</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', width: 128 }}>Last Run By</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', width: 96 }}>Result</th>
+                    <th style={{ textAlign: 'center', padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', width: 80 }}>State</th>
+                    <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,17 +300,16 @@ export default function InventoryPage() {
                     <>
                       {/* Service group header */}
                       <tr key={`hdr-${svc}`}>
-                        <td colSpan={7} className="p-0">
+                        <td colSpan={7} style={{ padding: 0 }}>
                           <button
                             onClick={() => toggleService(svc)}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 cursor-pointer text-left group/hdr transition-all"
-                            style={{ background: 'rgba(139,92,246,0.08)', borderTop: '1px solid rgba(139,92,246,0.15)', borderBottom: '1px solid rgba(139,92,246,0.15)' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,92,246,0.15)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,92,246,0.08)'}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', cursor: 'pointer', textAlign: 'left', background: '#EEF2FF', borderTop: '1px solid #C7D2FE', borderBottom: '1px solid #C7D2FE', border: 'none' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = '#E0E7FF'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = '#EEF2FF'}
                           >
-                            <svg viewBox="0 0 24 24" className={`w-3.5 h-3.5 stroke-current fill-none stroke-2 text-purple-500 transition-all flex-shrink-0 ${collapsedServices.has(svc) ? '-rotate-90' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-                            <span className="text-[11px] font-bold text-purple-400 uppercase tracking-widest">{svc}</span>
-                            <span className="text-[11px] text-slate-500 font-medium">{grouped[svc].length} test{grouped[svc].length !== 1 ? 's' : ''}</span>
+                            <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: '#4F46E5', fill: 'none', strokeWidth: 2, flexShrink: 0, transform: collapsedServices.has(svc) ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{svc}</span>
+                            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>{grouped[svc].length} test{grouped[svc].length !== 1 ? 's' : ''}</span>
                           </button>
                         </td>
                       </tr>
@@ -316,92 +322,100 @@ export default function InventoryPage() {
                           <tr
                             key={tc.id}
                             onClick={() => window.open(`/test-case/${tc.id}`, '_blank')}
-                            className="cursor-pointer transition-all group"
-                            style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(139,92,246,0.1)'; (e.currentTarget as HTMLTableRowElement).style.boxShadow = 'inset 3px 0 0 rgba(139,92,246,0.6)' }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent'; (e.currentTarget as HTMLTableRowElement).style.boxShadow = 'none' }}
+                            style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 1 ? '#FAFBFF' : 'white', cursor: 'pointer', transition: 'background 0.1s' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = '#EEF2FF'; (e.currentTarget as HTMLTableRowElement).style.boxShadow = 'inset 3px 0 0 #4F46E5' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 1 ? '#FAFBFF' : 'white'; (e.currentTarget as HTMLTableRowElement).style.boxShadow = 'none' }}
                           >
                             {/* ID */}
-                            <td className="px-4 py-3.5 align-middle">
-                              <span className="font-mono text-[11px] text-slate-500 rounded-md px-1.5 py-0.5 whitespace-nowrap transition-all" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>{tc.id}</span>
+                            <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#64748B', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 6, padding: '2px 6px', whiteSpace: 'nowrap' }}>{tc.id}</span>
                             </td>
 
                             {/* Title */}
-                            <td className="px-3 py-3.5 align-middle">
-                              <div className="text-[13px] text-slate-200 font-semibold truncate max-w-lg leading-snug" title={tc.title || tc.description}>
+                            <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+                              <div style={{ fontSize: 13, color: '#0F172A', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 480, lineHeight: 1.4 }} title={tc.title || tc.description}>
                                 {tc.title || tc.description}
                               </div>
                               {tc.tags.length > 0 && (
-                                <div className="flex items-center gap-1 mt-1">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                   {tc.tags.map(tag => (
-                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.25)', color: '#6ee7b7' }}>{tag}</span>
+                                    <span key={tag} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, fontWeight: 600, background: '#DCFCE7', border: '1px solid #BBF7D0', color: '#166534' }}>{tag}</span>
                                   ))}
                                 </div>
                               )}
                             </td>
 
                             {/* Created By */}
-                            <td className="px-3 py-3.5 align-middle">
-                              <span className="text-[12px] text-slate-500 truncate block max-w-[110px]" title={tc.createdBy}>{tc.createdBy || <span className="text-slate-700">—</span>}</span>
+                            <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+                              <span style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 110 }} title={tc.createdBy}>{tc.createdBy || '—'}</span>
                             </td>
 
                             {/* Last Run By */}
-                            <td className="px-3 py-3.5 align-middle">
-                              <span className="text-[12px] text-slate-500 truncate block max-w-[110px]" title={lastRunBy}>{lastRunBy || <span className="text-slate-700">—</span>}</span>
+                            <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+                              <span style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 110 }} title={lastRunBy}>{lastRunBy || '—'}</span>
                             </td>
 
                             {/* Result */}
-                            <td className="px-3 py-3.5 align-middle">
+                            <td style={{ padding: '12px', verticalAlign: 'middle' }}>
                               {tc.lastResult ? (
-                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full ${
-                                  tc.lastResult === 'PASS'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-red-50 text-red-600 border border-red-200'
-                                }`}>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
+                                  ...(tc.lastResult === 'PASS'
+                                    ? { background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0' }
+                                    : { background: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA' }),
+                                }}>
                                   {tc.lastResult === 'PASS' ? '✓' : '✕'} {tc.lastResult}
                                 </span>
                               ) : (
-                                <span className="text-[12px] text-slate-300">—</span>
+                                <span style={{ fontSize: 12, color: '#CBD5E1' }}>—</span>
                               )}
                             </td>
 
                             {/* State icon */}
-                            <td className="px-3 py-3.5 align-middle text-center">
+                            <td style={{ padding: '12px', verticalAlign: 'middle', textAlign: 'center' }}>
                               {isAutomated ? (
-                                <span title="Automated" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-purple-50 text-[#7C3AED] border border-purple-200">
-                                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                <span title="Automated" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
+                                  <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, fill: 'currentColor' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                                 </span>
                               ) : (
-                                <span title="Not automated — click to automate" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 border border-slate-200 opacity-40">
+                                <span title="Not automated — click to automate" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#F1F5F9', border: '1px solid #E2E8F0', opacity: 0.5 }}>
                                   <img src="/favicon.svg" width="16" height="16" alt="Not automated" />
                                 </span>
                               )}
                             </td>
 
                             {/* Kebab */}
-                            <td className="px-2 py-3.5 align-middle" onClick={e => e.stopPropagation()}>
-                              <div className="relative flex justify-end">
+                            <td style={{ padding: '12px 8px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                              <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end' }}>
                                 <button
                                   onClick={() => setOpenKebab(openKebab === tc.id ? null : tc.id)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9'; (e.currentTarget as HTMLButtonElement).style.color = '#334155' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; (e.currentTarget as HTMLButtonElement).style.color = '#94A3B8' }}
                                 >
-                                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                                  <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, fill: 'currentColor' }}><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
                                 </button>
                                 {openKebab === tc.id && (
                                   <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setOpenKebab(null)} />
-                                    <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-xl shadow-2xl py-1 overflow-hidden" style={{ background: 'rgba(15,8,33,0.95)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)' }}>
+                                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpenKebab(null)} />
+                                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, width: 176, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px 0', overflow: 'hidden', background: 'white', border: '1px solid #E8EBF0' }}>
                                       <button
                                         onClick={() => { openAssign(tc); setOpenKebab(null) }}
-                                        className="w-full text-left px-3 py-2 text-[13px] text-slate-300 hover:text-white hover:bg-white/8 flex items-center gap-2.5 cursor-pointer transition-colors">
-                                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#334155', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
+                                      >
+                                        <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         Move to service
                                       </button>
-                                      <div className="h-px mx-2 my-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                                      <div style={{ height: 1, margin: '4px 8px', background: '#F1F5F9' }} />
                                       <button
                                         onClick={() => { setConfirmDeleteId(tc.id); setOpenKebab(null) }}
-                                        className="w-full text-left px-3 py-2 text-[13px] text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2.5 cursor-pointer transition-colors">
-                                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-current fill-none stroke-2 flex-shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = '#FEF2F2'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
+                                      >
+                                        <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                                         Delete
                                       </button>
                                     </div>
@@ -418,31 +432,36 @@ export default function InventoryPage() {
               </table>
             )
           ) : (
-            <table className="w-full">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.3)' }}>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Test Case</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Result</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Summary</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Run By</th>
-                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Run At</th>
+                <tr style={{ borderBottom: '1px solid #E8EBF0', background: '#F8FAFC' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Test Case</th>
+                  <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Result</th>
+                  <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Summary</th>
+                  <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Run By</th>
+                  <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Run At</th>
                 </tr>
               </thead>
               <tbody>
                 {runs.length === 0 && !loading && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-[14px] text-slate-500">No run records yet for {env.toUpperCase()}</td></tr>
+                  <tr><td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', fontSize: 14, color: '#94A3B8' }}>No run records yet for {env.toUpperCase()}</td></tr>
                 )}
                 {runs.map((r, i) => (
-                  <tr key={r.id} className="transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                    <td className="px-4 py-3 text-[13px] text-slate-300 font-medium max-w-xs truncate" title={r.description}>{r.description}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${r.result === 'PASS' ? 'text-emerald-400' : 'text-red-400'}`} style={{ background: r.result === 'PASS' ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)', border: `1px solid ${r.result === 'PASS' ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                  <tr key={r.id} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 1 ? '#FAFBFF' : 'white' }}>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#334155', fontWeight: 500, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.description}>{r.description}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        fontSize: 11, padding: '3px 8px', borderRadius: 20, fontWeight: 700,
+                        ...(r.result === 'PASS'
+                          ? { background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0' }
+                          : { background: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA' }),
+                      }}>
                         {r.result}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[13px] text-slate-500 max-w-xs truncate" title={r.summary}>{r.summary || '—'}</td>
-                    <td className="px-4 py-3 text-[13px] text-slate-500">{r.runBy || '—'}</td>
-                    <td className="px-4 py-3 text-[13px] text-slate-600">{r.runAt ? new Date(r.runAt).toLocaleString() : '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748B', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.summary}>{r.summary || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748B' }}>{r.runBy || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#94A3B8' }}>{r.runAt ? new Date(r.runAt).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -450,6 +469,8 @@ export default function InventoryPage() {
           )}
         </div>
       </div>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
