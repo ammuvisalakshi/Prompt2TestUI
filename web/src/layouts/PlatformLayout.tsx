@@ -67,6 +67,7 @@ export default function PlatformLayout() {
   const [initials,     setInitials]     = useState('?')
   const [displayName,  setDisplayName]  = useState('')
   const [team,         setTeam]         = useState('')
+  const [teamLoaded,   setTeamLoaded]   = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [runs,         setRuns]         = useState<RunEntry[]>([])
   const [env,          setEnv]          = useState<Env>('dev')
@@ -109,7 +110,8 @@ export default function PlatformLayout() {
           }
         } catch { /* no params stored yet */ }
       }
-    }).catch(() => {})
+      setTeamLoaded(true)
+    }).catch(() => { setTeamLoaded(true) })
   }, [])
 
   useEffect(() => {
@@ -287,9 +289,13 @@ export default function PlatformLayout() {
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <EnvContext.Provider value={{ env, setEnv }}>
-        <TeamContext.Provider value={{ team }}>
+        <TeamContext.Provider value={{ team, teamLoaded }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <Outlet />
+            {teamLoaded ? <Outlet /> : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94A3B8', fontSize: 13 }}>
+                Loading…
+              </div>
+            )}
           </div>
         </TeamContext.Provider>
       </EnvContext.Provider>
