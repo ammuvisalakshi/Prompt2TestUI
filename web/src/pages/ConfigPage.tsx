@@ -216,6 +216,10 @@ export default function ConfigPage() {
                     onChange={rows => setSvcRows(p => ({ ...p, [svc]: rows }))}
                     onSave={() => saveService(svc)}
                     onDelete={() => deleteService(svc)}
+                    onDeleteRow={key => {
+                      if (!key.trim()) return
+                      deleteParam(`${SSM_PREFIX}/${env}/services/${svc}/${key.trim().toUpperCase()}`).catch(console.error)
+                    }}
                   />
                 ))}
               </div>
@@ -295,7 +299,7 @@ export default function ConfigPage() {
 // ── Service Card ───────────────────────────────────────────────────────────
 
 function ServiceCard({
-  svc, env, rows, saving, status, onChange, onSave, onDelete,
+  svc, env, rows, saving, status, onChange, onSave, onDelete, onDeleteRow,
 }: {
   svc: string
   env: string
@@ -305,6 +309,7 @@ function ServiceCard({
   onChange: (rows: ParamRow[]) => void
   onSave: () => void
   onDelete: () => void
+  onDeleteRow: (key: string) => void
 }) {
   const inputStyle: React.CSSProperties = {
     padding: '6px 12px', background: '#F8FAFC',
@@ -347,7 +352,7 @@ function ServiceCard({
               value={row.value}
               onChange={e => updateRow(i, 'value', e.target.value)}
             />
-            <button onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
+            <button onClick={() => { onDeleteRow(row.key); onChange(rows.filter((_, idx) => idx !== i)) }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 16, flexShrink: 0, lineHeight: 1, padding: 0 }}
               onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
               onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}>
