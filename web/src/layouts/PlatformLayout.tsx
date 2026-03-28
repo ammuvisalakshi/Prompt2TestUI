@@ -129,7 +129,7 @@ export default function PlatformLayout() {
           <span style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.4px' }}>Prompt2Test</span>
         </div>
 
-        {team.toLowerCase() !== 'admin' && (
+        {teamLoaded && team.toLowerCase() !== 'admin' && (
           <>
             {/* Author Agent — primary action */}
             <div style={{ padding: '12px 12px 4px' }}>
@@ -199,7 +199,7 @@ export default function PlatformLayout() {
           </>
         )}
 
-        {team.toLowerCase() !== 'admin' && (
+        {teamLoaded && team.toLowerCase() !== 'admin' && (
           <>
             {/* Run History */}
             <div style={{ padding: '20px 14px 4px', flexShrink: 0 }}>
@@ -226,7 +226,7 @@ export default function PlatformLayout() {
             </div>
           </>
         )}
-        {team.toLowerCase() === 'admin' && <div style={{ flex: 1 }} />}
+        {(!teamLoaded || team.toLowerCase() === 'admin') && <div style={{ flex: 1 }} />}
 
         {/* Avatar / profile at bottom */}
         <div style={{ padding: 12, flexShrink: 0, borderTop: '1px solid #F1F5F9' }}>
