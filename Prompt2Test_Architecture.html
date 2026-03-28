@@ -216,8 +216,8 @@
             <div class="tag tag-gray">LoginPage</div>
             <div class="tag tag-blue">AgentPage — Author tests, generate plan, save</div>
             <div class="tag tag-purple">InventoryPage — Browse, run, manage TCs</div>
-            <div class="tag tag-teal">ConfigPage — Env config, SSM params</div>
-            <div class="tag tag-green">MembersPage — Team RBAC</div>
+            <div class="tag tag-teal">ConfigPage — Service &amp; account config (DynamoDB)</div>
+            <div class="tag tag-green">MembersPage — Team &amp; member management (admin only)</div>
             <div class="tag tag-gray">noVNC Popup — Live browser view</div>
           </div>
           <div style="margin-top:6px; font-size:12px; color:#64748b;">
@@ -243,13 +243,20 @@
           Grants temp AWS creds<br>
           <b>Direct SDK calls:</b><br>
           AgentCore · Lambda · SSM<br>
-          Bedrock · Cognito IDP
+          DynamoDB · Bedrock · Cognito IDP
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Cognito Groups</div>
+          Each team = Cognito Group<br>
+          Team from JWT <b>cognito:groups</b> claim<br>
+          Admin creates/manages groups<br>
+          via Members page
         </div>
         <div class="sub-box" style="margin-top:8px;">
           <div class="sub-box-title">Identity Provider (Admin)</div>
-          ListUsers · AdminCreateUser<br>
-          AdminDeleteUser<br>
-          Team member management
+          ListGroups · CreateGroup<br>
+          AdminAddUserToGroup<br>
+          AdminCreateUser · ListUsers
         </div>
       </div>
     </div>
@@ -308,14 +315,14 @@
         <div class="sub-box" style="margin-top:10px;">
           <div class="sub-box-title">Agent Modes (main.py)</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <div class="tag tag-orange">plan — generate test plan from prompt + env SSM params</div>
+            <div class="tag tag-orange">plan_scenario — enrich test scenario with real config from DynamoDB (SERVICE#{team}#{env})</div>
             <div class="tag tag-blue">start_session — RunTask → poll RUNNING → get public IP via ENI</div>
             <div class="tag tag-teal">automate — LLM drives Playwright via MCP tools → captures playwright_calls per step → StopTask</div>
             <div class="tag tag-green">replay — deterministic re-run using saved playwright_calls (raw ClientSession.call_tool, no LLM)</div>
             <div class="tag tag-gray">stop_session — explicit ECS StopTask cleanup (called on Stop, success, or failure)</div>
           </div>
           <div style="margin-top:6px; font-size:12px; color:#64748b;">
-            plan mode receives <b>env</b> in payload → agent reads SSM params for that environment when generating the plan
+            plan_scenario receives <b>env</b> + <b>team</b> in payload → agent reads DynamoDB <code>SERVICE#{team}#{env}</code> partition for service config when generating the plan
           </div>
         </div>
       </div>
@@ -331,6 +338,7 @@
           <div class="tag tag-orange">bedrock:InvokeModel</div>
           <div class="tag tag-orange">bedrock:ConverseStream</div>
           <div class="tag tag-blue">ssm:GetParameter</div>
+          <div class="tag tag-teal">dynamodb:Query · dynamodb:GetItem</div>
           <div class="tag tag-green">ecs:RunTask · DescribeTasks · StopTask</div>
           <div class="tag tag-green">ec2:DescribeNetworkInterfaces</div>
           <div class="tag tag-green">iam:PassRole (task execution role)</div>
@@ -342,7 +350,7 @@
           <div class="sub-box-title">Cognito Auth Role</div>
           Grants browser SDK calls to:<br>
           AgentCore · Lambda · SSM<br>
-          Bedrock · Cognito IDP
+          DynamoDB · Bedrock · Cognito IDP
         </div>
       </div>
     </div>
@@ -485,39 +493,50 @@
   <!-- ══════════════════════════════════════════════════════════
        ROW 4 — SSM + FLOW
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">④ Session Resolution &amp; Configuration (SSM Parameter Store)</div>
+  <div class="section-label">④ Session Resolution &amp; Infrastructure Configuration</div>
   <div class="row">
 
     <div class="card theme-teal wide">
-      <div class="card-title"><span class="icon">🗄️</span> AWS Systems Manager — Parameter Store</div>
+      <div class="card-title"><span class="icon">🗄️</span> AWS Systems Manager — Parameter Store (infra params only)</div>
       <div class="card-body">
-        <div class="grid3">
-          <div class="sub-box">
-            <div class="sub-box-title">ECS Config <span class="tag tag-green">Agent reads</span></div>
-            <code>/prompt2test/playwright/cluster-name</code><br>
-            <code>/prompt2test/playwright/task-definition-family</code><br>
-            <code>/prompt2test/playwright/subnet-ids</code><br>
-            <code>/prompt2test/playwright/security-group-id</code><br>
-            <span style="color:#94a3b8; font-size:12px;">Read once at session start to RunTask</span>
-          </div>
-          <div class="sub-box">
-            <div class="sub-box-title">Service Config <span class="tag tag-blue">UI reads</span></div>
-            <code>/prompt2test/config/{env}/services/{svc}/URL</code><br>
-            <code>/prompt2test/config/{env}/services/{svc}/API_KEY</code><br>
-            <code>/prompt2test/config/{env}/services/{svc}/...</code><br>
-            <span style="color:#94a3b8; font-size:12px;">Loaded in ConfigPage + chips in AgentPage save form + InventoryPage assign</span>
-          </div>
-          <div class="sub-box">
-            <div class="sub-box-title">Member Roles <span class="tag tag-purple">UI reads/writes</span></div>
-            <code>/prompt2test/config/members/{user}/ROLE</code><br>
-            Roles: Admin · QA Lead<br>
-            QA Engineer · Developer<br>
-            <span style="color:#94a3b8; font-size:12px;">Managed via MembersPage</span>
-          </div>
+        <div class="sub-box">
+          <div class="sub-box-title">ECS Config <span class="tag tag-green">Agent reads · CDK writes at deploy</span></div>
+          <code>/prompt2test/playwright/cluster-name</code><br>
+          <code>/prompt2test/playwright/task-definition-family</code><br>
+          <code>/prompt2test/playwright/subnet-ids</code><br>
+          <code>/prompt2test/playwright/security-group-id</code><br>
+          <span style="color:#94a3b8; font-size:12px;">Also: <code>/prompt2test/aurora/*</code> used by Lambda · Service config moved to DynamoDB · Team membership moved to Cognito Groups</span>
         </div>
         <div class="sub-box" style="margin-top:10px;">
           <div class="sub-box-title">SSM Cache (Agent side)</div>
           All ECS params fetched in parallel via <b>ThreadPoolExecutor</b> — First call: <b>~80ms</b> · Cached in <b>_SSM_CACHE dict</b> · Subsequent: <b>~0ms</b>
+        </div>
+      </div>
+    </div>
+
+    <!-- DynamoDB Config -->
+    <div class="card theme-teal medium">
+      <div class="card-title"><span class="icon">🗃️</span> DynamoDB — prompt2test-config</div>
+      <div class="card-body">
+        <div class="sub-box">
+          <div class="sub-box-title">Service Config <span class="tag tag-blue">UI + Agent reads/writes</span></div>
+          <code>pk=SERVICE#{team}#{env}</code><br>
+          <code>sk={svc}#{key}</code><br>
+          <code>val={value}</code><br>
+          <span style="color:#94a3b8; font-size:12px;">e.g. pk=SERVICE#teamA#dev, sk=MyService#URL</span>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Test Accounts <span class="tag tag-purple">UI reads/writes</span></div>
+          <code>pk=ACCOUNT#{env}</code><br>
+          <code>sk={id}#{NAME|CODE}</code><br>
+          <code>val={value}</code>
+        </div>
+        <div class="sub-box" style="margin-top:8px;">
+          <div class="sub-box-title">Access</div>
+          Browser → Cognito IAM creds<br>
+          Agent → <code>DynamoDBConfigRead</code> policy<br>
+          <div class="tag tag-teal">dynamodb:Query</div>
+          <div class="tag tag-teal">dynamodb:GetItem</div>
         </div>
       </div>
     </div>
@@ -528,7 +547,7 @@
       <div class="card-body">
         <div class="step">
           <div class="step-num">1</div>
-          <div class="step-text">User describes test → Agent reads <b>env SSM params</b> → generates <b>plan</b></div>
+          <div class="step-text">User describes test → Agent reads <b>DynamoDB SERVICE#{team}#{env}</b> → generates <b>plan</b></div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
@@ -892,7 +911,7 @@
       <div style="text-align:center; min-width:80px;">
         <div style="font-size:28px;">🤖</div>
         <div style="font-size:12px; color:#64748b; margin-top:4px;">AgentCore</div>
-        <div style="font-size:12px; color:#475569;">Reads SSM params<br>Generates plan</div>
+        <div style="font-size:12px; color:#475569;">Reads DynamoDB config<br>Generates plan</div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:8px;">
         <div style="font-size:11px; color:#6d28d9;">Save + service chip</div>
@@ -1071,11 +1090,12 @@
         <div class="sub-box" style="margin-top:6px;">
           <div class="sub-box-title">Config &amp; Execution</div>
           <div class="tag tag-teal">SSM Parameter Store</div>
+          <div class="tag tag-teal">DynamoDB</div>
           <div class="tag tag-green">ECS Fargate</div>
           <div class="tag tag-green">ECR (×2)</div>
           <div class="tag tag-green">CodePipeline (×3)</div>
         </div>
-        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">17 AWS services · 4 GitHub repos</div>
+        <div style="margin-top:8px; font-size:13px; font-weight:700; color:#1e293b;">18 AWS services · 4 GitHub repos</div>
       </div>
     </div>
   </div>
@@ -1108,6 +1128,7 @@
           <div class="sub-box-title">Cognito</div>
           <div style="font-size:13px; line-height:2;">
             <div><b>User Pool</b> <code>prompt2test-users</code> — login, passwords, sessions</div>
+            <div><b>Cognito Groups</b> — each team = one group; team resolved from <code>cognito:groups</code> JWT claim</div>
             <div><b>Identity Pool</b> — maps users to IAM roles for SDK calls</div>
             <div><b>Cognito Auth Role</b> (IAM) — permissions the React UI gets after login</div>
           </div>
@@ -1215,7 +1236,8 @@
         <div class="sub-box" style="margin-top:0;">
           <div class="sub-box-title">SSM · CloudWatch · CloudFormation · IAM</div>
           <div style="font-size:13px; line-height:2;">
-            <div><b>SSM Parameter Store</b> — service URLs, Playwright config, Aurora ARNs, member roles</div>
+            <div><b>SSM Parameter Store</b> — ECS/Playwright infra params only (cluster-name, task-definition-family, subnet-ids, security-group-id)</div>
+            <div><b>DynamoDB</b> <code>prompt2test-config</code> — service configs and test accounts per team per environment</div>
             <div><b>CloudWatch Logs</b> — <code>/prompt2test/playwright-mcp</code> and <code>/prompt2test/agentcore</code></div>
             <div><b>CloudFormation</b> (4 stacks) — CDKToolkit, AgentStack, PlaywrightMCPStack, LambdaPipeline</div>
             <div><b>IAM</b> — ~12 scoped roles for Lambda, ECS, CodeBuild, CodePipeline, AgentCore</div>
@@ -1229,7 +1251,7 @@
 
   <!-- Summary bar -->
   <div style="background:#0f172a; color:#e2e8f0; border-radius:12px; padding:20px 28px; display:flex; gap:40px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
-    <div class="metric"><div class="val" style="color:#7dd3fc;">17</div><div class="lbl" style="color:#94a3b8;">AWS Services</div></div>
+    <div class="metric"><div class="val" style="color:#7dd3fc;">18</div><div class="lbl" style="color:#94a3b8;">AWS Services</div></div>
     <div class="metric"><div class="val" style="color:#86efac;">4</div><div class="lbl" style="color:#94a3b8;">GitHub Repos</div></div>
     <div class="metric"><div class="val" style="color:#c084fc;">3</div><div class="lbl" style="color:#94a3b8;">CodePipelines</div></div>
     <div class="metric"><div class="val" style="color:#fbbf24;">3</div><div class="lbl" style="color:#94a3b8;">Lambda Functions</div></div>

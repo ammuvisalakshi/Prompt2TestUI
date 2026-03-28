@@ -169,16 +169,17 @@
             <tr><td>7</td><td>p2t-testcase-reader Lambda</td><td>Lambda</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>8</td><td>ECR repos: prompt2test-agent + prompt2test-playwright-mcp</td><td>ECR</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>9</td><td>ECS Fargate cluster + task definition (ARM64, 2vCPU/4GB)</td><td>ECS</td><td><span class="auto-tag">CDK Auto</span></td></tr>
-            <tr><td>10</td><td>SSM parameters — ECS config for agent</td><td>SSM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
+            <tr><td>10</td><td>SSM parameters — ECS/Playwright infra config (cluster, task-def, subnets, SG)</td><td>SSM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>11</td><td>CodePipeline: Prompt2TestLambda → zip → Lambda update-function-code</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>12</td><td>CodePipeline: GitHub → ECR (Agent image)</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>13</td><td>CodePipeline: GitHub → ECR (Playwright MCP image)</td><td>CodePipeline</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>14</td><td>AgentCore IAM role (permissions for the agent)</td><td>IAM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>15</td><td>Cognito auth role (browser SDK permissions)</td><td>IAM</td><td><span class="auto-tag">CDK Auto</span></td></tr>
             <tr><td>16</td><td>Amplify app (React UI hosting skeleton)</td><td>Amplify</td><td><span class="auto-tag">CDK Auto</span></td></tr>
-            <tr><td>17</td><td>Bedrock model access — Claude Sonnet 4.5 + Titan Embed v2</td><td>Bedrock</td><td><span class="manual-tag">Manual</span></td></tr>
-            <tr><td>18</td><td>AgentCore Runtime (the AI agent container)</td><td>Bedrock AgentCore</td><td><span class="manual-tag">Manual</span></td></tr>
-            <tr><td>19</td><td>Amplify GitHub branch connection</td><td>Amplify</td><td><span class="manual-tag">Manual</span></td></tr>
+            <tr><td>17</td><td>DynamoDB table <code>prompt2test-config</code> (service &amp; account config per team)</td><td>DynamoDB</td><td><span class="auto-tag">CDK Auto</span></td></tr>
+            <tr><td>18</td><td>Bedrock model access — Claude Sonnet 4.5 + Titan Embed v2</td><td>Bedrock</td><td><span class="manual-tag">Manual</span></td></tr>
+            <tr><td>19</td><td>AgentCore Runtime (the AI agent container)</td><td>Bedrock AgentCore</td><td><span class="manual-tag">Manual</span></td></tr>
+            <tr><td>20</td><td>Amplify GitHub branch connection</td><td>Amplify</td><td><span class="manual-tag">Manual</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -534,7 +535,7 @@ CDKToolkit: creating CloudFormation changeset...
     <div class="phase-header">
       <div class="phase-badge bg-green">Phase 3</div>
       <div>
-        <div class="phase-title">CDK Deploy — Creates All 16 AWS Resources Automatically</div>
+        <div class="phase-title">CDK Deploy — Creates All 17 AWS Resources Automatically</div>
         <div class="phase-desc">Two commands. Takes about 5–10 minutes. Creates everything in the "What Gets Deployed" table above.</div>
       </div>
     </div>
@@ -823,40 +824,35 @@ Prompt2TestStack: creating CloudFormation changeset...
         <div class="step-header">
           <div class="step-num">15</div>
           <div>
-            <div class="step-title">Add your services to SSM Parameter Store</div>
-            <div class="step-subtitle">These appear as selectable chips in the UI when you author or filter test cases</div>
+            <div class="step-title">Create teams and configure services via the UI</div>
+            <div class="step-subtitle">No AWS CLI commands needed — everything is managed through the Prompt2Test UI</div>
           </div>
         </div>
         <div class="step-body">
-          <p>The naming pattern is: <code>/prompt2test/config/{env}/services/{ServiceName}/URL</code></p>
-          <pre><span class="c"># Example: add a service called "MyService" in dev environment</span>
-<span class="cmd">aws ssm put-parameter \</span>
-<span class="cmd">  --name "/prompt2test/config/dev/services/MyService/URL" \</span>
-<span class="cmd">  --value "https://myservice.dev.example.com" \</span>
-<span class="cmd">  --type String</span>
-
-<span class="c"># Add another service</span>
-<span class="cmd">aws ssm put-parameter \</span>
-<span class="cmd">  --name "/prompt2test/config/dev/services/PaymentsAPI/URL" \</span>
-<span class="cmd">  --value "https://payments.dev.example.com" \</span>
-<span class="cmd">  --type String</span>
-
-<span class="c"># Repeat for each environment (staging, prod, etc.)</span>
-<span class="cmd">aws ssm put-parameter \</span>
-<span class="cmd">  --name "/prompt2test/config/staging/services/MyService/URL" \</span>
-<span class="cmd">  --value "https://myservice.staging.example.com" \</span>
-<span class="cmd">  --type String</span></pre>
+          <p>After logging in as admin (Step 16), use the UI to set up your teams and service configs. Service parameters save directly to DynamoDB — no AWS Console or CLI required.</p>
+          <p><strong>1. Members page → Create teams and invite users</strong></p>
+          <ol style="margin-bottom:12px;">
+            <li style="margin-bottom:6px;">Go to the <strong>Members</strong> page (admin only)</li>
+            <li style="margin-bottom:6px;">Click <strong>Create Team</strong> → enter a team name (e.g. <code>teamA</code>) → confirm</li>
+            <li style="margin-bottom:6px;">Click <strong>Invite User</strong> → enter the email address → the user is created in Cognito and added to the team group</li>
+            <li style="margin-bottom:6px;">Repeat for additional teams and members</li>
+          </ol>
+          <p><strong>2. Config &amp; Accounts page → Add service parameters</strong></p>
+          <ol>
+            <li style="margin-bottom:6px;">Log in as a team member (or switch to a team account)</li>
+            <li style="margin-bottom:6px;">Go to the <strong>Config &amp; Accounts</strong> page</li>
+            <li style="margin-bottom:6px;">Select an environment (e.g. <code>dev</code>) from the environment picker</li>
+            <li style="margin-bottom:6px;">Click <strong>Add Service</strong> → enter a service name (e.g. <code>MyService</code>)</li>
+            <li style="margin-bottom:6px;">Add parameters for the service: <code>URL</code>, <code>API_KEY</code>, or any key-value pair</li>
+            <li style="margin-bottom:6px;">Parameters save to DynamoDB with key <code>pk=SERVICE#{team}#{env}</code>, <code>sk={svc}#{key}</code></li>
+            <li style="margin-bottom:6px;">Repeat for each environment (staging, prod, etc.)</li>
+          </ol>
         </div>
       </div>
       <div class="expect">
         <div class="expect-header"><div class="expect-icon">✅</div><div class="expect-title">What you should see</div></div>
         <div class="expect-body">
-          <p>Each command returns:</p>
-          <div class="terminal">{
-    <span class="t-label">"Version"</span>: <span class="t-out">1</span>,
-    <span class="t-label">"Tier"</span>:    <span class="t-out">"Standard"</span>
-}</div>
-          <p>To verify, go to <strong>AWS Console → Systems Manager → Parameter Store</strong> — you will see your parameters listed under <code>/prompt2test/config/dev/services/</code>. These same names will appear as chips in the Prompt2Test UI under Config and in the test authoring flow.</p>
+          <p>After adding services, they appear as selectable chips in the Agent page when authoring test cases. You can verify the DynamoDB items were created in <strong>AWS Console → DynamoDB → Tables → prompt2test-config → Explore items</strong>.</p>
         </div>
       </div>
     </div>
@@ -867,19 +863,34 @@ Prompt2TestStack: creating CloudFormation changeset...
         <div class="step-header">
           <div class="step-num">16</div>
           <div>
-            <div class="step-title">Create your first admin user</div>
-            <div class="step-subtitle">Use the User Pool ID from your CDK outputs (Step 11)</div>
+            <div class="step-title">Create your first admin user and the admin Cognito Group</div>
+            <div class="step-subtitle">Use the User Pool ID from your CDK outputs (Step 11) · The admin group is required for login</div>
           </div>
         </div>
         <div class="step-body">
-          <pre><span class="cmd">aws cognito-idp admin-create-user \</span>
+          <p>First, create the <code>admin</code> Cognito Group. Users not in any group cannot log in — the admin group grants access to the Members page for team management.</p>
+          <pre><span class="c"># Step 1: Create the admin Cognito Group</span>
+<span class="cmd">aws cognito-idp create-group \</span>
+<span class="cmd">  --user-pool-id YOUR_OutUserPoolId \</span>
+<span class="cmd">  --group-name admin \</span>
+<span class="cmd">  --region us-east-1</span>
+
+<span class="c"># Step 2: Create the admin user</span>
+<span class="cmd">aws cognito-idp admin-create-user \</span>
 <span class="cmd">  --user-pool-id YOUR_OutUserPoolId \</span>
 <span class="cmd">  --username admin@yourcompany.com \</span>
 <span class="cmd">  --temporary-password TempPass123! \</span>
 <span class="cmd">  --user-attributes \</span>
 <span class="cmd">    Name=email,Value=admin@yourcompany.com \</span>
-<span class="cmd">    Name=email_verified,Value=true</span></pre>
-          <p>To add more team members later, repeat this command with their email address.</p>
+<span class="cmd">    Name=email_verified,Value=true</span>
+
+<span class="c"># Step 3: Add the admin user to the admin group</span>
+<span class="cmd">aws cognito-idp admin-add-user-to-group \</span>
+<span class="cmd">  --user-pool-id YOUR_OutUserPoolId \</span>
+<span class="cmd">  --username admin@yourcompany.com \</span>
+<span class="cmd">  --group-name admin \</span>
+<span class="cmd">  --region us-east-1</span></pre>
+          <p>The <strong>admin group</strong> is required — users not in any group cannot log in. Admin users see only the Members page for team management. To add team members later, use the Members page in the UI (Step 15) — no CLI needed.</p>
         </div>
       </div>
       <div class="expect">
@@ -892,7 +903,7 @@ Prompt2TestStack: creating CloudFormation changeset...
         <span class="t-label">"Enabled"</span>:    <span class="t-ok">true</span>
     }
 }</div>
-          <p>The status <strong>FORCE_CHANGE_PASSWORD</strong> is correct and expected — the user will be asked to set a new permanent password the first time they log in.</p>
+          <p>The status <strong>FORCE_CHANGE_PASSWORD</strong> is correct and expected — the user will be asked to set a new permanent password the first time they log in. The <code>create-group</code> and <code>admin-add-user-to-group</code> commands return empty output on success.</p>
         </div>
       </div>
     </div>
@@ -925,7 +936,7 @@ Prompt2TestStack: creating CloudFormation changeset...
             <li style="margin-bottom:10px;"><strong>Open your Amplify URL</strong> (from Step 14) in a browser</li>
             <li style="margin-bottom:10px;"><strong>Log in</strong> with <code>admin@yourcompany.com</code> and the temporary password <code>TempPass123!</code></li>
             <li style="margin-bottom:10px;"><strong>Set a new password</strong> when prompted — choose something permanent</li>
-            <li style="margin-bottom:10px;"><strong>Go to Config tab</strong> — your services from Step 15 should appear as chips</li>
+            <li style="margin-bottom:10px;"><strong>Go to Config &amp; Accounts tab</strong> — add a service via the UI (Step 15) — services appear as chips in the Agent page</li>
             <li style="margin-bottom:10px;"><strong>Go to Agent tab</strong> → select environment and a service → type a test prompt like <em>"test that the login page loads"</em> → the agent should respond and generate a test plan</li>
             <li style="margin-bottom:10px;"><strong>Save the test case</strong> → click Save → fill in the form → click Confirm → click <strong>View Test Case →</strong> to open the test case page</li>
             <li style="margin-bottom:10px;"><strong>Click Automate</strong> on the test case page → a live browser window should open showing the agent automating the test → after it finishes, review the captured steps</li>
@@ -940,7 +951,7 @@ Prompt2TestStack: creating CloudFormation changeset...
         <div class="expect-body">
           <div class="terminal"><span class="t-ok">✅  Login page loads</span>           → Amplify hosting is working
 <span class="t-ok">✅  Password change prompted</span>     → Cognito User Pool is working
-<span class="t-ok">✅  Services appear in Config</span>    → SSM Parameter Store is working
+<span class="t-ok">✅  Services appear in Config</span>    → DynamoDB prompt2test-config is working
 <span class="t-ok">✅  Agent responds to prompt</span>     → AgentCore runtime is active, IAM roles correct
 <span class="t-ok">✅  Test case saves to Inventory</span> → Lambda + Aurora is working
 <span class="t-ok">✅  Automate opens live browser</span>  → ECS Fargate + noVNC is working
@@ -976,8 +987,9 @@ Prompt2TestStack: creating CloudFormation changeset...
     <div class="check-item"><div class="check-box"></div><div class="check-text">All 3 CodePipelines triggered and show "Succeeded" — Lambda deployed, ECR has images <span class="tag t-blue">Phase 4</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">AgentCore runtime created via CLI → agentRuntimeArn saved <span class="tag t-purple">Phase 5 Manual</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">Amplify connected to GitHub master branch + VITE_AGENT_RUNTIME_ARN set + build succeeded → app URL working <span class="tag t-purple">Phase 6 Manual</span></div></div>
-    <div class="check-item"><div class="check-box"></div><div class="check-text">SSM parameters added for your services and environments <span class="tag t-blue">Phase 7</span></div></div>
-    <div class="check-item"><div class="check-box"></div><div class="check-text">Admin user created in Cognito — status FORCE_CHANGE_PASSWORD <span class="tag t-blue">Phase 7</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">DynamoDB table <code>prompt2test-config</code> created by CDK deploy (verify: AWS Console → DynamoDB → Tables) <span class="tag t-green">Phase 3 Auto</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Admin Cognito Group created · Admin user created and added to admin group <span class="tag t-blue">Phase 7</span></div></div>
+    <div class="check-item"><div class="check-box"></div><div class="check-text">Teams created via Members page · Service configs added via Config &amp; Accounts UI (saves to DynamoDB) <span class="tag t-blue">Phase 7</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">End-to-end verified: login → agent responds → test saved → run completes with PASS/FAIL ✓ <span class="tag t-red">Phase 8</span></div></div>
     <div class="check-item"><div class="check-box"></div><div class="check-text">Optional: remove <code>AdministratorAccess</code> from your IAM user now that deployment is done — replace with minimal day-to-day permissions <span class="tag t-red">Post Deploy</span></div></div>
   </div>
@@ -999,6 +1011,7 @@ Prompt2TestStack: creating CloudFormation changeset...
             <tr><td>Bedrock AgentCore</td><td class="free">$0 — not running between tests</td><td>Pay per invocation</td></tr>
             <tr><td>ECS Fargate</td><td class="free">$0 — on-demand per test run</td><td>~$0.10 per test run</td></tr>
             <tr><td>Amplify Hosting</td><td class="free">$0 — free tier covers this</td><td class="free">$0 — free tier</td></tr>
+            <tr><td>DynamoDB prompt2test-config</td><td class="free">$0 (free tier: 25 GB storage, 25 RCU/WCU)</td><td class="free">~$0 at typical config-access usage</td></tr>
             <tr><td>Lambda, SSM, Cognito, VPC</td><td class="free">$0</td><td class="free">$0</td></tr>
             <tr><td><strong>Total</strong></td><td><strong>~$0.60/month</strong></td><td><strong>~$30–70/month</strong></td></tr>
           </tbody>

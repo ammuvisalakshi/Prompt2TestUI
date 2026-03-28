@@ -117,9 +117,9 @@
     <h1>Prompt2Test — Architecture Decision Records</h1>
     <div class="subtitle">Why the platform is built the way it is · Context · Alternatives considered · Trade-offs</div>
     <div class="meta">
-      <span>📋 12 Decisions documented</span>
+      <span>📋 14 Decisions documented</span>
       <span>☁ AWS Region: us-east-1</span>
-      <span>📅 Updated: 2026-03-25</span>
+      <span>📅 Updated: 2026-03-28</span>
     </div>
   </div>
 
@@ -145,7 +145,9 @@
       <a href="#adr9"  class="index-item"><div class="index-num">9</div>Cognito for authentication</a>
       <a href="#adr10" class="index-item"><div class="index-num">10</div>Lambda placeholder code + separate pipeline</a>
       <a href="#adr11" class="index-item"><div class="index-num">11</div>No API Gateway — Lambda called directly</a>
-      <a href="#adr12" class="index-item"><div class="index-num">12</div>SSM Parameter Store for runtime config</a>
+      <a href="#adr12" class="index-item"><div class="index-num">12</div>SSM Parameter Store for infra config only (ECS/Playwright)</a>
+      <a href="#adr13" class="index-item"><div class="index-num">13</div>DynamoDB for service &amp; account config (per-team, per-env)</a>
+      <a href="#adr14" class="index-item"><div class="index-num">14</div>Cognito Groups for team membership</a>
     </div>
   </div>
 
@@ -944,8 +946,8 @@
     <div class="adr-header">
       <div class="adr-num">ADR-12</div>
       <div class="adr-title-block">
-        <div class="adr-title">SSM Parameter Store for runtime configuration</div>
-        <div class="adr-subtitle">Covers: service URLs · Playwright config · environment-specific settings · ECS task config</div>
+        <div class="adr-title">SSM Parameter Store for infrastructure configuration only</div>
+        <div class="adr-subtitle">Covers: ECS cluster config · Playwright subnet/SG · Aurora connection details · infra-only params</div>
       </div>
       <div class="adr-status status-active">✅ Active</div>
     </div>
@@ -954,14 +956,14 @@
       <div class="adr-section">
         <div class="adr-section-title col-gray">Context</div>
         <div class="context-box">
-          The platform needs to store runtime configuration that varies per environment (dev/staging/prod): service names and URLs, Playwright cluster details, base URLs, timeouts, and OAuth endpoints. This config must be readable by the Lambda functions, the ECS Fargate tasks, and the React UI — and must be updatable without redeploying code.
+          SSM now stores only infrastructure parameters written by CDK at deploy time and read by the agent at runtime: ECS cluster name, task definition family, subnet IDs, and security group ID for Playwright. It also holds <code>/prompt2test/aurora/*</code> params used by Lambda. Service configurations and team membership have moved to DynamoDB and Cognito Groups respectively — SSM was a poor fit for user-managed config due to path complexity (double-slash bugs with empty team values), IAM management overhead, and no team isolation.
         </div>
       </div>
 
       <div class="adr-section">
         <div class="adr-section-title col-blue">Decision</div>
         <div class="decision-box">
-          All runtime configuration is stored in <strong>SSM Parameter Store</strong> under a structured path hierarchy: <code>/prompt2test/config/{env}/services/{ServiceName}/URL</code>. ECS task definitions reference SSM paths directly. Lambda and the UI read parameters at runtime via the SSM API.
+          SSM stores only 4 Playwright/ECS infra params written by CDK at deploy time: <code>/prompt2test/playwright/cluster-name</code>, <code>task-definition-family</code>, <code>subnet-ids</code>, and <code>security-group-id</code>. Also <code>/prompt2test/aurora/*</code> used by Lambda. No user-managed config in SSM. Service configs moved to DynamoDB (ADR-13). Team membership moved to Cognito Groups (ADR-14).
         </div>
       </div>
 
@@ -971,24 +973,24 @@
           <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
           <tbody>
             <tr class="alt-chosen">
-              <td>SSM Parameter Store <span class="badge-chosen">CHOSEN</span></td>
-              <td>Hierarchical path structure. IAM-controlled access. Free for standard parameters. ECS can inject SSM params as env vars natively. CDK-provisionable.</td>
-              <td>Extra API call to read params at runtime. No secret rotation (use Secrets Manager for that).</td>
+              <td>SSM Parameter Store <span class="badge-chosen">CHOSEN (infra only)</span></td>
+              <td>Perfect for CDK-written infra params. ECS can inject SSM params as env vars natively. Free for standard parameters. Agent caches params in memory after first read.</td>
+              <td>Bad for user-managed config — path complexity with team names (double-slash bugs), IAM headaches, no team isolation. Narrowed scope to infra-only.</td>
             </tr>
             <tr>
               <td>Lambda/ECS environment variables <span class="badge-rejected">REJECTED</span></td>
               <td>Zero latency — no API call needed.</td>
-              <td>Changing a config value requires redeploying the Lambda or ECS task definition. Not suitable for values that change independently of code (e.g. service URLs).</td>
+              <td>Changing a config value requires redeploying the Lambda or ECS task definition. Not suitable for values that change independently of code.</td>
             </tr>
             <tr>
               <td>Secrets Manager <span class="badge-rejected">REJECTED</span></td>
               <td>Built-in rotation. Encrypted at rest. Good for credentials.</td>
-              <td>$0.40/secret/month. Designed for secrets (passwords, API keys), not general config. Overkill for non-sensitive values like service URLs and timeouts.</td>
+              <td>$0.40/secret/month. Designed for secrets, not general config. Overkill for non-sensitive infra params.</td>
             </tr>
             <tr>
-              <td>DynamoDB config table <span class="badge-rejected">REJECTED</span></td>
-              <td>Flexible schema. Queryable.</td>
-              <td>Another service to provision and maintain. No IAM path-based access control. SSM already does this job well.</td>
+              <td>DynamoDB config table <span class="badge-rejected">→ CHOSEN for service config</span></td>
+              <td>Flexible schema. Queryable. Clean team isolation via composite key. Direct browser access via Cognito creds.</td>
+              <td>Now chosen for service &amp; account config — see ADR-13. SSM remains for infra params where it excels.</td>
             </tr>
           </tbody>
         </table>
@@ -999,10 +1001,11 @@
           <div class="adr-section-title col-green">Why this choice</div>
           <div class="why-box">
             <ul>
-              <li><strong>Update config without code deploy</strong> — adding a new service URL or changing a timeout is an <code>aws ssm put-parameter</code> command. No Lambda redeploy, no CDK run, no pipeline trigger.</li>
-              <li><strong>Hierarchical paths</strong> — the <code>/prompt2test/config/dev/services/*/URL</code> pattern lets the UI discover all services for an environment with a single <code>get-parameters-by-path</code> call.</li>
+              <li><strong>Right tool for infra config</strong> — CDK writes 4 params at deploy time; the agent reads them at session start. SSM is perfect for this: zero user interaction, ECS-native, CDK-provisionable.</li>
               <li><strong>ECS native integration</strong> — ECS task definitions can reference SSM parameters directly as environment variables, injected securely at task launch time.</li>
-              <li><strong>Free for standard tier</strong> — non-secret configuration parameters are free in SSM. Secrets Manager would cost $0.40/parameter/month.</li>
+              <li><strong>Agent-side caching</strong> — all ECS params fetched in parallel via <code>ThreadPoolExecutor</code>. First call ~80ms; cached in <code>_SSM_CACHE</code> dict thereafter (~0ms).</li>
+              <li><strong>Free for standard tier</strong> — non-secret params are free. With only 4 infra params, this is negligible cost.</li>
+              <li><strong>Narrowed scope = fewer bugs</strong> — removing user-managed service config from SSM eliminated double-slash path bugs that occurred when team names were empty on first login.</li>
             </ul>
           </div>
         </div>
@@ -1010,8 +1013,180 @@
           <div class="adr-section-title col-orange">Trade-offs Accepted</div>
           <div class="tradeoff-box">
             <ul>
-              <li><strong>Runtime API call overhead</strong> — Lambda reads SSM on each invocation (or caches with a TTL). Adds ~5–10ms per parameter read. Acceptable for this use case.</li>
-              <li><strong>Not for secrets</strong> — SSM standard parameters are not encrypted by default. Sensitive values (passwords, tokens) use Secrets Manager instead (<code>prompt2test/aurora/credentials</code>). The distinction must be maintained as the platform grows.</li>
+              <li><strong>Only 4 params</strong> — SSM's hierarchical path discovery and rich IAM policy features are underused with just 4 infra params. Acceptable: the complexity reduction from removing user-managed config is worth it.</li>
+              <li><strong>Not for secrets</strong> — SSM standard parameters are not encrypted by default. Aurora credentials use Secrets Manager (<code>prompt2test/aurora/credentials</code>). The distinction must be maintained.</li>
+              <li><strong>Two config stores</strong> — infra config in SSM, service config in DynamoDB. Developers must know which store to use for which type of config.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 13 — DynamoDB for service & account config
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr13">
+    <div class="adr-header">
+      <div class="adr-num">ADR-13</div>
+      <div class="adr-title-block">
+        <div class="adr-title">DynamoDB for service &amp; account configuration</div>
+        <div class="adr-subtitle">Covers: service URLs · API keys · test accounts · per-team per-env config · Config &amp; Accounts UI</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          Service configs (URLs, API keys per service per environment) and test accounts need to be managed by teams through the UI, per team and per environment. SSM paths became complex with team names embedded (double-slash bugs when team was empty on first login), IAM management was painful, and there was no team isolation. A solution was needed that supports direct browser access, team-scoped data, and schema-less key-value storage.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          DynamoDB table <strong><code>prompt2test-config</code></strong> with composite keys for clean team isolation. <strong>Services:</strong> <code>pk=SERVICE#{team}#{env}</code>, <code>sk={svc}#{key}</code>, <code>val={value}</code>. <strong>Accounts:</strong> <code>pk=ACCOUNT#{env}</code>, <code>sk={id}#{NAME|CODE}</code>, <code>val={value}</code>. Managed via the Config &amp; Accounts UI page. The browser calls DynamoDB directly via Cognito IAM credentials — no Lambda intermediary needed. The AgentCore agent also reads this table via the <code>get_service_config</code> tool, receiving <code>team</code> in the payload.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>DynamoDB <code>prompt2test-config</code> <span class="badge-chosen">CHOSEN</span></td>
+              <td>Clean team isolation (pk includes team). Direct browser access via Cognito creds (no Lambda). Free tier. Schema-less (teams can add arbitrary service params). No path management.</td>
+              <td>Charges per read/write (negligible at this scale). No hierarchical path discovery — must know team+env to query.</td>
+            </tr>
+            <tr>
+              <td>SSM Parameter Store <span class="badge-rejected">REJECTED</span></td>
+              <td>Already provisioned. Hierarchical paths. IAM-controlled.</td>
+              <td>Double-slash bugs with empty team values. IAM path-based policies become unmanageable per-team. No native team isolation. Config &amp; Accounts UI would need complex IAM delegation.</td>
+            </tr>
+            <tr>
+              <td>Aurora (existing RDS) <span class="badge-rejected">REJECTED</span></td>
+              <td>Already provisioned. SQL joins for complex queries.</td>
+              <td>Overkill for key-value config. Requires Lambda intermediary (Aurora is VPC-bound). Config UI would need Lambda round-trip for every read/write.</td>
+            </tr>
+            <tr>
+              <td>S3 JSON files <span class="badge-rejected">REJECTED</span></td>
+              <td>Simple. Free storage.</td>
+              <td>No fine-grained IAM per team. No atomic updates. Concurrent writes cause race conditions. No query API.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Clean team isolation</strong> — <code>pk=SERVICE#{team}#{env}</code> means each team's config is in its own partition. No cross-team reads possible without knowing the team name.</li>
+              <li><strong>Direct browser access</strong> — Cognito Identity Pool grants IAM creds for <code>dynamodb:Query</code> and <code>dynamodb:GetItem</code>. No Lambda needed for config reads/writes, reducing latency and cost.</li>
+              <li><strong>Schema-less</strong> — teams can add arbitrary service parameters (URL, API_KEY, CLIENT_ID, etc.) without schema migrations.</li>
+              <li><strong>Free tier</strong> — 25 GB storage, 25 RCU/WCU included free. Config access patterns are extremely low volume.</li>
+              <li><strong>No path management</strong> — composite key is explicit, no hierarchical path parsing, no double-slash edge cases.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Per-read/write cost</strong> — DynamoDB charges $0.25/million reads and $1.25/million writes beyond free tier. Negligible at config-access scale (tens of reads per page load).</li>
+              <li><strong>Must know team+env to query</strong> — no hierarchical path discovery like SSM's <code>get-parameters-by-path</code>. The UI always knows the current team (from JWT) and env (from picker), so this is not a practical limitation.</li>
+              <li><strong>Two config stores</strong> — infra params remain in SSM; service config is in DynamoDB. Documented convention required to avoid confusion.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ADR 14 — Cognito Groups for team membership
+  ════════════════════════════════════════════════════════════════════ -->
+  <div class="adr" id="adr14">
+    <div class="adr-header">
+      <div class="adr-num">ADR-14</div>
+      <div class="adr-title-block">
+        <div class="adr-title">Cognito Groups for team membership</div>
+        <div class="adr-subtitle">Covers: team definitions · member assignments · team resolution at login · Members page admin UI</div>
+      </div>
+      <div class="adr-status status-active">✅ Active</div>
+    </div>
+    <div class="adr-body">
+
+      <div class="adr-section">
+        <div class="adr-section-title col-gray">Context</div>
+        <div class="context-box">
+          Teams and their member assignments were stored in SSM (<code>/prompt2test/config/members/{user}/TEAM</code> and <code>/prompt2test/teams/*</code>). This required custom IAM policies for each user path, had no native user listing API, and was fragile — paths with empty team values caused double-slash bugs on first login. A solution was needed that is native to the identity provider, supports admin UI management, and exposes team membership in the JWT with zero extra API calls.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-blue">Decision</div>
+        <div class="decision-box">
+          Each team = a <strong>Cognito Group</strong> in the User Pool. Team membership = user added to group. Team resolved from <strong><code>cognito:groups</code> JWT claim</strong> immediately after login — no SSM lookup, no extra API call. Admin creates groups and adds users via the <strong>Members page</strong> using Cognito IDP APIs (<code>ListGroups</code>, <code>CreateGroup</code>, <code>AdminAddUserToGroup</code>). Old SSM params <code>/prompt2test/config/members/*</code> and <code>/prompt2test/teams/*</code> deleted.
+        </div>
+      </div>
+
+      <div class="adr-section">
+        <div class="adr-section-title col-purple">Alternatives Considered</div>
+        <table class="alt-table">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr class="alt-chosen">
+              <td>Cognito Groups <span class="badge-chosen">CHOSEN</span></td>
+              <td>Native to identity provider. Team in JWT claim (zero extra API calls). Admin UI uses standard Cognito IDP APIs. No separate team store to keep in sync.</td>
+              <td>Groups are flat (no nested groups). A user can be in multiple groups (first group wins). Group names are case-sensitive.</td>
+            </tr>
+            <tr>
+              <td>SSM Parameter Store <span class="badge-rejected">REJECTED</span></td>
+              <td>Already provisioned.</td>
+              <td>IAM complexity per user path. No native user listing. Double-slash path bugs. Not designed for identity management.</td>
+            </tr>
+            <tr>
+              <td>DynamoDB team table <span class="badge-rejected">REJECTED</span></td>
+              <td>Flexible schema. Queryable.</td>
+              <td>Duplicates what Cognito already knows about users and groups. Two sources of truth for identity. Extra API call on every login to resolve team.</td>
+            </tr>
+            <tr>
+              <td>Custom RDS teams table <span class="badge-rejected">REJECTED</span></td>
+              <td>SQL joins with test case data.</td>
+              <td>Overkill. Requires Lambda intermediary. Aurora cold-start on login. Duplicates identity data that Cognito already manages.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col" style="margin-top:16px;">
+        <div class="adr-section">
+          <div class="adr-section-title col-green">Why this choice</div>
+          <div class="why-box">
+            <ul>
+              <li><strong>Cognito already owns identity</strong> — adding groups is the natural extension. No new service, no new data model, no sync problem.</li>
+              <li><strong>JWT claim = zero latency</strong> — <code>cognito:groups</code> is included in the access token. Team is available immediately after login with no additional API calls.</li>
+              <li><strong>Standard Cognito IDP APIs</strong> — <code>ListGroups</code>, <code>CreateGroup</code>, <code>AdminAddUserToGroup</code> are well-documented, IAM-controllable, and work directly from the browser via Cognito Identity Pool creds.</li>
+              <li><strong>Admin UX</strong> — Members page provides a full team/member management UI. No AWS CLI commands needed for day-to-day team management.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="adr-section">
+          <div class="adr-section-title col-orange">Trade-offs Accepted</div>
+          <div class="tradeoff-box">
+            <ul>
+              <li><strong>Flat groups only</strong> — Cognito Groups have no nesting. A "QA Lead" sub-group within a team is not possible natively. Roles within a team must be handled at the application layer if needed.</li>
+              <li><strong>Multi-group users</strong> — a user can technically be in multiple groups. The app uses the first group from the JWT claim as the team. Admins should avoid adding users to multiple team groups.</li>
+              <li><strong>Case-sensitive group names</strong> — <code>TeamA</code> and <code>teama</code> are different groups. Admin must be careful with naming convention.</li>
             </ul>
           </div>
         </div>
