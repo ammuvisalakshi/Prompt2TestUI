@@ -96,7 +96,7 @@ export default function PlatformLayout() {
       const name = attrs.name || attrs.email || ''
       setInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
       setDisplayName(attrs.name || attrs.email?.split('@')[0] || '')
-      const username = (attrs.name ?? '').toLowerCase()  // e.g. va1234
+      const username = attrs.name ?? ''  // e.g. VA1234
       if (username) {
         try {
           const session = await fetchAuthSession()

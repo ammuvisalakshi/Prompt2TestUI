@@ -29,13 +29,13 @@ export default function LoginPage() {
       } else {
         // Validate team membership — use name attribute (e.g. va1234) as SSM key
         const attrs = await fetchUserAttributes()
-        const username = (attrs.name ?? '').toLowerCase()
+        const username = attrs.name ?? ''
         try {
           const session = await fetchAuthSession()
           const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
           const resp = await ssm.send(new GetParameterCommand({ Name: `/prompt2test/config/members/${username}/TEAM` }))
-          const assignedTeam = (resp.Parameter?.Value ?? '').toLowerCase().replace(/\s+/g, '')
-          const enteredTeam = team.trim().toLowerCase().replace(/\s+/g, '')
+          const assignedTeam = (resp.Parameter?.Value ?? '').toLowerCase()
+          const enteredTeam = team.trim().toLowerCase()
           if (assignedTeam && assignedTeam !== enteredTeam) {
             await signOut()
             setError('You are not a member of this team')
