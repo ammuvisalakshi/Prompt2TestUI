@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 
 import { fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
-import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 
 import { useEnv } from '../context/EnvContext'
 import { useTeam } from '../context/TeamContext'
@@ -9,22 +10,18 @@ import { saveTestCase, updateTestCasePlanSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+const TABLE = 'prompt2test-config'
 
-async function loadServiceNames(env: string): Promise<string[]> {
+async function loadServiceNames(team: string, env: string): Promise<string[]> {
   const session = await fetchAuthSession()
-  const client = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
-  const path = `/prompt2test/config/${env}/services`
-  const names = new Set<string>()
-  let nextToken: string | undefined
-  do {
-    const resp = await client.send(new GetParametersByPathCommand({ Path: path, Recursive: true, NextToken: nextToken }))
-    for (const p of resp.Parameters ?? []) {
-      const rel = p.Name!.slice(path.length + 1)
-      const slash = rel.indexOf('/')
-      if (slash > 0) names.add(rel.slice(0, slash))
-    }
-    nextToken = resp.NextToken
-  } while (nextToken)
+  const db = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION, credentials: session.credentials as never }))
+  const resp = await db.send(new QueryCommand({
+    TableName: TABLE,
+    KeyConditionExpression: 'pk = :pk',
+    ExpressionAttributeValues: { ':pk': `SERVICE#${team}#${env}` },
+    ProjectionExpression: 'svc',
+  }))
+  const names = new Set<string>((resp.Items ?? []).map(i => i.svc as string).filter(Boolean))
   return [...names].sort()
 }
 
@@ -89,8 +86,8 @@ export default function AgentPage() {
 
   useEffect(() => {
     setServicesLoading(true)
-    loadServiceNames(env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
-  }, [env])
+    loadServiceNames(team, env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
+  }, [env, team])
 
   async function send() {
     const text = input.trim()

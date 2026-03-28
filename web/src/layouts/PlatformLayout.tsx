@@ -4,13 +4,6 @@ import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/aut
 import { EnvContext, ENVS, type Env } from '../context/EnvContext'
 import { TeamContext } from '../context/TeamContext'
 
-export type RunEntry = {
-  id: string
-  description: string
-  passed: boolean
-  timestamp: string
-}
-
 const NAV = [
   {
     to: '/inventory',
@@ -48,16 +41,6 @@ const ENV_STYLE: Record<Env, { active: React.CSSProperties; dot: string }> = {
   prod: { active: { background: '#FEF2F2', border: '1.5px solid #FECACA', color: '#DC2626' }, dot: '#EF4444' },
 }
 
-function timeAgo(ts: string) {
-  const diff = Date.now() - new Date(ts).getTime()
-  const m = Math.floor(diff / 60000)
-  const h = Math.floor(m / 60)
-  const d = Math.floor(h / 24)
-  if (d > 0) return `${d}d ago`
-  if (h > 0) return `${h}h ago`
-  if (m > 0) return `${m}m ago`
-  return 'just now'
-}
 
 export default function PlatformLayout() {
   const navigate = useNavigate()
@@ -66,7 +49,6 @@ export default function PlatformLayout() {
   const [team,         setTeam]         = useState('')
   const [teamLoaded,   setTeamLoaded]   = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [runs,         setRuns]         = useState<RunEntry[]>([])
   const [env,          setEnv]          = useState<Env>('dev')
   const [sidebarWidth, setSidebarWidth] = useState(224)
   const dragging = useRef(false)
@@ -98,18 +80,6 @@ export default function PlatformLayout() {
       setTeam(groups[0] ?? '')
       setTeamLoaded(true)
     }).catch(() => { setTeamLoaded(true) })
-  }, [])
-
-  useEffect(() => {
-    function load() {
-      try {
-        const raw = localStorage.getItem('p2t_run_history')
-        setRuns(raw ? JSON.parse(raw) : [])
-      } catch { setRuns([]) }
-    }
-    load()
-    window.addEventListener('p2t_run_saved', load)
-    return () => window.removeEventListener('p2t_run_saved', load)
   }, [])
 
   async function handleSignOut() {
@@ -199,34 +169,7 @@ export default function PlatformLayout() {
           </>
         )}
 
-        {teamLoaded && team.toLowerCase() !== 'admin' && (
-          <>
-            {/* Run History */}
-            <div style={{ padding: '20px 14px 4px', flexShrink: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Run History</div>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }}>
-              {runs.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#CBD5E1', padding: '8px 10px', fontStyle: 'italic' }}>No runs yet</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {runs.slice().reverse().map(run => (
-                    <div key={run.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-                      <span style={{ marginTop: 1, flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, ...(run.passed ? { background: '#DCFCE7', color: '#166534' } : { background: '#FEE2E2', color: '#991B1B' }) }}>
-                        {run.passed ? 'PASS' : 'FAIL'}
-                      </span>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{run.description}</div>
-                        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{timeAgo(run.timestamp)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-        {(!teamLoaded || team.toLowerCase() === 'admin') && <div style={{ flex: 1 }} />}
+        <div style={{ flex: 1 }} />
 
         {/* Avatar / profile at bottom */}
         <div style={{ padding: 12, flexShrink: 0, borderTop: '1px solid #F1F5F9' }}>
