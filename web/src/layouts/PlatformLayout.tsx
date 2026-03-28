@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { fetchUserAttributes, fetchAuthSession, signOut } from '@aws-amplify/auth'
+import { fetchUserAttributes, fetchAuthSession, getCurrentUser, signOut } from '@aws-amplify/auth'
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm'
 import { EnvContext, ENVS, type Env } from '../context/EnvContext'
 import { TeamContext } from '../context/TeamContext'
@@ -96,7 +96,7 @@ export default function PlatformLayout() {
       const name = attrs.name || attrs.email || ''
       setInitials(name.split(/[\s@]/).filter(Boolean).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2))
       setDisplayName(attrs.name || attrs.email?.split('@')[0] || '')
-      const username = attrs.email ?? ''
+      const { username } = await getCurrentUser()  // e.g. VA1234
       if (username) {
         try {
           const session = await fetchAuthSession()
