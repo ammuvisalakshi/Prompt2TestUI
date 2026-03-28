@@ -115,6 +115,7 @@ export default function AgentPage() {
         mode: 'plan_scenario',
         service: tcService,
         env,
+        team,
         sessionId,
         conversationHistory: history,
       }, sessionId)
@@ -294,7 +295,7 @@ export default function AgentPage() {
                     setLoading(true)
                     try {
                       const h = messages.map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`).join('\n')
-                      const raw = await callAgent({ inputText: 'generate_final', mode: 'plan_scenario', service: tcService, env, sessionId, conversationHistory: h }, sessionId)
+                      const raw = await callAgent({ inputText: 'generate_final', mode: 'plan_scenario', service: tcService, env, team, sessionId, conversationHistory: h }, sessionId)
                       const result = JSON.parse(raw)
                       const responseText: string = result.text ?? ''
                       const parsed = parseAgentResponse(responseText)
