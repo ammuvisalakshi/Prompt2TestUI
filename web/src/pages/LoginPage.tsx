@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signIn, signOut, confirmSignIn, getCurrentUser, fetchAuthSession } from '@aws-amplify/auth'
+import { signIn, signOut, confirmSignIn, fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -27,8 +27,9 @@ export default function LoginPage() {
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         setStep('new-password')
       } else {
-        // Validate team membership — use Cognito username (e.g. VA1234), not email
-        const { username } = await getCurrentUser()
+        // Validate team membership — use name attribute (e.g. va1234) as SSM key
+        const attrs = await fetchUserAttributes()
+        const username = (attrs.name ?? '').toLowerCase()
         try {
           const session = await fetchAuthSession()
           const ssm = new SSMClient({ region: AWS_REGION, credentials: session.credentials })
