@@ -123,3 +123,13 @@ export async function searchTestCases(query: string, env: string, team = '', thr
 export async function updateReplayScript(id: string, replayScript: object[]): Promise<void> {
   await invokeLambda('p2t-testcase-reader', { action: 'update_replay_script', id, replay_script: replayScript })
 }
+
+export async function promoteTestCase(params: {
+  id: string
+  targetEnv: string
+  sourceEnv: string
+  promotedBy?: string
+  team?: string
+}): Promise<{ id: string; targetEnv: string; promotedFrom: string }> {
+  return invokeLambda('p2t-testcase-writer', { action: 'promote_test_case', ...params }) as Promise<{ id: string; targetEnv: string; promotedFrom: string }>
+}

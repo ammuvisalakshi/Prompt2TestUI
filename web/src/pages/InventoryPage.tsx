@@ -4,7 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { useEnv } from '../context/EnvContext'
 import { useTeam } from '../context/TeamContext'
-import { listTestCases, listRunRecords, deleteTestCase, updateTestCaseService, type TestCase, type RunRecord } from '../lib/lambdaClient'
+import { listTestCases, listRunRecords, deleteTestCase, updateTestCaseService, promoteTestCase, type TestCase, type RunRecord } from '../lib/lambdaClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const TABLE = 'prompt2test-config'
@@ -42,6 +42,10 @@ export default function InventoryPage() {
   const [servicesLoading, setServicesLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [collapsedServices, setCollapsedServices] = useState<Set<string>>(new Set())
+  const [promoteTc, setPromoteTc] = useState<TestCase | null>(null)
+  const [promoteTarget, setPromoteTarget] = useState('')
+  const [promoting, setPromoting] = useState(false)
+  const [promoteResult, setPromoteResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -187,6 +191,74 @@ export default function InventoryPage() {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Promote to env modal */}
+      {promoteTc && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setPromoteTc(null)} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{ background: 'white', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', padding: 20, width: 384, pointerEvents: 'auto', border: '1px solid #E8EBF0' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 4 }}>Promote Test Case</div>
+              <div style={{ fontSize: 13, color: '#64748B', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{promoteTc.title || promoteTc.description}</div>
+              <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>
+                From <strong style={{ color: '#4F46E5' }}>{env.toUpperCase()}</strong> — select target environment. Config keys will be created in the target (with empty values for admin to fill in).
+              </div>
+
+              {promoteResult ? (
+                <div style={{ fontSize: 13, color: '#15803d', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                  {promoteResult}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    {['dev', 'qa', 'uat', 'prod'].filter(e => e !== env).map(e => (
+                      <button key={e} onClick={() => setPromoteTarget(e)}
+                        style={{
+                          flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase',
+                          ...(promoteTarget === e
+                            ? { background: '#DCFCE7', border: '1.5px solid #16A34A', color: '#15803D' }
+                            : { background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }),
+                        }}>
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={async () => {
+                        if (!promoteTarget || promoting) return
+                        setPromoting(true)
+                        try {
+                          const res = await promoteTestCase({ id: promoteTc.id, targetEnv: promoteTarget, sourceEnv: env, team })
+                          setPromoteResult(`Promoted to ${promoteTarget.toUpperCase()} as ${res.id}. Config keys created — fill in values on the Config page.`)
+                        } catch (err) {
+                          setPromoteResult(`Error: ${err instanceof Error ? err.message : String(err)}`)
+                        } finally {
+                          setPromoting(false)
+                        }
+                      }}
+                      disabled={!promoteTarget || promoting}
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: '#16A34A', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !promoteTarget || promoting ? 0.5 : 1, boxShadow: '0 2px 8px rgba(22,163,74,0.35)' }}>
+                      {promoting ? 'Promoting...' : `Promote to ${promoteTarget ? promoteTarget.toUpperCase() : '...'}`}
+                    </button>
+                    <button onClick={() => setPromoteTc(null)}
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {promoteResult && (
+                <button onClick={() => setPromoteTc(null)}
+                  style={{ width: '100%', padding: '8px 0', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 8 }}>
+                  Close
+                </button>
+              )}
             </div>
           </div>
         </>
@@ -406,6 +478,15 @@ export default function InventoryPage() {
                                       >
                                         <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         Move to service
+                                      </button>
+                                      <button
+                                        onClick={() => { setPromoteTc(tc); setPromoteTarget(''); setPromoteResult(null); setOpenKebab(null) }}
+                                        style={{ width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#15803d', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = '#F0FDF4'}
+                                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
+                                      >
+                                        <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
+                                        Promote to env
                                       </button>
                                       <div style={{ height: 1, margin: '4px 8px', background: '#F1F5F9' }} />
                                       <button
