@@ -252,7 +252,21 @@ export default function TestCasePage() {
       if (automateAbortedRef.current) return
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
-      replayScriptRef.current = result.result?.replay_script ?? result.replay_script ?? []
+      // Templatize replay script on frontend: replace config values with {service.KEY}
+      const rawScript = result.result?.replay_script ?? result.replay_script ?? []
+      if (serviceConfig.length > 0) {
+        const replacements = serviceConfig
+          .filter(c => c.key && c.value && c.value.length > 1)
+          .sort((a, b) => b.value.length - a.value.length)
+        replayScriptRef.current = JSON.parse(
+          replacements.reduce(
+            (json, c) => json.replaceAll(c.value, `{service.${c.key}}`),
+            JSON.stringify(rawScript)
+          )
+        )
+      } else {
+        replayScriptRef.current = rawScript
+      }
       resultStepsRef.current = (result.result?.steps ?? result.steps ?? []).map((s: any, i: number) => ({
         stepNumber: s.stepNumber ?? i + 1,
         type: 'browser',
