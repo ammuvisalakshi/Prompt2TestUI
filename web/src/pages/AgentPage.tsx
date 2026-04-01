@@ -35,7 +35,7 @@ async function loadAllServiceConfigs(team: string, env: string): Promise<Service
 }
 
 type Message = { role: 'user' | 'agent'; text: string }
-type StepItem = { step: number; action: string; expected: string }
+type StepItem = { step: number; action: string; action_resolved?: string; expected: string; expected_resolved?: string }
 
 function parseAgentResponse(text: string): { steps: StepItem[]; note: string; isFinal: boolean; summary: string } {
   const trimmed = text.trim()
@@ -387,8 +387,15 @@ export default function AgentPage() {
                             <td style={{ padding: '10px', textAlign: 'center', verticalAlign: 'top' }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 10, fontWeight: 700 }}>{s.step}</span>
                             </td>
-                            <td style={{ padding: '10px 12px', color: '#0F172A', lineHeight: 1.6, verticalAlign: 'top' }}>{s.action}</td>
-                            <td style={{ padding: '10px 12px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>{s.expected}</td>
+                            <td style={{ padding: '10px 12px', color: '#0F172A', lineHeight: 1.6, verticalAlign: 'top' }}>
+                              {s.action_resolved || s.action}
+                              {s.action_resolved && s.action !== s.action_resolved && (
+                                <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4, fontFamily: 'Cascadia Code, Consolas, monospace' }}>{s.action}</div>
+                              )}
+                            </td>
+                            <td style={{ padding: '10px 12px', color: '#64748B', lineHeight: 1.6, verticalAlign: 'top' }}>
+                              {s.expected_resolved || s.expected}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
