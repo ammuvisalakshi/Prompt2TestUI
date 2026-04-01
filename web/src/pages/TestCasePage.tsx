@@ -1,7 +1,30 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import { fetchAuthSession } from '@aws-amplify/auth'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
+import { useEnv } from '../context/EnvContext'
+import { useTeam } from '../context/TeamContext'
+
+const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
+const CONFIG_TABLE = 'prompt2test-config'
+
+async function loadServiceConfig(team: string, env: string, service: string): Promise<{ key: string; value: string }[]> {
+  if (!service) return []
+  const session = await fetchAuthSession()
+  const db = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION, credentials: session.credentials as never }))
+  const resp = await db.send(new QueryCommand({
+    TableName: CONFIG_TABLE,
+    KeyConditionExpression: 'pk = :pk AND begins_with(sk, :svc)',
+    ExpressionAttributeValues: { ':pk': `SERVICE#${team}#${env}`, ':svc': `${service}#` },
+  }))
+  return (resp.Items ?? []).map(item => {
+    const [, ...rest] = (item.sk as string).split('#')
+    return { key: rest.join('#'), value: item.val as string }
+  })
+}
 
 type PlanStep = { step: number; action: string; expected: string }
 type PlaywrightCall = { tool: string; params: Record<string, unknown> }
@@ -29,10 +52,13 @@ const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pro
 
 export default function TestCasePage() {
   const { id } = useParams<{ id: string }>()
+  const { env } = useEnv()
+  const { team } = useTeam()
   const [tc, setTc] = useState<Awaited<ReturnType<typeof getTestCase>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'plan' | 'automated'>('plan')
+  const [serviceConfig, setServiceConfig] = useState<{ key: string; value: string }[]>([])
 
   const [runPhase, setRunPhase] = useState<RunPhase>('idle')
   const [runResult, setRunResult] = useState<{ passed: boolean; summary: string } | null>(null)
@@ -55,9 +81,16 @@ export default function TestCasePage() {
   useEffect(() => {
     if (!id) return
     getTestCase(id)
-      .then(data => { setTc(data); setLoading(false) })
+      .then(data => {
+        setTc(data)
+        setLoading(false)
+        // Load service config for template resolution during replay/automate
+        if (data.service) {
+          loadServiceConfig(team, env, data.service).then(setServiceConfig).catch(() => {})
+        }
+      })
       .catch(() => { setError('Failed to load test case.'); setLoading(false) })
-  }, [id])
+  }, [id, env, team])
 
   async function runTest() {
     if (!tc) return
@@ -107,6 +140,7 @@ export default function TestCasePage() {
               task_arn: session.task_arn,
               cluster: session.cluster,
               mcp_endpoint: session.mcp_endpoint,
+              serviceConfig,
             }
           : {
               inputText: tc.title || tc.description,
@@ -116,6 +150,7 @@ export default function TestCasePage() {
               task_arn: session.task_arn,
               cluster: session.cluster,
               mcp_endpoint: session.mcp_endpoint,
+              serviceConfig,
             },
         sessionId.current
       )
@@ -201,6 +236,7 @@ export default function TestCasePage() {
         task_arn: session.task_arn,
         cluster: session.cluster,
         mcp_endpoint: session.mcp_endpoint,
+        serviceConfig,
       }, sessionId.current)
 
       const result = JSON.parse(raw)
