@@ -545,29 +545,31 @@ export default function TestCasePage() {
                     <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, fill: '#64748B' }}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Stop
                   </button>
                 )}
-                {isAutomated ? (
-                  <button
-                    onClick={() => setShowReAutomateConfirm(true)}
-                    disabled={automatePhase === 'starting' || automatePhase === 'running'}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#D97706', border: '1px solid #FCD34D', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.5 : 1 }}
-                    onMouseEnter={e => { if (automatePhase === 'idle') { (e.currentTarget as HTMLButtonElement).style.background = '#FFFBEB' } }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'white' }}
-                  >
-                    <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: '#D97706', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    Re-Automate
-                  </button>
-                ) : (
-                  <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1, boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
-                    onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = (automatePhase === 'starting' || automatePhase === 'running') ? '0.75' : '1' }}
-                  >
-                    {automatePhase === 'starting' || automatePhase === 'running' ? (
-                      <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{automatePhase === 'starting' ? 'Starting…' : 'Automating…'}</>
-                    ) : (
-                      <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automate</>
-                    )}
-                  </button>
+                {env === 'dev' && (
+                  isAutomated ? (
+                    <button
+                      onClick={() => setShowReAutomateConfirm(true)}
+                      disabled={automatePhase === 'starting' || automatePhase === 'running'}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#D97706', border: '1px solid #FCD34D', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.5 : 1 }}
+                      onMouseEnter={e => { if (automatePhase === 'idle') { (e.currentTarget as HTMLButtonElement).style.background = '#FFFBEB' } }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'white' }}
+                    >
+                      <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: '#D97706', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      Re-Automate
+                    </button>
+                  ) : (
+                    <button onClick={automateTest} disabled={automatePhase === 'starting' || automatePhase === 'running'}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.75 : 1, boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}
+                      onMouseEnter={e => { if (automatePhase === 'idle') (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = (automatePhase === 'starting' || automatePhase === 'running') ? '0.75' : '1' }}
+                    >
+                      {automatePhase === 'starting' || automatePhase === 'running' ? (
+                        <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />{automatePhase === 'starting' ? 'Starting…' : 'Automating…'}</>
+                      ) : (
+                        <><svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'white', fill: 'none', strokeWidth: 2 }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automate</>
+                      )}
+                    </button>
+                  )
                 )}
               </div>
               <div style={{ borderRadius: 12, overflow: 'hidden', background: 'white', border: '1px solid #E8EBF0', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' }}>
