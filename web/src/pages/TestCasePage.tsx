@@ -457,6 +457,7 @@ export default function TestCasePage() {
                         if (replayScriptRef.current.length > 0) {
                           // Templatize before saving: replace config values with {service.KEY}
                           let scriptToSave = replayScriptRef.current
+                          console.log('[Save] serviceConfig:', serviceConfig, 'replayScript length:', scriptToSave.length)
                           if (serviceConfig.length > 0) {
                             const reps = serviceConfig
                               .filter(c => c.key && c.value && c.value.length > 1)
@@ -468,6 +469,7 @@ export default function TestCasePage() {
                               )
                             )
                           }
+                          console.log('[Save] scriptToSave first call:', JSON.stringify(scriptToSave[0]))
                           await updateReplayScript(tc.id, scriptToSave)
                           replayScriptRef.current = scriptToSave
                         }
