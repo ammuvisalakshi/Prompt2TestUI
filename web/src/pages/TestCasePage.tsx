@@ -81,13 +81,16 @@ export default function TestCasePage() {
   useEffect(() => {
     if (!id) return
     getTestCase(id)
-      .then(data => {
+      .then(async (data) => {
         setTc(data)
-        setLoading(false)
-        // Load service config for template resolution during replay/automate
+        // Load service config BEFORE marking as ready
         if (data.service) {
-          loadServiceConfig(team, env, data.service).then(setServiceConfig).catch(() => {})
+          try {
+            const cfg = await loadServiceConfig(team, env, data.service)
+            setServiceConfig(cfg)
+          } catch { /* ignore */ }
         }
+        setLoading(false)
       })
       .catch(() => { setError('Failed to load test case.'); setLoading(false) })
   }, [id, env, team])
