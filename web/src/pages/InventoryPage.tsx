@@ -419,10 +419,9 @@ export default function InventoryPage() {
                                 {(['dev', 'qa', 'uat', 'prod'] as const).map((e, i) => {
                                   const isCurrent = e === env
                                   const isPromoted = (tc.promotedTo ?? []).includes(e)
-                                  const isOriginEnv = !tc.promotedFromEnv // originated in current env view
                                   const isActive = isCurrent || isPromoted
                                   const nextEnv = ({ dev: 'qa', qa: 'uat', uat: 'prod' } as Record<string, string>)[env]
-                                  const isNextPromotable = e === nextEnv && !isPromoted && isOriginEnv && isCurrent === false
+                                  const isNextPromotable = e === nextEnv && !isPromoted
 
                                   return (
                                     <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
