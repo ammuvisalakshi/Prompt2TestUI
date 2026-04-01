@@ -12,17 +12,26 @@ import { callAgent } from '../lib/agentClient'
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const TABLE = 'prompt2test-config'
 
-async function loadServiceNames(team: string, env: string): Promise<string[]> {
+type ServiceConfig = Record<string, { key: string; value: string }[]>
+
+async function loadAllServiceConfigs(team: string, env: string): Promise<ServiceConfig> {
   const session = await fetchAuthSession()
   const db = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION, credentials: session.credentials as never }))
   const resp = await db.send(new QueryCommand({
     TableName: TABLE,
     KeyConditionExpression: 'pk = :pk',
     ExpressionAttributeValues: { ':pk': `SERVICE#${team}#${env}` },
-    ProjectionExpression: 'svc',
   }))
-  const names = new Set<string>((resp.Items ?? []).map(i => i.svc as string).filter(Boolean))
-  return [...names].sort()
+  const configs: ServiceConfig = {}
+  for (const item of resp.Items ?? []) {
+    const svc = item.svc as string
+    if (!svc) continue
+    const [, ...rest] = (item.sk as string).split('#')
+    const key = rest.join('#')
+    if (!configs[svc]) configs[svc] = []
+    configs[svc].push({ key, value: item.val as string })
+  }
+  return configs
 }
 
 type Message = { role: 'user' | 'agent'; text: string }
@@ -59,8 +68,9 @@ export default function AgentPage() {
   const savedTcId = useRef<string | null>(null)
   const [tcSaved, setTcSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [tcService, setTcService] = useState('')
-  const [availableServices, setAvailableServices] = useState<string[]>([])
+  const [serviceConfigs, setServiceConfigs] = useState<ServiceConfig>({})
   const [servicesLoading, setServicesLoading] = useState(false)
+  const availableServices = Object.keys(serviceConfigs).sort()
   const [planScenario, setPlanScenario] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [saveTitleInput, setSaveTitleInput] = useState('')
@@ -86,7 +96,7 @@ export default function AgentPage() {
 
   useEffect(() => {
     setServicesLoading(true)
-    loadServiceNames(team, env).then(setAvailableServices).catch(() => {}).finally(() => setServicesLoading(false))
+    loadAllServiceConfigs(team, env).then(setServiceConfigs).catch(() => {}).finally(() => setServicesLoading(false))
   }, [env, team])
 
   async function send() {
@@ -114,6 +124,7 @@ export default function AgentPage() {
         inputText: text,
         mode: 'plan_scenario',
         service: tcService,
+        serviceConfig: serviceConfigs[tcService] ?? [],
         env,
         team,
         sessionId,
