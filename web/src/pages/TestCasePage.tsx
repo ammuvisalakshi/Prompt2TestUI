@@ -455,7 +455,21 @@ export default function TestCasePage() {
                           : ((tc.planSteps ?? []) as PlanStep[]).map((s: PlanStep) => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected, playwright_calls: [] }))
                         await updateTestCaseSteps(tc.id, stepsToSave)
                         if (replayScriptRef.current.length > 0) {
-                          await updateReplayScript(tc.id, replayScriptRef.current)
+                          // Templatize before saving: replace config values with {service.KEY}
+                          let scriptToSave = replayScriptRef.current
+                          if (serviceConfig.length > 0) {
+                            const reps = serviceConfig
+                              .filter(c => c.key && c.value && c.value.length > 1)
+                              .sort((a, b) => b.value.length - a.value.length)
+                            scriptToSave = JSON.parse(
+                              reps.reduce(
+                                (json, c) => json.replaceAll(c.value, `{service.${c.key}}`),
+                                JSON.stringify(scriptToSave)
+                              )
+                            )
+                          }
+                          await updateReplayScript(tc.id, scriptToSave)
+                          replayScriptRef.current = scriptToSave
                         }
                         setStepsSaveState('saved')
                         setTc(prev => prev ? { ...prev, steps: stepsToSave, replayScript: replayScriptRef.current } as any : prev)
