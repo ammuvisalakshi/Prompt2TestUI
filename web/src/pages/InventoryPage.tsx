@@ -215,7 +215,7 @@ export default function InventoryPage() {
               ) : (
                 <>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    {['dev', 'qa', 'uat', 'prod'].filter(e => e !== env).map(e => (
+                    {[({ dev: 'qa', qa: 'uat', uat: 'prod' } as Record<string, string>)[env]].filter((e): e is string => !!e).map(e => (
                       <button key={e} onClick={() => setPromoteTarget(e)}
                         style={{
                           flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase',
@@ -479,6 +479,7 @@ export default function InventoryPage() {
                                         <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         Move to service
                                       </button>
+                                      {env !== 'prod' && (
                                       <button
                                         onClick={() => { setPromoteTc(tc); setPromoteTarget(''); setPromoteResult(null); setOpenKebab(null) }}
                                         style={{ width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#15803d', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
@@ -486,8 +487,9 @@ export default function InventoryPage() {
                                         onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
                                       >
                                         <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2, flexShrink: 0 }}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
-                                        Promote to env
+                                        Promote to {{ dev: 'QA', qa: 'UAT', uat: 'PROD' }[env] || 'next env'}
                                       </button>
+                                      )}
                                       <div style={{ height: 1, margin: '4px 8px', background: '#F1F5F9' }} />
                                       <button
                                         onClick={() => { setConfirmDeleteId(tc.id); setOpenKebab(null) }}
