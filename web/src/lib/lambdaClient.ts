@@ -46,6 +46,8 @@ export type TestCase = {
   lastResult: string | null
   lastRunAt: string | null
   runs: { id: string; result: string; runAt: string; runBy: string; summary: string }[]
+  promotedTo?: string[]
+  promotedFromEnv?: string | null
 }
 
 export type RunRecord = {

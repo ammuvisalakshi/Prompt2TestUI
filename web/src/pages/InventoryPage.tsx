@@ -414,6 +414,41 @@ export default function InventoryPage() {
                                   ))}
                                 </div>
                               )}
+                              {/* Promotion Pipeline */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 6 }}>
+                                {(['dev', 'qa', 'uat', 'prod'] as const).map((e, i) => {
+                                  const isCurrent = e === env
+                                  const isPromoted = (tc.promotedTo ?? []).includes(e)
+                                  const isOriginEnv = !tc.promotedFromEnv // originated in current env view
+                                  const isActive = isCurrent || isPromoted
+                                  const nextEnv = ({ dev: 'qa', qa: 'uat', uat: 'prod' } as Record<string, string>)[env]
+                                  const isNextPromotable = e === nextEnv && !isPromoted && isOriginEnv && isCurrent === false
+
+                                  return (
+                                    <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                      {i > 0 && <div style={{ width: 12, height: 2, background: isActive ? '#7C3AED' : '#E2E8F0', borderRadius: 1 }} />}
+                                      <div
+                                        onClick={isNextPromotable ? (ev) => { ev.stopPropagation(); setPromoteTc(tc); setPromoteTarget(nextEnv); setPromoteResult(null) } : undefined}
+                                        title={isActive ? `${e.toUpperCase()}` : isNextPromotable ? `Promote to ${e.toUpperCase()}` : e.toUpperCase()}
+                                        style={{
+                                          width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                          fontSize: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em',
+                                          cursor: isNextPromotable ? 'pointer' : 'default',
+                                          ...(isCurrent
+                                            ? { background: '#7C3AED', color: 'white', border: '2px solid #7C3AED' }
+                                            : isPromoted
+                                              ? { background: '#DCFCE7', color: '#15803D', border: '2px solid #16A34A' }
+                                              : isNextPromotable
+                                                ? { background: 'white', color: '#F97316', border: '2px dashed #F97316' }
+                                                : { background: '#F8FAFC', color: '#CBD5E1', border: '2px solid #E2E8F0' }),
+                                        }}
+                                      >
+                                        {e[0]}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
                             </td>
 
                             {/* Created By */}
