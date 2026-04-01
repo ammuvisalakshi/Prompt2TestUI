@@ -545,7 +545,7 @@ export default function TestCasePage() {
                     <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, fill: '#64748B' }}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Stop
                   </button>
                 )}
-                {env === 'dev' && (
+                {(tc.env || env) === 'dev' && (
                   isAutomated ? (
                     <button
                       onClick={() => setShowReAutomateConfirm(true)}
