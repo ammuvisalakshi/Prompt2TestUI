@@ -3,6 +3,8 @@ import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/clie
 
 const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN as string
 const AWS_REGION        = import.meta.env.VITE_AWS_REGION as string
+// Extract account ID from the ARN: arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/ID
+const AWS_ACCOUNT_ID    = AGENT_RUNTIME_ARN?.split(':')[4] ?? ''
 
 export async function callAgent(
   payload: object,
@@ -15,6 +17,7 @@ export async function callAgent(
   const client = new BedrockAgentCoreClient({ region: AWS_REGION, credentials: session.credentials })
   const cmd = new InvokeAgentRuntimeCommand({
     agentRuntimeArn: AGENT_RUNTIME_ARN,
+    accountId: AWS_ACCOUNT_ID,
     runtimeSessionId: sessionId,
     contentType: 'application/json',
     accept: 'application/json',
