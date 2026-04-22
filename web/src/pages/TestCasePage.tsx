@@ -30,6 +30,16 @@ type PlanStep = { step: number; action: string; expected: string }
 type PlaywrightCall = { tool: string; params: Record<string, unknown> }
 type AutoStep = { stepNumber: number; type: string; tool?: string; action: string; detail: string; status?: string; playwright_calls?: PlaywrightCall[] }
 type RunPhase = 'idle' | 'starting' | 'running' | 'done' | 'error'
+type TokenInfo = { llm_calls: number; input_tokens: number; output_tokens: number }
+
+function fmtNum(n: number): string {
+  return n.toLocaleString()
+}
+
+function fmtCost(input: number, output: number): string {
+  const cost = (input / 1_000_000) * 3 + (output / 1_000_000) * 15
+  return cost < 0.005 ? '<$0.01' : `~$${cost.toFixed(2)}`
+}
 
 const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;gap:0}
@@ -73,6 +83,7 @@ export default function TestCasePage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showReAutomateConfirm, setShowReAutomateConfirm] = useState(false)
+  const [tokenUsage, setTokenUsage] = useState<TokenInfo | null>(null)
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
   const automateAbortedRef = useRef(false)
@@ -167,6 +178,8 @@ export default function TestCasePage() {
 
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
+      const tu = result.result?.token_usage ?? result.token_usage
+      if (tu) setTokenUsage(tu as TokenInfo)
 
       saveRunRecord({ testCaseId: tc.id, env: tc.env, result: passed ? 'PASS' : 'FAIL', summary }).catch(() => {})
       setRunResult({ passed, summary })
@@ -252,6 +265,8 @@ export default function TestCasePage() {
       if (automateAbortedRef.current) return
       const passed = result.result?.passed ?? result.passed
       const summary = result.result?.summary ?? result.summary ?? ''
+      const tu = result.result?.token_usage ?? result.token_usage
+      if (tu) setTokenUsage(tu as TokenInfo)
       // Templatize replay script on frontend: replace config values with {service.KEY}
       const rawScript = result.result?.replay_script ?? result.replay_script ?? []
       if (serviceConfig.length > 0) {
@@ -500,6 +515,33 @@ export default function TestCasePage() {
               style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B', opacity: 0.6, fontSize: 16, padding: '0 2px', lineHeight: 1 }}
             >×</button>
           )}
+        </div>
+      )}
+
+      {/* Token usage card — shown after automation/run completes */}
+      {tokenUsage && (automatePhase === 'done' || runPhase === 'done') && (
+        <div style={{ padding: '8px 24px', background: '#FAFBFF', borderBottom: '1px solid #E8EBF0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'white', border: '1px solid #E8EBF0', borderRadius: 10, padding: '10px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Token Usage</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: '#64748B' }}>LLM Calls:</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{fmtNum(tokenUsage.llm_calls)}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: '#64748B' }}>Input:</span>
+                <span style={{ fontSize: 13, color: '#0F172A' }}>{fmtNum(tokenUsage.input_tokens)}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: '#64748B' }}>Output:</span>
+                <span style={{ fontSize: 13, color: '#0F172A' }}>{fmtNum(tokenUsage.output_tokens)}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: '#64748B' }}>Est. Cost:</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#7C3AED' }}>{fmtCost(tokenUsage.input_tokens, tokenUsage.output_tokens)}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

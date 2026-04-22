@@ -36,6 +36,17 @@ async function loadAllServiceConfigs(team: string, env: string): Promise<Service
 
 type Message = { role: 'user' | 'agent'; text: string }
 type StepItem = { step: number; action: string; action_resolved?: string; expected: string; expected_resolved?: string }
+type TokenCall = { llm_calls: number; input_tokens: number; output_tokens: number }
+type TokenUsage = { totalCalls: number; totalInput: number; totalOutput: number; perCall: TokenCall[] }
+
+function fmtNum(n: number): string {
+  return n.toLocaleString()
+}
+
+function fmtCost(input: number, output: number): string {
+  const cost = (input / 1_000_000) * 3 + (output / 1_000_000) * 15
+  return cost < 0.005 ? '<$0.01' : `~$${cost.toFixed(2)}`
+}
 
 function parseAgentResponse(text: string): { steps: StepItem[]; note: string; isFinal: boolean; summary: string } {
   const trimmed = text.trim()
@@ -81,6 +92,7 @@ export default function AgentPage() {
   const { team } = useTeam()
   const [modeOpen, setModeOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage>({ totalCalls: 0, totalInput: 0, totalOutput: 0, perCall: [] })
 
 
   useEffect(() => {
@@ -132,6 +144,15 @@ export default function AgentPage() {
       }, sessionId)
 
       const result = JSON.parse(raw)
+      if (result.token_usage) {
+        const tu = result.token_usage as TokenCall
+        setTokenUsage(prev => ({
+          totalCalls: prev.totalCalls + tu.llm_calls,
+          totalInput: prev.totalInput + tu.input_tokens,
+          totalOutput: prev.totalOutput + tu.output_tokens,
+          perCall: [...prev.perCall, tu],
+        }))
+      }
       if (result.error) {
         setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Error: ${result.error}` }])
         return
@@ -308,6 +329,15 @@ export default function AgentPage() {
                       const h = messages.map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`).join('\n')
                       const raw = await callAgent({ inputText: 'generate_final', mode: 'plan_scenario', service: tcService, env, team, sessionId, conversationHistory: h }, sessionId)
                       const result = JSON.parse(raw)
+                      if (result.token_usage) {
+                        const tu = result.token_usage as TokenCall
+                        setTokenUsage(prev => ({
+                          totalCalls: prev.totalCalls + tu.llm_calls,
+                          totalInput: prev.totalInput + tu.input_tokens,
+                          totalOutput: prev.totalOutput + tu.output_tokens,
+                          perCall: [...prev.perCall, tu],
+                        }))
+                      }
                       const responseText: string = result.text ?? ''
                       const parsed = parseAgentResponse(responseText)
                       if (parsed.steps.length > 0) setPlanSteps(parsed.steps)
@@ -495,6 +525,59 @@ export default function AgentPage() {
               )}
             </>
           </>
+        </div>
+
+        {/* Token usage panel */}
+        <div style={{ width: 280, flexShrink: 0, borderLeft: '1px solid #E8EBF0', background: '#FAFBFF', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #E8EBF0', background: 'white', flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Token Usage</div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+            {tokenUsage.totalCalls === 0 ? (
+              <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', paddingTop: 32 }}>
+                Token stats will appear here after each agent call.
+              </div>
+            ) : (
+              <>
+                {/* Session totals card */}
+                <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Session Totals</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>LLM Calls</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{fmtNum(tokenUsage.totalCalls)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>Input</span>
+                      <span style={{ fontSize: 13, color: '#0F172A' }}>{fmtNum(tokenUsage.totalInput)} tokens</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>Output</span>
+                      <span style={{ fontSize: 13, color: '#0F172A' }}>{fmtNum(tokenUsage.totalOutput)} tokens</span>
+                    </div>
+                    <div style={{ borderTop: '1px solid #E8EBF0', marginTop: 4, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>Est. Cost</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#7C3AED' }}>{fmtCost(tokenUsage.totalInput, tokenUsage.totalOutput)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-call breakdown */}
+                <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Per-Call Breakdown</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {tokenUsage.perCall.map((call, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#0F172A', padding: '4px 0', borderBottom: i < tokenUsage.perCall.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>#{i + 1}</span>
+                        <span style={{ flex: 1, fontSize: 11, color: '#64748B' }}>in: {fmtNum(call.input_tokens)}</span>
+                        <span style={{ fontSize: 11, color: '#64748B' }}>out: {fmtNum(call.output_tokens)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
