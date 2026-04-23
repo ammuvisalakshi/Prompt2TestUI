@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { fetchAuthSession } from '@aws-amplify/auth'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
@@ -86,6 +86,37 @@ export default function TestCasePage() {
   const [showReAutomateConfirm, setShowReAutomateConfirm] = useState(false)
   const [, setTokenUsage] = useState<TokenInfo | null>(null)
   const [tokenCalls, setTokenCalls] = useState<TokenCall[]>([])
+  const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
+  const isDragging = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const onMouseDown = useCallback(() => {
+    isDragging.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const newWidth = Math.max(200, Math.min(500, rect.right - e.clientX))
+      setTokenPanelWidth(newWidth)
+    }
+    const onMouseUp = () => {
+      if (isDragging.current) {
+        isDragging.current = false
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
   const automateAbortedRef = useRef(false)
@@ -535,8 +566,8 @@ export default function TestCasePage() {
 
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
 
-      {/* Main content area: steps (left) + token panel (right) */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* Main content area: steps (left) + resizer + token panel (right) */}
+      <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
       {/* Left: Tabs + Steps */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -751,8 +782,22 @@ export default function TestCasePage() {
 
       </div>{/* end left: tabs + steps */}
 
-      {/* Right: Token Usage Panel (280px) */}
-      <div style={{ width: 280, flexShrink: 0, borderLeft: '1px solid #E8EBF0', background: '#FAFBFF', overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Draggable resizer */}
+      <div
+        onMouseDown={onMouseDown}
+        style={{
+          width: 6, flexShrink: 0, cursor: 'col-resize', background: '#E8EBF0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#C7D2FE')}
+        onMouseLeave={e => { if (!isDragging.current) e.currentTarget.style.background = '#E8EBF0' }}
+      >
+        <div style={{ width: 2, height: 32, borderRadius: 1, background: '#94A3B8', opacity: 0.5 }} />
+      </div>
+
+      {/* Right: Token Usage Panel */}
+      <div style={{ width: tokenPanelWidth, flexShrink: 0, background: '#FAFBFF', overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Token Usage
           {automatePhase === 'running' && <span style={{ color: '#7C3AED', animation: 'pulse 1.5s ease-in-out infinite' }}> (live)</span>}
