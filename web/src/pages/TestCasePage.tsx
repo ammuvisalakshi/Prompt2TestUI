@@ -84,7 +84,7 @@ export default function TestCasePage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showReAutomateConfirm, setShowReAutomateConfirm] = useState(false)
-  const [tokenUsage, setTokenUsage] = useState<TokenInfo | null>(null)
+  const [, setTokenUsage] = useState<TokenInfo | null>(null)
   const [tokenCalls, setTokenCalls] = useState<TokenCall[]>([])
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
