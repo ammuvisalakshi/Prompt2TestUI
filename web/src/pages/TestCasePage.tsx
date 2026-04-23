@@ -30,6 +30,7 @@ type PlanStep = { step: number; action: string; expected: string }
 type PlaywrightCall = { tool: string; params: Record<string, unknown> }
 type AutoStep = { stepNumber: number; type: string; tool?: string; action: string; detail: string; status?: string; playwright_calls?: PlaywrightCall[] }
 type RunPhase = 'idle' | 'starting' | 'running' | 'done' | 'error'
+type TokenCall = { call_number: number; input_tokens: number; output_tokens: number; cumulative_input: number; cumulative_output: number }
 type TokenInfo = { llm_calls: number; input_tokens: number; output_tokens: number }
 
 function fmtNum(n: number): string {
@@ -84,6 +85,7 @@ export default function TestCasePage() {
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showReAutomateConfirm, setShowReAutomateConfirm] = useState(false)
   const [tokenUsage, setTokenUsage] = useState<TokenInfo | null>(null)
+  const [tokenCalls, setTokenCalls] = useState<TokenCall[]>([])
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
   const automateAbortedRef = useRef(false)
@@ -209,6 +211,8 @@ export default function TestCasePage() {
     setAutomateResult(null)
     setAutomateError(null)
     setStepsSaveState('idle')
+    setTokenUsage(null)
+    setTokenCalls([])
     replayScriptRef.current = []
     automateAbortedRef.current = false
 
@@ -253,7 +257,18 @@ export default function TestCasePage() {
         cluster: session.cluster,
         mcp_endpoint: session.mcp_endpoint,
         serviceConfig,
-      }, sessionId.current)
+      }, sessionId.current, (ev) => {
+        if (ev.event === 'token_usage') {
+          const tc: TokenCall = {
+            call_number: ev.call_number as number,
+            input_tokens: ev.input_tokens as number,
+            output_tokens: ev.output_tokens as number,
+            cumulative_input: ev.cumulative_input as number,
+            cumulative_output: ev.cumulative_output as number,
+          }
+          setTokenCalls(prev => [...prev, tc])
+        }
+      })
 
       const result = JSON.parse(raw)
       // Check both top-level error (from main.py exception handler) and nested result error
@@ -518,32 +533,42 @@ export default function TestCasePage() {
         </div>
       )}
 
-      {/* Token usage card — shown after automation/run completes */}
-      {tokenUsage && (automatePhase === 'done' || runPhase === 'done') && (
+      {/* Token usage card — shown live during automation and after completion */}
+      {(tokenCalls.length > 0 || (tokenUsage && (automatePhase === 'done' || runPhase === 'done'))) && (
         <div style={{ padding: '8px 24px', background: '#FAFBFF', borderBottom: '1px solid #E8EBF0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'white', border: '1px solid #E8EBF0', borderRadius: 10, padding: '10px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Token Usage</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, color: '#64748B' }}>LLM Calls:</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{fmtNum(tokenUsage.llm_calls)}</span>
+          <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tokenCalls.length > 0 ? 8 : 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Token Usage {automatePhase === 'running' && <span style={{ color: '#7C3AED', animation: 'pulse 1.5s ease-in-out infinite' }}> (live)</span>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, color: '#64748B' }}>Input:</span>
-                <span style={{ fontSize: 13, color: '#0F172A' }}>{fmtNum(tokenUsage.input_tokens)}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, color: '#64748B' }}>Output:</span>
-                <span style={{ fontSize: 13, color: '#0F172A' }}>{fmtNum(tokenUsage.output_tokens)}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, color: '#64748B' }}>Est. Cost:</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#7C3AED' }}>{fmtCost(tokenUsage.input_tokens, tokenUsage.output_tokens)}</span>
-              </div>
+              {tokenCalls.length > 0 && (() => {
+                const last = tokenCalls[tokenCalls.length - 1]
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 12, color: '#64748B' }}>Calls: <b style={{ color: '#0F172A' }}>{last.call_number}</b></span>
+                    <span style={{ fontSize: 12, color: '#64748B' }}>In: <b style={{ color: '#0F172A' }}>{fmtNum(last.cumulative_input)}</b></span>
+                    <span style={{ fontSize: 12, color: '#64748B' }}>Out: <b style={{ color: '#0F172A' }}>{fmtNum(last.cumulative_output)}</b></span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#7C3AED' }}>{fmtCost(last.cumulative_input, last.cumulative_output)}</span>
+                  </div>
+                )
+              })()}
             </div>
+            {tokenCalls.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {tokenCalls.map(tc => (
+                  <div key={tc.call_number} style={{
+                    padding: '4px 8px', borderRadius: 6, fontSize: 11, fontFamily: 'monospace',
+                    background: '#F8FAFC', border: '1px solid #E8EBF0', color: '#475569',
+                  }}>
+                    #{tc.call_number} <span style={{ color: '#2563EB' }}>{fmtNum(tc.input_tokens)}</span>/<span style={{ color: '#059669' }}>{fmtNum(tc.output_tokens)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
 
       {/* Tabs */}
       <div style={{ background: 'white', borderBottom: '1px solid #E8EBF0', padding: '0 24px', display: 'flex', flexShrink: 0 }}>
