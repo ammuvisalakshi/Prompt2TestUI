@@ -84,7 +84,6 @@ export default function TestCasePage() {
   const [automateError, setAutomateError] = useState<string | null>(null)
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showReAutomateConfirm, setShowReAutomateConfirm] = useState(false)
-  const [resumeAvailable, setResumeAvailable] = useState<{ fromStep: number; passedCount: number } | null>(null)
   const [, setTokenUsage] = useState<TokenInfo | null>(null)
   const [tokenCalls, setTokenCalls] = useState<TokenCall[]>([])
   const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
@@ -234,15 +233,22 @@ export default function TestCasePage() {
     }
   }
 
-  async function automateTest(resumeFromStep?: number) {
+  async function automateTest(forceFromScratch?: boolean) {
     if (!tc || automatePhase === 'starting' || automatePhase === 'running') return
     const planSteps = (tc.planSteps ?? []) as PlanStep[]
     if (!planSteps.length) return
 
-    // Check if we have a saved replay script → use smart_replay instead of full automate
     const existingReplay = ((tc as any).replayScript ?? []) as object[]
-    // Smart replay only when NOT resuming — resume uses automate mode with replay prefix
-    const useSmartReplay = existingReplay.length > 0 && !resumeFromStep
+    const savedSteps = (tc.steps ?? []) as AutoStep[]
+
+    // Auto-detect partial progress: if saved steps have failures, auto-resume from first failed step
+    const passedSteps = savedSteps.filter(s => s.status === 'passed')
+    const failedSteps = savedSteps.filter(s => s.status === 'failed')
+    const hasPartialProgress = !forceFromScratch && passedSteps.length > 0 && failedSteps.length > 0 && existingReplay.length > 0
+    const resumeFromStep = hasPartialProgress ? Math.min(...failedSteps.map(s => s.stepNumber)) : undefined
+
+    // Smart replay only when ALL steps passed previously (full script, no failures)
+    const useSmartReplay = existingReplay.length > 0 && !resumeFromStep && !forceFromScratch
 
     setAutomatePhase('starting')
     setAutomateResult(null)
@@ -705,19 +711,7 @@ export default function TestCasePage() {
                 {(tc.env || env) === 'dev' && (
                   isAutomated ? (
                     <button
-                      onClick={() => {
-                        // Check if partial progress exists for resume option
-                        const savedSteps = (tc.steps ?? []) as AutoStep[]
-                        const passedSteps = savedSteps.filter(s => s.status === 'passed')
-                        const failedSteps = savedSteps.filter(s => s.status === 'failed')
-                        if (passedSteps.length > 0 && failedSteps.length > 0) {
-                          const firstFailedStep = Math.min(...failedSteps.map(s => s.stepNumber))
-                          setResumeAvailable({ fromStep: firstFailedStep, passedCount: passedSteps.length })
-                        } else {
-                          setResumeAvailable(null)
-                        }
-                        setShowReAutomateConfirm(true)
-                      }}
+                      onClick={() => setShowReAutomateConfirm(true)}
                       disabled={automatePhase === 'starting' || automatePhase === 'running'}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, background: 'white', color: '#D97706', border: '1px solid #FCD34D', cursor: (automatePhase === 'starting' || automatePhase === 'running') ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, opacity: (automatePhase === 'starting' || automatePhase === 'running') ? 0.5 : 1 }}
                       onMouseEnter={e => { if (automatePhase === 'idle') { (e.currentTarget as HTMLButtonElement).style.background = '#FFFBEB' } }}
@@ -856,59 +850,55 @@ export default function TestCasePage() {
         </div>
       </div>
 
-      {/* Re-Automate confirmation dialog (with resume option) */}
-      {showReAutomateConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 14, padding: '28px 28px 22px', maxWidth: 460, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            {resumeAvailable ? (
-              <>
-                <div style={{ fontSize: 22, marginBottom: 10 }}>▶️</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>Resume or start over?</div>
-                <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, marginBottom: 16 }}>
-                  <strong style={{ color: '#166534' }}>{resumeAvailable.passedCount} step{resumeAvailable.passedCount !== 1 ? 's' : ''} passed</strong> before the test failed.
-                  You can resume from <strong style={{ color: '#0F172A' }}>step {resumeAvailable.fromStep}</strong> (replay passed steps, then LLM-automate the rest) or start a fresh automation from scratch.
-                </div>
+      {/* Re-Automate confirmation dialog */}
+      {showReAutomateConfirm && (() => {
+        const savedSteps = (tc.steps ?? []) as AutoStep[]
+        const passedCount = savedSteps.filter(s => s.status === 'passed').length
+        const failedCount = savedSteps.filter(s => s.status === 'failed').length
+        const willResume = passedCount > 0 && failedCount > 0 && ((tc as any).replayScript ?? []).length > 0
+        const firstFailed = willResume ? Math.min(...savedSteps.filter(s => s.status === 'failed').map(s => s.stepNumber)) : 0
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ background: 'white', border: '1px solid #E8EBF0', borderRadius: 14, padding: '28px 28px 22px', maxWidth: 460, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+              <div style={{ fontSize: 22, marginBottom: 10 }}>{willResume ? '▶️' : '⚠️'}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>
+                {willResume ? `Resume from step ${firstFailed}?` : 'Re-automate this test?'}
+              </div>
+              <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, marginBottom: willResume ? 16 : 22 }}>
+                {willResume ? (
+                  <>
+                    <strong style={{ color: '#166534' }}>{passedCount} step{passedCount !== 1 ? 's' : ''} already passed</strong> and saved.
+                    Re-automating will replay those instantly (no LLM cost), then use AI only from step {firstFailed} onwards.
+                  </>
+                ) : (
+                  <>This will run a new LLM-driven automation session and <strong style={{ color: '#0F172A' }}>erase the previously saved steps</strong>.</>
+                )}
+              </div>
+              {willResume && (
                 <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: '10px 14px', marginBottom: 18, fontSize: 12, color: '#166534', lineHeight: 1.5 }}>
-                  Resume replays {resumeAvailable.passedCount} saved step{resumeAvailable.passedCount !== 1 ? 's' : ''} instantly (no LLM cost), then uses AI only for the remaining steps.
+                  Saved steps are replayed for free. LLM is only used for step {firstFailed}+.
                 </div>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowReAutomateConfirm(false)}
+                  style={{ padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                >Cancel</button>
+                {willResume && (
                   <button
-                    onClick={() => setShowReAutomateConfirm(false)}
-                    style={{ padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >Cancel</button>
-                  <button
-                    onClick={() => { setShowReAutomateConfirm(false); automateTest() }}
+                    onClick={() => { setShowReAutomateConfirm(false); automateTest(true) }}
                     style={{ padding: '7px 16px', borderRadius: 8, background: 'white', color: '#D97706', border: '1px solid #FCD34D', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >Start Fresh</button>
-                  <button
-                    onClick={() => { setShowReAutomateConfirm(false); automateTest(resumeAvailable.fromStep) }}
-                    style={{ padding: '7px 16px', borderRadius: 8, background: 'linear-gradient(135deg, #059669, #10B981)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 2px 8px rgba(5,150,105,0.35)' }}
-                  >Resume from Step {resumeAvailable.fromStep}</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 22, marginBottom: 10 }}>⚠️</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>Re-automate this test?</div>
-                <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, marginBottom: 22 }}>
-                  This will run a new LLM-driven automation session and <strong style={{ color: '#0F172A' }}>erase the previously saved steps and replay script</strong>. You'll need to save the new steps again after it completes.
-                  <br/><br/>Do you want to proceed?
-                </div>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => setShowReAutomateConfirm(false)}
-                    style={{ padding: '7px 16px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >Cancel</button>
-                  <button
-                    onClick={() => { setShowReAutomateConfirm(false); automateTest() }}
-                    style={{ padding: '7px 16px', borderRadius: 8, background: 'white', color: '#D97706', border: '1px solid #FCD34D', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >Yes, Re-Automate</button>
-                </div>
-              </>
-            )}
+                  >Start Fresh Instead</button>
+                )}
+                <button
+                  onClick={() => { setShowReAutomateConfirm(false); automateTest() }}
+                  style={{ padding: '7px 16px', borderRadius: 8, background: willResume ? 'linear-gradient(135deg, #059669, #10B981)' : 'linear-gradient(135deg, #7C3AED, #4F46E5)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: willResume ? '0 2px 8px rgba(5,150,105,0.35)' : '0 2px 8px rgba(124,58,237,0.35)' }}
+                >{willResume ? `Resume from Step ${firstFailed}` : 'Yes, Re-Automate'}</button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       </div>{/* end left: tabs + steps */}
 
