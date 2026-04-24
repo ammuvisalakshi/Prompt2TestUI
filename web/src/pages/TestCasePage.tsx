@@ -38,8 +38,11 @@ function fmtNum(n: number): string {
   return n.toLocaleString()
 }
 
-function fmtCost(input: number, output: number): string {
-  const cost = (input / 1_000_000) * 3 + (output / 1_000_000) * 15
+function fmtCost(input: number, output: number, model: 'sonnet' | 'haiku' = 'sonnet'): string {
+  const rates = model === 'haiku'
+    ? { input: 0.80, output: 4.00 }   // Haiku pricing per 1M tokens
+    : { input: 3.00, output: 15.00 }  // Sonnet pricing per 1M tokens
+  const cost = (input / 1_000_000) * rates.input + (output / 1_000_000) * rates.output
   return cost < 0.005 ? '<$0.01' : `~$${cost.toFixed(2)}`
 }
 
@@ -881,6 +884,10 @@ export default function TestCasePage() {
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', marginBottom: 8 }}>SESSION TOTALS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: '#64748B' }}>Model</span>
+                    <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 11 }}>{execMode === 'smart_replay' ? 'Haiku' : 'Sonnet'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                     <span style={{ color: '#64748B' }}>LLM Calls</span>
                     <span style={{ fontWeight: 600, color: '#0F172A' }}>{last.call_number}</span>
                   </div>
@@ -894,7 +901,7 @@ export default function TestCasePage() {
                   </div>
                   <div style={{ borderTop: '1px solid #E8EBF0', paddingTop: 6, marginTop: 2, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                     <span style={{ color: '#64748B' }}>Est. Cost</span>
-                    <span style={{ fontWeight: 600, color: '#7C3AED' }}>{fmtCost(last.cumulative_input, last.cumulative_output)}</span>
+                    <span style={{ fontWeight: 600, color: '#7C3AED' }}>{fmtCost(last.cumulative_input, last.cumulative_output, execMode === 'smart_replay' ? 'haiku' : 'sonnet')}</span>
                   </div>
                 </div>
               </div>
