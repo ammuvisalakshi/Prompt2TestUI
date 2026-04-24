@@ -119,6 +119,8 @@ export default function TestCasePage() {
   const resultStepsRef = useRef<AutoStep[]>([])
   const abortedRef = useRef(false)
   const sessionInfoRef = useRef<{ task_arn?: string; cluster?: string }>({})
+  const stepEventQueue = useRef<{ step: number; status: string }[]>([])
+  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const onMouseDown = useCallback(() => {
     isDragging.current = true
@@ -223,6 +225,8 @@ export default function TestCasePage() {
     setTokenUsage(null)
     setTokenCalls([])
     setLiveStepStatuses({})
+    stepEventQueue.current = []
+    if (stepTimerRef.current) { clearTimeout(stepTimerRef.current); stepTimerRef.current = null }
     replayScriptRef.current = []
     abortedRef.current = false
 
@@ -284,6 +288,18 @@ export default function TestCasePage() {
         }
       }
 
+      // Build replay-command-index → plan-step-number mapping
+      // Each plan step may have multiple playwright_calls; map command indices to their parent step
+      const cmdToPlanStep: Record<number, number> = {}
+      let cmdIdx = 1
+      for (const s of savedSteps) {
+        const callCount = (s.playwright_calls ?? []).length
+        for (let c = 0; c < (callCount || 1); c++) {
+          cmdToPlanStep[cmdIdx] = s.stepNumber
+          cmdIdx++
+        }
+      }
+
       const raw = await callAgent(agentPayload, sessionId.current, (ev) => {
         if (ev.event === 'token_usage') {
           const t: TokenCall = {
@@ -296,10 +312,33 @@ export default function TestCasePage() {
           setTokenCalls(prev => [...prev, t])
         }
         // Live step-by-step updates (streamed from smart_replay / resume)
+        // Map replay command index → plan step number and stagger display
         if (ev.event === 'step_result') {
-          const stepNum = ev.step as number
+          const replayIdx = ev.step as number
+          const planStep = cmdToPlanStep[replayIdx] ?? replayIdx
           const status = ev.status as string
-          setLiveStepStatuses(prev => ({ ...prev, [stepNum]: status }))
+          // Only queue if this plan step hasn't been queued yet (avoid duplicates from multi-command steps)
+          const alreadyQueued = stepEventQueue.current.some(e => e.step === planStep)
+          if (!alreadyQueued) {
+            stepEventQueue.current.push({ step: planStep, status })
+          }
+          // Update status for already-queued step if it failed (override passed → failed)
+          if (status === 'failed') {
+            const existing = stepEventQueue.current.find(e => e.step === planStep)
+            if (existing) existing.status = 'failed'
+          }
+          if (!stepTimerRef.current) {
+            const processNext = () => {
+              const next = stepEventQueue.current.shift()
+              if (next) {
+                setLiveStepStatuses(prev => ({ ...prev, [next.step]: next.status }))
+                stepTimerRef.current = setTimeout(processNext, 600)
+              } else {
+                stepTimerRef.current = null
+              }
+            }
+            processNext()
+          }
         }
       })
 
