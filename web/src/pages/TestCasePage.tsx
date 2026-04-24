@@ -256,8 +256,7 @@ export default function TestCasePage() {
       sessionInfoRef.current = sessionInfo
 
       URL.revokeObjectURL(loadingUrl)
-      // Set the noVNC URL on the loading page — its retry script will connect when ready
-      if (newTab) (newTab as any).__novnc_url = `${session.novnc_url}?autoconnect=true&resize=scale`
+      if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       setPhase('running')
 
       // Build agent payload based on mode
