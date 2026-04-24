@@ -107,6 +107,7 @@ export default function TestCasePage() {
   const [stepsSaveState, setStepsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showStartFreshConfirm, setShowStartFreshConfirm] = useState(false)
   const [, setTokenUsage] = useState<TokenInfo | null>(null)
+  const [liveStepStatuses, setLiveStepStatuses] = useState<Record<number, string>>({}) // stepNumber → status during execution
   const [tokenCalls, setTokenCalls] = useState<TokenCall[]>([])
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set())
   const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
@@ -221,6 +222,7 @@ export default function TestCasePage() {
     setStepsSaveState('idle')
     setTokenUsage(null)
     setTokenCalls([])
+    setLiveStepStatuses({})
     replayScriptRef.current = []
     abortedRef.current = false
 
@@ -293,6 +295,12 @@ export default function TestCasePage() {
             cumulative_output: ev.cumulative_output as number,
           }
           setTokenCalls(prev => [...prev, t])
+        }
+        // Live step-by-step updates (streamed from smart_replay / resume)
+        if (ev.event === 'step_result') {
+          const stepNum = ev.step as number
+          const status = ev.status as string
+          setLiveStepStatuses(prev => ({ ...prev, [stepNum]: status }))
         }
       })
 
@@ -428,13 +436,30 @@ export default function TestCasePage() {
   const firstFailedStep = failedSteps.length > 0 ? Math.min(...failedSteps.map(s => s.stepNumber)) : null
 
   // Build unified step list: plan steps + automation overlay
+  // Determine which step is currently executing (next step after last live status)
+  const liveStepNumbers = Object.keys(liveStepStatuses).map(Number)
+  const currentRunningStep = isActive && liveStepNumbers.length > 0
+    ? Math.max(...liveStepNumbers) + 1
+    : isActive ? 1 : null
+
   const unifiedSteps = planSteps.map(ps => {
     const auto = autoSteps.find(a => a.stepNumber === ps.step)
+    // During execution, live statuses take priority
+    const liveStatus = liveStepStatuses[ps.step]
+    const isRunningNow = currentRunningStep === ps.step
+    let status: string
+    if (liveStatus) {
+      status = liveStatus
+    } else if (isRunningNow) {
+      status = 'running'
+    } else {
+      status = auto?.status ?? 'pending'
+    }
     return {
       stepNumber: ps.step,
       action: ps.action,
       expected: ps.expected,
-      status: (auto?.status ?? 'pending') as 'passed' | 'failed' | 'skipped' | 'pending',
+      status: status as 'passed' | 'failed' | 'skipped' | 'running' | 'pending',
       playwrightCalls: (auto?.playwright_calls ?? []) as PlaywrightCall[],
     }
   })
@@ -635,20 +660,22 @@ export default function TestCasePage() {
           {planSteps.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {unifiedSteps.map((step) => {
-                const isPassed = step.status === 'passed'
+                const isPassed = step.status === 'passed' || step.status === 'fixed'
                 const isFailed = step.status === 'failed'
                 const isSkipped = step.status === 'skipped'
+                const isRunningStep = step.status === 'running'
                 const isPending = step.status === 'pending'
                 const hasCalls = step.playwrightCalls.length > 0
                 const isExpanded = expandedSteps.has(step.stepNumber)
 
                 // Badge colors
-                const badgeBg = isPassed ? '#DCFCE7' : isFailed ? '#FEE2E2' : isSkipped ? '#FFFBEB' : '#EDE9FE'
-                const badgeColor = isPassed ? '#166534' : isFailed ? '#991B1B' : isSkipped ? '#92400E' : '#7C3AED'
-                const badgeBorder = isPassed ? '#BBF7D0' : isFailed ? '#FECACA' : isSkipped ? '#FDE68A' : '#DDD6FE'
+                const badgeBg = isPassed ? '#DCFCE7' : isFailed ? '#FEE2E2' : isSkipped ? '#FFFBEB' : isRunningStep ? '#EDE9FE' : '#EDE9FE'
+                const badgeColor = isPassed ? '#166534' : isFailed ? '#991B1B' : isSkipped ? '#92400E' : isRunningStep ? '#7C3AED' : '#7C3AED'
+                const badgeBorder = isPassed ? '#BBF7D0' : isFailed ? '#FECACA' : isSkipped ? '#FDE68A' : isRunningStep ? '#C4B5FD' : '#DDD6FE'
+                const cardBorder = isFailed ? '#FECACA' : isRunningStep ? '#C4B5FD' : '#E8EBF0'
 
                 return (
-                  <div key={step.stepNumber} style={{ background: 'white', borderRadius: 12, border: `1px solid ${isFailed ? '#FECACA' : '#E8EBF0'}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' }}>
+                  <div key={step.stepNumber} style={{ background: 'white', borderRadius: 12, border: `1px solid ${cardBorder}`, overflow: 'hidden', boxShadow: isRunningStep ? '0 0 0 1px #C4B5FD, 0 4px 16px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
                     {/* Step header */}
                     <div
                       style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px', background: '#FAFBFF', cursor: hasCalls ? 'pointer' : 'default' }}
@@ -677,7 +704,18 @@ export default function TestCasePage() {
 
                       {/* Status + expand indicator */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        {!isPending && (
+                        {isRunningStep && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, color: '#7C3AED',
+                            background: '#EDE9FE', border: '1px solid #C4B5FD',
+                            borderRadius: 6, padding: '2px 8px',
+                            display: 'flex', alignItems: 'center', gap: 5,
+                          }}>
+                            <div style={{ width: 10, height: 10, border: '2px solid #7C3AED', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                            RUNNING
+                          </span>
+                        )}
+                        {!isPending && !isRunningStep && (
                           <span style={{
                             fontSize: 11, fontWeight: 700, color: badgeColor,
                             background: badgeBg, border: `1px solid ${badgeBorder}`,
