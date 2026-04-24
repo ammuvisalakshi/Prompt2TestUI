@@ -601,7 +601,7 @@ export default function TestCasePage() {
         <div style={{ fontSize: 13, fontWeight: 600, color: '#64748B' }}>
           Test Steps
           {isAutomated && <span style={{ marginLeft: 8, fontSize: 11, color: '#94A3B8' }}>
-            {passedSteps.length}/{planSteps.length} passed
+            {unifiedSteps.filter(s => s.status === 'passed' || s.status === 'fixed').length}/{planSteps.length} passed
           </span>}
         </div>
 
