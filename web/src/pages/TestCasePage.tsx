@@ -459,7 +459,7 @@ export default function TestCasePage() {
       stepNumber: ps.step,
       action: ps.action,
       expected: ps.expected,
-      status: status as 'passed' | 'failed' | 'skipped' | 'running' | 'pending',
+      status: status as 'passed' | 'failed' | 'skipped' | 'fixed' | 'running' | 'pending',
       playwrightCalls: (auto?.playwright_calls ?? []) as PlaywrightCall[],
     }
   })
