@@ -449,22 +449,29 @@ export default function TestCasePage() {
   const firstFailedStep = failedSteps.length > 0 ? Math.min(...failedSteps.map(s => s.stepNumber)) : null
 
   // Build unified step list: plan steps + automation overlay
-  // Determine which step is currently executing (next step after last live status)
   const liveStepNumbers = Object.keys(liveStepStatuses).map(Number)
-  const currentRunningStep = isActive && liveStepNumbers.length > 0
+  // Only show "running" indicator after at least one live event has arrived
+  // (means execution has actually started, not just "Starting..." phase)
+  const hasLiveEvents = liveStepNumbers.length > 0
+  const currentRunningStep = isActive && hasLiveEvents
     ? Math.max(...liveStepNumbers) + 1
-    : isActive ? 1 : null
+    : null
 
   const unifiedSteps = planSteps.map(ps => {
     const auto = autoSteps.find(a => a.stepNumber === ps.step)
-    // During execution, live statuses take priority
     const liveStatus = liveStepStatuses[ps.step]
     const isRunningNow = currentRunningStep === ps.step
     let status: string
-    if (liveStatus) {
+    if (isActive && !hasLiveEvents) {
+      // Execution starting but no events yet — show all as pending
+      status = 'pending'
+    } else if (liveStatus) {
       status = liveStatus
     } else if (isRunningNow) {
       status = 'running'
+    } else if (isActive) {
+      // During execution, steps without live events are pending (not saved status)
+      status = 'pending'
     } else {
       status = auto?.status ?? 'pending'
     }
