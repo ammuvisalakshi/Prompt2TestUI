@@ -293,14 +293,22 @@ export default function TestCasePage() {
         replayScriptRef.current = rawScript
       }
 
-      resultStepsRef.current = (parsed.result?.steps ?? parsed.steps ?? []).map((s: any, i: number) => ({
-        stepNumber: s.stepNumber ?? i + 1,
-        type: 'browser',
-        action: s.action ?? '',
-        detail: s.detail ?? '',
-        status: s.status ?? 'passed',
-        playwright_calls: s.playwright_calls ?? [],
-      }))
+      resultStepsRef.current = (parsed.result?.steps ?? parsed.steps ?? []).map((s: any, i: number) => {
+        const stepNum = s.stepNumber ?? i + 1
+        // Preserve playwright_calls from previously saved steps if new result doesn't have them
+        const savedStep = savedSteps.find(ss => ss.stepNumber === stepNum)
+        const calls = (s.playwright_calls && s.playwright_calls.length > 0)
+          ? s.playwright_calls
+          : (savedStep?.playwright_calls ?? [])
+        return {
+          stepNumber: stepNum,
+          type: 'browser',
+          action: s.action || savedStep?.action || '',
+          detail: s.detail || savedStep?.detail || '',
+          status: s.status ?? 'passed',
+          playwright_calls: calls,
+        }
+      })
 
       saveRunRecord({ testCaseId: tc.id, env: tc.env, result: passed ? 'PASS' : 'FAIL', summary }).catch(() => {})
 
