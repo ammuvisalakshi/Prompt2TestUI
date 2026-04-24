@@ -238,6 +238,10 @@ export default function TestCasePage() {
     const planSteps = (tc.planSteps ?? []) as PlanStep[]
     if (!planSteps.length) return
 
+    // Check if we have a saved replay script → use smart_replay instead of full automate
+    const existingReplay = ((tc as any).replayScript ?? []) as object[]
+    const useSmartReplay = existingReplay.length > 0
+
     setAutomatePhase('starting')
     setAutomateResult(null)
     setAutomateError(null)
@@ -251,7 +255,7 @@ export default function TestCasePage() {
     const tabTitle = `${tc.id} — ${label}`
     const loadingHtmlWithTitle = loadingHtml.replace(
       '<title>Prompt2Test — Starting…</title>',
-      `<title>${tabTitle} | Automating…</title>`
+      `<title>${tabTitle} | ${useSmartReplay ? 'Replaying' : 'Automating'}…</title>`
     )
     const loadingBlob = new Blob([loadingHtmlWithTitle], { type: 'text/html' })
     const loadingUrl = URL.createObjectURL(loadingBlob)
@@ -279,16 +283,31 @@ export default function TestCasePage() {
       if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       setAutomatePhase('running')
 
-      const raw = await callAgent({
-        inputText: label,
-        mode: 'automate',
-        plan: derivedPlan,
-        sessionId: sessionId.current,
-        task_arn: session.task_arn,
-        cluster: session.cluster,
-        mcp_endpoint: session.mcp_endpoint,
-        serviceConfig,
-      }, sessionId.current, (ev) => {
+      // Choose mode: smart_replay (saved script exists) or automate (first run)
+      const agentPayload = useSmartReplay
+        ? {
+            inputText: label,
+            mode: 'smart_replay',
+            replay_script: existingReplay,
+            plan_steps: planSteps.map(s => ({ action: s.action, expected: s.expected, detail: s.expected })),
+            sessionId: sessionId.current,
+            task_arn: session.task_arn,
+            cluster: session.cluster,
+            mcp_endpoint: session.mcp_endpoint,
+            serviceConfig,
+          }
+        : {
+            inputText: label,
+            mode: 'automate',
+            plan: derivedPlan,
+            sessionId: sessionId.current,
+            task_arn: session.task_arn,
+            cluster: session.cluster,
+            mcp_endpoint: session.mcp_endpoint,
+            serviceConfig,
+          }
+
+      const raw = await callAgent(agentPayload, sessionId.current, (ev) => {
         if (ev.event === 'token_usage') {
           const tc: TokenCall = {
             call_number: ev.call_number as number,
@@ -302,7 +321,6 @@ export default function TestCasePage() {
       })
 
       const result = JSON.parse(raw)
-      // Check both top-level error (from main.py exception handler) and nested result error
       const topError = result.error
       const innerError = result.result?.error
       if (topError) throw new Error(topError as string)
@@ -313,7 +331,8 @@ export default function TestCasePage() {
       const summary = result.result?.summary ?? result.summary ?? ''
       const tu = result.result?.token_usage ?? result.token_usage
       if (tu) setTokenUsage(tu as TokenInfo)
-      // Templatize replay script on frontend: replace config values with {service.KEY}
+
+      // Get the replay script (may be updated if smart_replay fixed steps)
       const rawScript = result.result?.replay_script ?? result.replay_script ?? []
       if (serviceConfig.length > 0) {
         const replacements = serviceConfig
@@ -338,6 +357,16 @@ export default function TestCasePage() {
       }))
 
       saveRunRecord({ testCaseId: tc.id, env: tc.env, result: passed ? 'PASS' : 'FAIL', summary }).catch(() => {})
+
+      // Auto-save replay script on PASS — no manual "Save Steps" needed
+      if (passed && replayScriptRef.current.length > 0) {
+        updateReplayScript(tc.id, replayScriptRef.current).catch(() => {})
+        if (resultStepsRef.current.length > 0) {
+          updateTestCaseSteps(tc.id, resultStepsRef.current as object[]).catch(() => {})
+        }
+        setStepsSaveState('saved')
+      }
+
       setAutomateResult({ passed, summary })
       setAutomatePhase('done')
       tabRef.current?.close()
@@ -349,7 +378,6 @@ export default function TestCasePage() {
       setAutomateError(err instanceof Error ? err.message : String(err))
       setAutomatePhase('error')
     } finally {
-      // Always stop the ECS task — prevents zombie tasks on failure, abort, or error
       if (sessionInfo.task_arn && sessionInfo.cluster) {
         callAgent({ inputText: '', mode: 'stop_session', task_arn: sessionInfo.task_arn, cluster: sessionInfo.cluster }, sessionId.current).catch(() => {})
       }
@@ -477,8 +505,12 @@ export default function TestCasePage() {
           )}
           <span style={{ fontWeight: 600 }}>
             {automatePhase === 'starting' && 'Launching browser… (~60s for Fargate cold start)'}
-            {automatePhase === 'running' && 'Automating test — watch it live in the browser tab'}
-            {automatePhase === 'done' && (automateResult?.passed ? '✅ Test Passed — save automated steps?' : '❌ Test Failed')}
+            {automatePhase === 'running' && (tokenCalls.length === 0
+              ? 'Replaying saved steps — watch it live in the browser tab'
+              : 'AI fixing a step — watch it live in the browser tab')}
+            {automatePhase === 'done' && (automateResult?.passed
+              ? (stepsSaveState === 'saved' ? '✅ Test Passed — steps auto-saved' : '✅ Test Passed — save automated steps?')
+              : '❌ Test Failed')}
             {automatePhase === 'error' && '⚠️ Automation failed'}
           </span>
           {(automatePhase === 'starting' || automatePhase === 'running') && (
