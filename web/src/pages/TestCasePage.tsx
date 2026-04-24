@@ -54,13 +54,41 @@ const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pro
 .dot{width:6px;height:6px;border-radius:50%;background:#334155;flex-shrink:0}
 .dot.done{background:#7c3aed}.dot.active{background:#a855f7;animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}</style></head>
-<body><div class="icon">🎭</div><h2>Launching browser…</h2><p>Starting a dedicated Fargate task for your session</p>
+<body><div class="icon">🎭</div><h2 id="heading">Launching browser…</h2><p id="status">Starting a dedicated Fargate task for your session</p>
 <div class="track"><div class="bar"></div></div>
 <div class="steps">
 <div class="step"><div class="dot done"></div>ECS task scheduled</div>
-<div class="step"><div class="dot active"></div>Pulling container image &amp; starting Chromium</div>
-<div class="step"><div class="dot"></div>noVNC ready — connecting live view</div>
-</div></body></html>`
+<div class="step"><div class="dot" id="dot2"></div><span id="step2">Pulling container image &amp; starting Chromium</span></div>
+<div class="step"><div class="dot" id="dot3"></div><span id="step3">noVNC ready — connecting live view</span></div>
+</div>
+<script>
+// Auto-retry: parent page sets window.__novnc_url, we keep trying until it loads
+var retryCount = 0;
+var maxRetries = 30;
+function tryConnect() {
+  var url = window.__novnc_url;
+  if (!url) { setTimeout(tryConnect, 1000); return; }
+  document.getElementById('dot2').className = 'dot done';
+  document.getElementById('dot3').className = 'dot active';
+  document.getElementById('heading').textContent = 'Connecting to live view…';
+  document.getElementById('status').textContent = 'Waiting for HTTPS certificate (attempt ' + (retryCount+1) + ')';
+  fetch(url, { mode: 'no-cors' })
+    .then(function() { window.location.href = url; })
+    .catch(function() {
+      retryCount++;
+      if (retryCount < maxRetries) {
+        document.getElementById('status').textContent = 'Waiting for HTTPS certificate (attempt ' + (retryCount+1) + ')… retrying in 3s';
+        setTimeout(tryConnect, 3000);
+      } else {
+        document.getElementById('heading').textContent = 'Connection failed';
+        document.getElementById('status').textContent = 'Could not connect to noVNC. The test is still running.';
+        document.getElementById('dot3').className = 'dot';
+      }
+    });
+}
+setTimeout(tryConnect, 1000);
+</script>
+</body></html>`
 
 export default function TestCasePage() {
   const { id } = useParams<{ id: string }>()
@@ -226,7 +254,8 @@ export default function TestCasePage() {
       sessionInfoRef.current = sessionInfo
 
       URL.revokeObjectURL(loadingUrl)
-      if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+      // Set the noVNC URL on the loading page — its retry script will connect when ready
+      if (newTab) (newTab as any).__novnc_url = `${session.novnc_url}?autoconnect=true&resize=scale`
       setPhase('running')
 
       // Build agent payload based on mode
