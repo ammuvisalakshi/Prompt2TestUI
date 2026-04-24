@@ -390,7 +390,10 @@ export default function TestCasePage() {
         if (resultStepsRef.current.length > 0) {
           updateTestCaseSteps(tc.id, resultStepsRef.current as object[]).catch(() => {})
         }
+        // Update local state so UI reflects the test is now automated
+        setTc(prev => prev ? { ...prev, steps: resultStepsRef.current, replayScript: replayScriptRef.current, lastResult: 'PASS' } as any : prev)
         setStepsSaveState('saved')
+        setActiveTab('automated')
       }
 
       // Progressive save: on FAIL, save passed steps + their partial replay script
@@ -422,8 +425,9 @@ export default function TestCasePage() {
           updateTestCaseSteps(tc.id, resultStepsRef.current as object[]).catch(() => {})
           updateReplayScript(tc.id, scriptToSave).catch(() => {})
           // Update local state so resume dialog sees partial progress
-          setTc(prev => prev ? { ...prev, steps: resultStepsRef.current, replayScript: scriptToSave } as any : prev)
+          setTc(prev => prev ? { ...prev, steps: resultStepsRef.current, replayScript: scriptToSave, lastResult: 'FAIL' } as any : prev)
           setStepsSaveState('saved')
+          setActiveTab('automated')
         }
       }
 
