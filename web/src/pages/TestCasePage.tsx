@@ -675,7 +675,16 @@ export default function TestCasePage() {
                 const cardBorder = isFailed ? '#FECACA' : isRunningStep ? '#C4B5FD' : '#E8EBF0'
 
                 return (
-                  <div key={step.stepNumber} style={{ background: 'white', borderRadius: 12, border: `1px solid ${cardBorder}`, overflow: 'hidden', boxShadow: isRunningStep ? '0 0 0 1px #C4B5FD, 0 4px 16px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
+                  <div
+                    key={step.stepNumber}
+                    ref={el => { if (el && isRunningStep) el.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
+                    style={{
+                      background: isPassed && liveStepStatuses[step.stepNumber] ? '#F0FDF4' : 'white',
+                      borderRadius: 12, border: `1px solid ${cardBorder}`, overflow: 'hidden',
+                      boxShadow: isRunningStep ? '0 0 0 1px #C4B5FD, 0 4px 16px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
                     {/* Step header */}
                     <div
                       style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px', background: '#FAFBFF', cursor: hasCalls ? 'pointer' : 'default' }}
