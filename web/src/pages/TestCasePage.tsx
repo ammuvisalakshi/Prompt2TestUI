@@ -291,18 +291,6 @@ export default function TestCasePage() {
         }
       }
 
-      // Build replay-command-index → plan-step-number mapping
-      // Each plan step may have multiple playwright_calls; map command indices to their parent step
-      const cmdToPlanStep: Record<number, number> = {}
-      let cmdIdx = 1
-      for (const s of savedSteps) {
-        const callCount = (s.playwright_calls ?? []).length
-        for (let c = 0; c < (callCount || 1); c++) {
-          cmdToPlanStep[cmdIdx] = s.stepNumber
-          cmdIdx++
-        }
-      }
-
       const raw = await callAgent(agentPayload, sessionId.current, (ev) => {
         if (ev.event === 'token_usage') {
           const t: TokenCall = {
@@ -314,38 +302,17 @@ export default function TestCasePage() {
           }
           setTokenCalls(prev => [...prev, t])
         }
-        // Live step-by-step updates (streamed from smart_replay / resume)
-        // Map replay command index → plan step number and stagger display
+        // Live step-by-step updates — verified replay sends plan step numbers directly
         if (ev.event === 'step_result') {
-          const replayIdx = ev.step as number
-          const planStep = cmdToPlanStep[replayIdx] ?? replayIdx
+          const stepNum = ev.step as number
           const status = ev.status as string
-          // Only queue if this plan step hasn't been queued yet (avoid duplicates from multi-command steps)
-          const alreadyQueued = stepEventQueue.current.some(e => e.step === planStep)
-          if (!alreadyQueued) {
-            stepEventQueue.current.push({ step: planStep, status })
-          }
-          // Update status for already-queued step if it failed (override passed → failed)
-          if (status === 'failed') {
-            const existing = stepEventQueue.current.find(e => e.step === planStep)
-            if (existing) existing.status = 'failed'
-          }
-          if (!stepTimerRef.current) {
-            const processNext = () => {
-              const next = stepEventQueue.current.shift()
-              if (next) {
-                setLiveStepStatuses(prev => ({ ...prev, [next.step]: next.status }))
-                stepTimerRef.current = setTimeout(processNext, 600)
-              } else {
-                stepTimerRef.current = null
-              }
-            }
-            processNext()
+          if (stepNum > 0) {  // skip step 0 (noVNC wait event)
+            setLiveStepStatuses(prev => ({ ...prev, [stepNum]: status }))
           }
         }
       })
 
-      // Wait for staggered step events to finish displaying before showing final result
+      // Brief pause to let final step status render before showing result
       while (stepEventQueue.current.length > 0 || stepTimerRef.current) {
         await new Promise(resolve => setTimeout(resolve, 200))
       }
