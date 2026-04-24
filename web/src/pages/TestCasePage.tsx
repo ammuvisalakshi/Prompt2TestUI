@@ -238,8 +238,22 @@ export default function TestCasePage() {
     const planSteps = (tc.planSteps ?? []) as PlanStep[]
     if (!planSteps.length) return
 
-    const existingReplay = ((tc as any).replayScript ?? []) as object[]
+    let existingReplay = ((tc as any).replayScript ?? []) as PlaywrightCall[]
     const savedSteps = (tc.steps ?? []) as AutoStep[]
+
+    // Fallback: if no replay script saved but steps have playwright_calls, rebuild it
+    if (existingReplay.length === 0 && savedSteps.length > 0) {
+      const rebuilt: PlaywrightCall[] = []
+      for (const s of savedSteps) {
+        for (const call of (s.playwright_calls ?? [])) {
+          rebuilt.push(call)
+        }
+      }
+      if (rebuilt.length > 0) {
+        console.log(`[automateTest] rebuilt replay script from ${savedSteps.length} saved steps (${rebuilt.length} calls)`)
+        existingReplay = rebuilt
+      }
+    }
 
     // Auto-detect partial progress: if saved steps have failures, auto-resume from first failed step
     const passedSteps = savedSteps.filter(s => s.status === 'passed')
@@ -247,7 +261,7 @@ export default function TestCasePage() {
     const hasPartialProgress = !forceFromScratch && passedSteps.length > 0 && failedSteps.length > 0 && existingReplay.length > 0
     const resumeFromStep = hasPartialProgress ? Math.min(...failedSteps.map(s => s.stepNumber)) : undefined
 
-    // Smart replay only when ALL steps passed previously (full script, no failures)
+    // Smart replay when all steps passed previously (full script), resume when partial progress
     const useSmartReplay = existingReplay.length > 0 && !resumeFromStep && !forceFromScratch
 
     setAutomatePhase('starting')
@@ -859,7 +873,10 @@ export default function TestCasePage() {
         const savedSteps = (tc.steps ?? []) as AutoStep[]
         const passedCount = savedSteps.filter(s => s.status === 'passed').length
         const failedCount = savedSteps.filter(s => s.status === 'failed').length
-        const willResume = passedCount > 0 && failedCount > 0 && ((tc as any).replayScript ?? []).length > 0
+        // Check replay script OR rebuild from saved steps' playwright_calls
+        const hasReplayData = ((tc as any).replayScript ?? []).length > 0 ||
+          savedSteps.some(s => (s.playwright_calls ?? []).length > 0)
+        const willResume = passedCount > 0 && failedCount > 0 && hasReplayData
         const firstFailed = willResume ? Math.min(...savedSteps.filter(s => s.status === 'failed').map(s => s.stepNumber)) : 0
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -874,8 +891,10 @@ export default function TestCasePage() {
                     <strong style={{ color: '#166534' }}>{passedCount} step{passedCount !== 1 ? 's' : ''} already passed</strong> and saved.
                     Re-automating will replay those instantly (no LLM cost), then use AI only from step {firstFailed} onwards.
                   </>
+                ) : hasReplayData ? (
+                  <>This will <strong style={{ color: '#166534' }}>replay all saved steps</strong> (no LLM cost). AI is only used if a step fails.</>
                 ) : (
-                  <>This will run a new LLM-driven automation session and <strong style={{ color: '#0F172A' }}>erase the previously saved steps</strong>.</>
+                  <>This will run a new LLM-driven automation session from scratch.</>
                 )}
               </div>
               {willResume && (
