@@ -571,12 +571,11 @@ export default function TestCasePage() {
             {/* Primary action */}
             <button
               onClick={isActive ? stopExecution : () => executeTest()}
-              disabled={phase === 'done'}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8,
                 background: actionGradient, color: 'white', border: 'none',
-                cursor: phase === 'done' ? 'default' : 'pointer',
-                fontSize: 13, fontWeight: 600, opacity: phase === 'done' ? 0.5 : 1,
+                cursor: 'pointer',
+                fontSize: 13, fontWeight: 600,
                 boxShadow: actionShadow,
               }}
             >
