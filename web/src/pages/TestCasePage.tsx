@@ -342,6 +342,11 @@ export default function TestCasePage() {
         }
       })
 
+      // Wait for staggered step events to finish displaying before showing final result
+      while (stepEventQueue.current.length > 0 || stepTimerRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+
       const parsed = JSON.parse(raw)
       if (parsed.error) throw new Error(parsed.error as string)
       if (parsed.result?.error) throw new Error(parsed.result.error as string)
