@@ -203,11 +203,13 @@ export default function TestCasePage() {
         sessionId.current
       )
       const session = JSON.parse(sessionRaw)
+      console.log('[P2T] start_session response:', JSON.stringify(session, null, 2))
       if (session.error) throw new Error(session.error as string)
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
       setCdpWsUrl(session.cdp_ws_url ?? null)
+      console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
       setPhase('running')
 
       // Build agent payload based on mode
