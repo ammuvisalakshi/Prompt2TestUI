@@ -7,6 +7,7 @@ import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps } f
 import { callAgent } from '../lib/agentClient'
 import { useEnv } from '../context/EnvContext'
 import { useTeam } from '../context/TeamContext'
+import CdpViewer from '../components/CdpViewer'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const CONFIG_TABLE = 'prompt2test-config'
@@ -46,52 +47,7 @@ function fmtCost(input: number, output: number, model: 'sonnet' | 'haiku' = 'son
   return cost < 0.005 ? '<$0.01' : `~$${cost.toFixed(2)}`
 }
 
-const loadingHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prompt2Test — Starting…</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;gap:0}
-.icon{font-size:40px;margin-bottom:20px}h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
-.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
-.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 55s cubic-bezier(0.4,0,0.2,1) forwards}
-@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:92%}}
-.steps{margin-top:20px;display:flex;flex-direction:column;gap:6px;width:320px}
-.step{font-size:11px;color:#475569;display:flex;align-items:center;gap:8px}
-.dot{width:6px;height:6px;border-radius:50%;background:#334155;flex-shrink:0}
-.dot.done{background:#7c3aed}.dot.active{background:#a855f7;animation:pulse 1s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}</style></head>
-<body><div class="icon">🎭</div><h2 id="heading">Launching browser…</h2><p id="status">Starting a dedicated Fargate task for your session</p>
-<div class="track"><div class="bar"></div></div>
-<div class="steps">
-<div class="step"><div class="dot done"></div>ECS task scheduled</div>
-<div class="step"><div class="dot" id="dot2"></div><span id="step2">Pulling container image &amp; starting Chromium</span></div>
-<div class="step"><div class="dot" id="dot3"></div><span id="step3">noVNC ready — connecting live view</span></div>
-</div>
-<script>
-// Auto-retry: parent page sets window.__novnc_url, we keep trying until it loads
-var retryCount = 0;
-var maxRetries = 30;
-function tryConnect() {
-  var url = window.__novnc_url;
-  if (!url) { setTimeout(tryConnect, 1000); return; }
-  document.getElementById('dot2').className = 'dot done';
-  document.getElementById('dot3').className = 'dot active';
-  document.getElementById('heading').textContent = 'Connecting to live view…';
-  document.getElementById('status').textContent = 'Waiting for HTTPS certificate (attempt ' + (retryCount+1) + ')';
-  fetch(url, { mode: 'no-cors' })
-    .then(function() { window.location.href = url; })
-    .catch(function() {
-      retryCount++;
-      if (retryCount < maxRetries) {
-        document.getElementById('status').textContent = 'Waiting for HTTPS certificate (attempt ' + (retryCount+1) + ')… retrying in 3s';
-        setTimeout(tryConnect, 3000);
-      } else {
-        document.getElementById('heading').textContent = 'Connection failed';
-        document.getElementById('status').textContent = 'Could not connect to noVNC. The test is still running.';
-        document.getElementById('dot3').className = 'dot';
-      }
-    });
-}
-setTimeout(tryConnect, 1000);
-</script>
-</body></html>`
+const CDP_WS_URL = import.meta.env.VITE_AGENT_WS_URL as string || ''
 
 export default function TestCasePage() {
   const { id } = useParams<{ id: string }>()
@@ -116,7 +72,7 @@ export default function TestCasePage() {
   const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const tabRef = useRef<Window | null>(null)
+  const [cdpHost, setCdpHost] = useState<string | null>(null)
   const sessionId = useRef(crypto.randomUUID())
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
@@ -171,8 +127,7 @@ export default function TestCasePage() {
 
   function stopExecution() {
     abortedRef.current = true
-    tabRef.current?.close()
-    tabRef.current = null
+    setCdpHost(null)
     setPhase('idle')
     setResult(null)
     setExecError(null)
@@ -234,16 +189,7 @@ export default function TestCasePage() {
     abortedRef.current = false
 
     const label = tc.title || tc.description
-    const modeLabel = mode === 'resume' ? `Resuming from step ${resumeFromStep}` : mode === 'smart_replay' ? 'Running test' : 'Automating'
-    const tabTitle = `${tc.id} — ${label}`
-    const loadingHtmlWithTitle = loadingHtml.replace(
-      '<title>Prompt2Test — Starting…</title>',
-      `<title>${tabTitle} | ${modeLabel}…</title>`
-    )
-    const loadingBlob = new Blob([loadingHtmlWithTitle], { type: 'text/html' })
-    const loadingUrl = URL.createObjectURL(loadingBlob)
-    const newTab = window.open(loadingUrl, '_blank')
-    tabRef.current = newTab
+    setCdpHost(null)  // reset viewer while session starts
 
     const derivedPlan = {
       summary: label,
@@ -262,8 +208,7 @@ export default function TestCasePage() {
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
-      URL.revokeObjectURL(loadingUrl)
-      if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+      setCdpHost(session.cdp_host ?? null)
       setPhase('running')
 
       // Build agent payload based on mode
@@ -403,12 +348,9 @@ export default function TestCasePage() {
 
       setResult({ passed, summary })
       setPhase('done')
-      tabRef.current?.close()
-      tabRef.current = null
+      setCdpHost(null)
     } catch (err) {
-      URL.revokeObjectURL(loadingUrl)
-      tabRef.current?.close()
-      tabRef.current = null
+      setCdpHost(null)
       setExecError(err instanceof Error ? err.message : String(err))
       setPhase('error')
     } finally {
@@ -609,6 +551,13 @@ export default function TestCasePage() {
       )}
 
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
+
+      {/* CDP live browser viewer — shown during execution */}
+      {cdpHost && CDP_WS_URL && phase === 'running' && (
+        <div style={{ padding: '8px 24px', borderBottom: '1px solid #E8EBF0', background: '#f8fafc' }}>
+          <CdpViewer wsUrl={CDP_WS_URL} cdpHost={cdpHost} width={1280} height={720} />
+        </div>
+      )}
 
       {/* Main content: steps (left) + resizer + token panel (right) */}
       <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
