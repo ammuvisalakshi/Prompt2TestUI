@@ -47,7 +47,6 @@ function fmtCost(input: number, output: number, model: 'sonnet' | 'haiku' = 'son
   return cost < 0.005 ? '<$0.01' : `~$${cost.toFixed(2)}`
 }
 
-const CDP_WS_URL = import.meta.env.VITE_AGENT_WS_URL as string || ''
 
 export default function TestCasePage() {
   const { id } = useParams<{ id: string }>()
@@ -72,7 +71,7 @@ export default function TestCasePage() {
   const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [cdpHost, setCdpHost] = useState<string | null>(null)
+  const [cdpWsUrl, setCdpWsUrl] = useState<string | null>(null)
   const sessionId = useRef(crypto.randomUUID())
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
@@ -127,7 +126,7 @@ export default function TestCasePage() {
 
   function stopExecution() {
     abortedRef.current = true
-    setCdpHost(null)
+    setCdpWsUrl(null)
     setPhase('idle')
     setResult(null)
     setExecError(null)
@@ -189,7 +188,7 @@ export default function TestCasePage() {
     abortedRef.current = false
 
     const label = tc.title || tc.description
-    setCdpHost(null)  // reset viewer while session starts
+    setCdpWsUrl(null)  // reset viewer while session starts
 
     const derivedPlan = {
       summary: label,
@@ -208,7 +207,7 @@ export default function TestCasePage() {
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
-      setCdpHost(session.cdp_host ?? null)
+      setCdpWsUrl(session.cdp_ws_url ?? null)
       setPhase('running')
 
       // Build agent payload based on mode
@@ -348,9 +347,9 @@ export default function TestCasePage() {
 
       setResult({ passed, summary })
       setPhase('done')
-      setCdpHost(null)
+      setCdpWsUrl(null)
     } catch (err) {
-      setCdpHost(null)
+      setCdpWsUrl(null)
       setExecError(err instanceof Error ? err.message : String(err))
       setPhase('error')
     } finally {
@@ -553,9 +552,9 @@ export default function TestCasePage() {
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
 
       {/* CDP live browser viewer — shown during execution */}
-      {cdpHost && CDP_WS_URL && phase === 'running' && (
+      {cdpWsUrl && phase === 'running' && (
         <div style={{ padding: '8px 24px', borderBottom: '1px solid #E8EBF0', background: '#f8fafc' }}>
-          <CdpViewer wsUrl={CDP_WS_URL} cdpHost={cdpHost} width={1280} height={720} />
+          <CdpViewer wsUrl={cdpWsUrl} width={1280} height={720} />
         </div>
       )}
 

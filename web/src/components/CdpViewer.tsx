@@ -3,29 +3,23 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 /**
  * CdpViewer — live browser view via CDP screencast.
  *
- * Connects to the agent's WebSocket endpoint, sends the Chrome CDP host,
- * and renders incoming JPEG frames on a canvas.  Forwards mouse/keyboard
- * events back so the user can interact with the browser.
+ * Connects directly to the CDP screencast proxy running in the ECS task
+ * (via Caddy WSS on the sslip.io domain). Receives JPEG frames and
+ * renders them on a canvas. Forwards mouse/keyboard events back.
  *
  * Props:
- *   wsUrl    — WebSocket URL of the agent's screencast proxy (e.g. ws://localhost:8080/ws/screencast)
- *   cdpHost  — IP of the ECS task running Chrome (from start_session response)
- *   cdpPort  — Chrome CDP port (default 9222)
- *   width    — canvas width  (default 1280)
- *   height   — canvas height (default 720)
+ *   wsUrl  — WebSocket URL of the CDP proxy (e.g. wss://10-0-50-123.sslip.io)
+ *   width  — canvas width  (default 1280)
+ *   height — canvas height (default 720)
  */
 interface CdpViewerProps {
   wsUrl: string
-  cdpHost: string
-  cdpPort?: number
   width?: number
   height?: number
 }
 
 export default function CdpViewer({
   wsUrl,
-  cdpHost,
-  cdpPort = 9222,
   width = 1280,
   height = 720,
 }: CdpViewerProps) {
@@ -34,9 +28,9 @@ export default function CdpViewer({
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error' | 'closed'>('connecting')
   const [errorMsg, setErrorMsg] = useState('')
 
-  // ── Connect to the agent's screencast WebSocket ─────────────────────
+  // ── Connect to the CDP screencast proxy ─────────────────────────────
   useEffect(() => {
-    if (!wsUrl || !cdpHost) return
+    if (!wsUrl) return
 
     setStatus('connecting')
     const ws = new WebSocket(wsUrl)
@@ -45,14 +39,8 @@ export default function CdpViewer({
     ws.binaryType = 'arraybuffer'
 
     ws.onopen = () => {
-      // Send initial config
-      ws.send(JSON.stringify({
-        cdp_host: cdpHost,
-        cdp_port: cdpPort,
-        quality: 60,
-        maxWidth: width,
-        maxHeight: height,
-      }))
+      // Send config to the CDP proxy
+      ws.send(JSON.stringify({ quality: 60, maxWidth: width, maxHeight: height }))
     }
 
     ws.onmessage = (event) => {
@@ -89,14 +77,14 @@ export default function CdpViewer({
     }
 
     ws.onclose = () => {
-      if (status !== 'error') setStatus('closed')
+      setStatus((prev) => prev === 'error' ? prev : 'closed')
     }
 
     return () => {
       ws.close()
       wsRef.current = null
     }
-  }, [wsUrl, cdpHost, cdpPort, width, height])
+  }, [wsUrl, width, height])
 
   // ── Forward mouse events ────────────────────────────────────────────
   const scaleCoords = useCallback(
@@ -150,7 +138,6 @@ export default function CdpViewer({
     [scaleCoords, sendInput],
   )
 
-  // ── Forward keyboard events ─────────────────────────────────────────
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLCanvasElement>) => {
       e.preventDefault()
