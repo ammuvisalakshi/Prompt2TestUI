@@ -94,6 +94,13 @@ export default function AgentPage() {
   const chatRef = useRef<HTMLDivElement>(null)
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({ totalCalls: 0, totalInput: 0, totalOutput: 0, perCall: [] })
 
+  // Recording state
+  type RecordAction = { type: string; url?: string; selector?: string; text?: string; element_text?: string; key?: string; tag?: string; timestamp?: number }
+  const [recordPhase, setRecordPhase] = useState<'idle' | 'starting' | 'recording' | 'converting' | 'done'>('idle')
+  const [recordedActions, setRecordedActions] = useState<RecordAction[]>([])
+  const recordSessionRef = useRef<{ task_arn?: string; cluster?: string; mcp_endpoint?: string }>({})
+  const recordTabRef = useRef<Window | null>(null)
+  const recordPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -110,6 +117,90 @@ export default function AgentPage() {
     setServicesLoading(true)
     loadAllServiceConfigs(team, env).then(setServiceConfigs).catch(() => {}).finally(() => setServicesLoading(false))
   }, [env, team])
+
+  async function startRecording() {
+    if (recordPhase !== 'idle') return
+    setRecordPhase('starting')
+    setRecordedActions([])
+
+    try {
+      // 1. Start browser session
+      const sessionRaw = await callAgent({ inputText: 'record', mode: 'start_session', sessionId }, sessionId)
+      const session = JSON.parse(sessionRaw)
+      if (session.error) throw new Error(session.error as string)
+      recordSessionRef.current = { task_arn: session.task_arn, cluster: session.cluster, mcp_endpoint: session.mcp_endpoint }
+
+      // Open noVNC tab
+      const tab = window.open(`${session.novnc_url}?autoconnect=true&resize=scale`, '_blank')
+      recordTabRef.current = tab
+
+      // 2. Wait a bit for browser to be ready, then inject recorder
+      await new Promise(r => setTimeout(r, 10000))
+      await callAgent({ inputText: '', mode: 'inject_recorder', mcp_endpoint: session.mcp_endpoint, sessionId }, sessionId)
+
+      setRecordPhase('recording')
+      setMessages(prev => [...prev, { role: 'agent', text: 'Recording started! Browse the site in the browser tab. Your actions will appear here. Click "Stop Recording" when done.' }])
+
+      // 3. Start polling for recorded actions every 3s
+      recordPollRef.current = setInterval(async () => {
+        try {
+          const raw = await callAgent({ inputText: '', mode: 'poll_recording', mcp_endpoint: session.mcp_endpoint, sessionId }, sessionId)
+          const result = JSON.parse(raw)
+          if (result.actions && result.actions.length > 0) {
+            setRecordedActions(result.actions)
+          }
+        } catch { /* ignore poll errors */ }
+      }, 3000)
+
+    } catch (err) {
+      setRecordPhase('idle')
+      setMessages(prev => [...prev, { role: 'agent', text: `Recording failed: ${err instanceof Error ? err.message : String(err)}` }])
+      // Cleanup
+      const si = recordSessionRef.current
+      if (si.task_arn && si.cluster) {
+        callAgent({ inputText: '', mode: 'stop_session', task_arn: si.task_arn, cluster: si.cluster }, sessionId).catch(() => {})
+      }
+    }
+  }
+
+  async function stopRecording() {
+    if (recordPhase !== 'recording') return
+
+    // Stop polling
+    if (recordPollRef.current) { clearInterval(recordPollRef.current); recordPollRef.current = null }
+    recordTabRef.current?.close()
+    recordTabRef.current = null
+
+    setRecordPhase('converting')
+    setMessages(prev => [...prev, { role: 'agent', text: 'Converting recorded actions to test plan steps...' }])
+
+    try {
+      const si = recordSessionRef.current
+      const raw = await callAgent({
+        inputText: '', mode: 'stop_recording',
+        mcp_endpoint: si.mcp_endpoint, task_arn: si.task_arn, cluster: si.cluster,
+        sessionId,
+      }, sessionId)
+      const result = JSON.parse(raw)
+
+      if (result.plan_steps && result.plan_steps.length > 0) {
+        setPlanSteps(result.plan_steps)
+        setPlanScenario(JSON.stringify(result.plan_steps))
+        setSaveTitleInput(result.summary || 'Recorded test')
+        setSaveTcIdInput('TC-' + Date.now().toString(36).toUpperCase().slice(-6))
+        setSaveService(tcService || 'exploratory')
+        setShowSaveDialog(true)
+        setTcSaved('idle')
+        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Recorded ${recordedActions.length} actions → ${result.plan_steps.length} test steps. Save the test case on the right.` }])
+      } else {
+        setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: 'No actions were recorded. Try again and interact with the browser.' }])
+      }
+    } catch (err) {
+      setMessages(prev => [...prev.slice(0, -1), { role: 'agent', text: `Conversion failed: ${err instanceof Error ? err.message : String(err)}` }])
+    } finally {
+      setRecordPhase('idle')
+    }
+  }
 
   async function send() {
     const text = input.trim()
@@ -197,6 +288,32 @@ export default function AgentPage() {
         <span style={{ fontSize: 12, fontWeight: 600, color: '#6D28D9', background: '#EDE9FE', border: '1px solid #DDD6FE', padding: '2px 8px', borderRadius: 20 }}>
           Bedrock · {env.toUpperCase()}
         </span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          {recordPhase === 'recording' ? (
+            <button onClick={stopRecording}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, background: '#DC2626', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              Stop Recording ({recordedActions.length} actions)
+            </button>
+          ) : recordPhase === 'starting' || recordPhase === 'converting' ? (
+            <button disabled
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, background: '#F1F5F9', color: '#64748B', border: '1px solid #E2E8F0', fontSize: 12, fontWeight: 600, cursor: 'default' }}
+            >
+              <div style={{ width: 12, height: 12, border: '2px solid #64748B', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+              {recordPhase === 'starting' ? 'Launching browser...' : 'Converting...'}
+            </button>
+          ) : (
+            <button onClick={startRecording}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, background: '#DC2626', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white' }} />
+              Record Test
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main workspace */}
@@ -362,8 +479,35 @@ export default function AgentPage() {
 
             {/* Plan Scenario panel */}
             <>
-              {/* State 1: No service selected — show service picker chips */}
-              {!tcService ? (
+              {/* Recording state: show live recorded actions */}
+              {(recordPhase === 'recording' || recordPhase === 'starting' || recordPhase === 'converting') ? (
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', animation: recordPhase === 'recording' ? 'pulse 1.5s ease-in-out infinite' : 'none' }} />
+                    {recordPhase === 'starting' ? 'Launching browser...' : recordPhase === 'converting' ? 'Converting to test steps...' : `Recording — ${recordedActions.length} actions captured`}
+                  </div>
+                  {recordedActions.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {recordedActions.map((a, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'white', borderRadius: 8, border: '1px solid #E8EBF0', fontSize: 12 }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', padding: '1px 6px', borderRadius: 4, flexShrink: 0,
+                            color: a.type === 'navigate' ? '#1D4ED8' : a.type === 'click' ? '#7C3AED' : a.type === 'fill' ? '#059669' : '#64748B',
+                            background: a.type === 'navigate' ? '#DBEAFE' : a.type === 'click' ? '#EDE9FE' : a.type === 'fill' ? '#D1FAE5' : '#F1F5F9',
+                          }}>{a.type}</span>
+                          <span style={{ color: '#334155', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {a.type === 'navigate' ? a.url : a.type === 'fill' ? `"${a.text}" → ${a.element_text || a.selector}` : a.element_text || a.selector || a.key || ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', marginTop: 40 }}>
+                      {recordPhase === 'starting' ? 'Starting browser session...' : 'Browse the site in the browser tab. Actions will appear here.'}
+                    </div>
+                  )}
+                </div>
+              ) : !tcService ? (
                 <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Pick a Service</div>
                   {servicesLoading ? (
