@@ -222,12 +222,23 @@ h2{font-size:18px;font-weight:600}p{font-size:13px;color:#64748b}
       sessionInfoRef.current = sessionInfo
 
       setCdpWsUrl(session.cdp_ws_url ?? null)
-      console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
+
+      // DEBUG: show what we got
+      const debugMsg = `cdp_ws_url: ${session.cdp_ws_url}\nviewerTab: ${viewerTab ? 'exists' : 'null'}\nclosed: ${viewerTab?.closed}`
+      console.log('[P2T] DEBUG:', debugMsg)
+      if (viewerTab && !viewerTab.closed) {
+        try {
+          viewerTab.document.title = 'Connecting...'
+        } catch (e) { /* cross-origin */ }
+      }
 
       // Navigate the viewer tab to the CDP proxy viewer page
       if (session.cdp_ws_url && viewerTab && !viewerTab.closed) {
         const httpsUrl = session.cdp_ws_url.replace('wss://', 'https://').replace('ws://', 'http://')
-        viewerTab.location.href = httpsUrl
+        console.log('[P2T] Navigating tab to:', httpsUrl)
+        viewerTab.location = httpsUrl
+      } else {
+        console.log('[P2T] SKIP navigation:', { url: session.cdp_ws_url, tab: !!viewerTab, closed: viewerTab?.closed })
       }
 
       setPhase('running')
