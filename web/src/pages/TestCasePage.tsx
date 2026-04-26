@@ -222,11 +222,9 @@ function connect(wsUrl){
   ws.onerror=function(){};
   ws.onclose=function(){retries++;if(retries<maxRetries){status.textContent="Reconnecting in 3s... (attempt "+(retries+1)+")";status.style.opacity="1";setTimeout(function(){connect(wsUrl)},3000)}else{status.textContent="Browser session ended"}};
 }
-function poll(){
-  if(window.__p2t_cdp_url){connect(window.__p2t_cdp_url);return}
-  setTimeout(poll,500);
-}
-poll();
+window.addEventListener("message",function(e){
+  if(e.data&&e.data.type==="p2t_cdp_url"){connect(e.data.url)}
+});
 canvas.onmousedown=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mousePressed",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
 canvas.onmouseup=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseReleased",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
 canvas.onmousemove=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseMoved",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height))}))};
@@ -255,9 +253,9 @@ canvas.onmousemove=function(e){var r=canvas.getBoundingClientRect();ws&&ws.ready
       setCdpWsUrl(session.cdp_ws_url ?? null)
       console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
 
-      // Signal the viewer tab with the CDP WebSocket URL
+      // Signal the viewer tab with the CDP WebSocket URL via postMessage
       if (session.cdp_ws_url && viewerTab && !viewerTab.closed) {
-        (viewerTab as any).__p2t_cdp_url = session.cdp_ws_url
+        viewerTab.postMessage({ type: 'p2t_cdp_url', url: session.cdp_ws_url }, '*')
       }
 
       setPhase('running')
