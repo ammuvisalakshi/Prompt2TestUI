@@ -185,33 +185,11 @@ export default function TestCasePage() {
     abortedRef.current = false
 
     const label = tc.title || tc.description
-    // Open loading tab immediately (before async call to avoid popup blocker)
-    const loadingPage = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${label} — Launching...</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
-h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
-.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
-.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 65s cubic-bezier(0.4,0,0.2,1) forwards}
-@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:95%}}</style></head>
-<body><h2 id="h">Launching browser...</h2><p id="p">Starting a dedicated Fargate task (~60s)</p>
-<div class="track"><div class="bar"></div></div>
-<script>
-var r=0;
-function tryVnc(){
-  var u=window.__p2t_novnc;
-  if(!u){setTimeout(tryVnc,500);return}
-  document.getElementById('h').textContent='Connecting to live view...';
-  document.getElementById('p').textContent='Waiting for HTTPS certificate (attempt '+(r+1)+')';
-  fetch(u,{mode:'no-cors'}).then(function(){window.location.href=u}).catch(function(){
-    r++;if(r<30){document.getElementById('p').textContent='Retrying (attempt '+(r+1)+')...';setTimeout(tryVnc,3000)}
-    else{document.getElementById('h').textContent='Connection failed';document.getElementById('p').textContent='Test is still running.'}
-  });
-}
-setTimeout(tryVnc,500);
-</script></body></html>`
-    const loadingBlob = new Blob([loadingPage], { type: 'text/html' })
-    const loadingUrl = URL.createObjectURL(loadingBlob)
-    const newTab = window.open(loadingUrl, '_blank')
-    const closeTab = () => { try { closeTab() } catch {} }
+    // Clear stale signals, open viewer page (same-origin, can self-close via localStorage)
+    localStorage.removeItem('p2t_novnc_url')
+    localStorage.removeItem('p2t_close_viewer')
+    window.open('/vnc-viewer.html', '_blank')
+    const closeTab = () => { localStorage.setItem('p2t_close_viewer', 'true') }
 
     const derivedPlan = {
       summary: label,
@@ -231,10 +209,9 @@ setTimeout(tryVnc,500);
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
-      // Navigate to noVNC directly
-      URL.revokeObjectURL(loadingUrl)
-      if (newTab && session.novnc_url) {
-        newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+      // Pass noVNC URL to the viewer tab via localStorage
+      if (session.novnc_url) {
+        localStorage.setItem('p2t_novnc_url', `${session.novnc_url}?autoconnect=true&resize=scale`)
       }
 
       setPhase('running')

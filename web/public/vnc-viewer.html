@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Live Browser — Prompt2Test</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f172a;font-family:-apple-system,sans-serif;color:#e2e8f0;height:100vh;display:flex;align-items:center;justify-content:center}
+#loading{display:flex;flex-direction:column;align-items:center;gap:8px}
+#loading h2{font-size:18px;font-weight:600}
+#loading p{font-size:13px;color:#64748b}
+.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 65s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:95%}}
+iframe{position:fixed;top:0;left:0;width:100vw;height:100vh;border:none;display:none}
+#done{display:none;flex-direction:column;align-items:center;gap:12px}
+#done h2{font-size:20px;font-weight:600}
+#done p{font-size:14px;color:#94a3b8}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <h2 id="heading">Launching browser...</h2>
+  <p id="msg">Starting a dedicated Fargate task (~60s)</p>
+  <div class="track"><div class="bar"></div></div>
+</div>
+
+<div id="done">
+  <h2>Test completed</h2>
+  <p>Closing in <span id="countdown">3</span>s...</p>
+</div>
+
+<iframe id="vnc" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+
+<script>
+var loading = document.getElementById('loading');
+var heading = document.getElementById('heading');
+var msg = document.getElementById('msg');
+var vnc = document.getElementById('vnc');
+var doneDiv = document.getElementById('done');
+var countdown = document.getElementById('countdown');
+var connected = false;
+
+// Poll for noVNC URL from parent tab (via localStorage)
+function pollUrl() {
+  var url = localStorage.getItem('p2t_novnc_url');
+  if (!url) { setTimeout(pollUrl, 500); return; }
+  localStorage.removeItem('p2t_novnc_url');
+
+  heading.textContent = 'Connecting to live view...';
+  msg.textContent = 'Waiting for browser to be ready...';
+
+  // Retry until the HTTPS URL is reachable (Caddy needs time for cert)
+  tryLoad(url, 0);
+}
+
+function tryLoad(url, retries) {
+  msg.textContent = 'Connecting... (attempt ' + (retries + 1) + ')';
+  fetch(url, { mode: 'no-cors' })
+    .then(function() {
+      loading.style.display = 'none';
+      vnc.style.display = 'block';
+      vnc.src = url;
+      connected = true;
+      pollClose();
+    })
+    .catch(function() {
+      if (retries < 30) {
+        msg.textContent = 'Retrying in 3s... (attempt ' + (retries + 2) + ')';
+        setTimeout(function() { tryLoad(url, retries + 1); }, 3000);
+      } else {
+        heading.textContent = 'Could not connect';
+        msg.textContent = 'The test may have already completed.';
+      }
+    });
+}
+
+// Poll for close signal from parent tab
+function pollClose() {
+  var close = localStorage.getItem('p2t_close_viewer');
+  if (close) {
+    localStorage.removeItem('p2t_close_viewer');
+    vnc.style.display = 'none';
+    doneDiv.style.display = 'flex';
+    // Countdown then close
+    var n = 3;
+    var timer = setInterval(function() {
+      n--;
+      countdown.textContent = n;
+      if (n <= 0) {
+        clearInterval(timer);
+        window.close();
+        // If window.close() was blocked, show message
+        setTimeout(function() {
+          doneDiv.querySelector('p').textContent = 'You can close this tab now.';
+        }, 500);
+      }
+    }, 1000);
+    return;
+  }
+  setTimeout(pollClose, 1000);
+}
+
+setTimeout(pollUrl, 500);
+</script>
+</body>
+</html>
