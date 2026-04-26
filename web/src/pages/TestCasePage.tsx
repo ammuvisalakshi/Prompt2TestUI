@@ -190,6 +190,19 @@ export default function TestCasePage() {
     const label = tc.title || tc.description
     setCdpWsUrl(null)  // reset viewer while session starts
 
+    // Open live viewer tab NOW (before async call) so browser doesn't block popup
+    const viewerTab = window.open('about:blank', '_blank')
+    if (viewerTab) {
+      viewerTab.document.write(`<!DOCTYPE html><html><head><title>Live Browser — ${label}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0;gap:0}
+h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
+.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 55s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:92%}}</style></head>
+<body><h2>Launching browser...</h2><p>Starting a dedicated Fargate task for your session</p>
+<div class="track"><div class="bar"></div></div></body></html>`)
+    }
+
     const derivedPlan = {
       summary: label,
       steps: planSteps.map(s => ({ stepNumber: s.step, type: 'browser', action: s.action, detail: s.expected })),
@@ -211,9 +224,10 @@ export default function TestCasePage() {
       setCdpWsUrl(session.cdp_ws_url ?? null)
       console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
 
-      // Open live browser viewer in a new tab
-      if (session.cdp_ws_url) {
-        const viewerHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
+      // Write live viewer into the already-open tab
+      if (session.cdp_ws_url && viewerTab && !viewerTab.closed) {
+        viewerTab.document.open()
+        viewerTab.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
 #status{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:13px;color:#94a3b8;z-index:1}
 canvas{max-width:100vw;max-height:100vh;border-radius:4px}</style></head>
@@ -225,22 +239,20 @@ let ws;let retries=0;const maxRetries=20;
 function connect(){
   status.textContent="Connecting... (attempt "+(retries+1)+")";
   ws=new WebSocket(wsUrl);ws.binaryType="arraybuffer";
-  ws.onopen=()=>{ws.send(JSON.stringify({quality:65,maxWidth:1280,maxHeight:720}))};
-  ws.onmessage=(e)=>{
-    if(typeof e.data==="string"){try{const m=JSON.parse(e.data);if(m.event==="connected"){status.textContent="Connected — watching live";setTimeout(()=>status.style.opacity="0.3",2000)}else if(m.event==="error"){status.textContent="Error: "+m.message}}catch{}}
-    else{const blob=new Blob([e.data],{type:"image/jpeg"});const url=URL.createObjectURL(blob);const img=new Image();img.onload=()=>{ctx.drawImage(img,0,0,1280,720);URL.revokeObjectURL(url)};img.src=url}
+  ws.onopen=function(){ws.send(JSON.stringify({quality:65,maxWidth:1280,maxHeight:720}))};
+  ws.onmessage=function(e){
+    if(typeof e.data==="string"){try{var m=JSON.parse(e.data);if(m.event==="connected"){status.textContent="Connected — watching live";setTimeout(function(){status.style.opacity="0.3"},2000)}else if(m.event==="error"){status.textContent="Error: "+m.message}}catch(x){}}
+    else{var blob=new Blob([e.data],{type:"image/jpeg"});var url=URL.createObjectURL(blob);var img=new Image();img.onload=function(){ctx.drawImage(img,0,0,1280,720);URL.revokeObjectURL(url)};img.src=url}
   };
-  ws.onerror=()=>{};
-  ws.onclose=()=>{retries++;if(retries<maxRetries){status.textContent="Reconnecting in 3s... (attempt "+(retries+1)+")";status.style.opacity="1";setTimeout(connect,3000)}else{status.textContent="Browser session ended"}};
+  ws.onerror=function(){};
+  ws.onclose=function(){retries++;if(retries<maxRetries){status.textContent="Reconnecting in 3s... (attempt "+(retries+1)+")";status.style.opacity="1";setTimeout(connect,3000)}else{status.textContent="Browser session ended"}};
 }
 connect();
-canvas.onmousedown=(e)=>{const r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mousePressed",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
-canvas.onmouseup=(e)=>{const r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseReleased",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
-canvas.onmousemove=(e)=>{const r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseMoved",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height))}))};
-</script></body></html>`;
-        const blob = new Blob([viewerHtml], { type: 'text/html' })
-        const viewerUrl = URL.createObjectURL(blob)
-        window.open(viewerUrl, '_blank')
+canvas.onmousedown=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mousePressed",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
+canvas.onmouseup=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseReleased",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
+canvas.onmousemove=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseMoved",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height))}))};
+</script></body></html>`)
+        viewerTab.document.close()
       }
 
       setPhase('running')
