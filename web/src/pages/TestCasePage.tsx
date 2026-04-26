@@ -211,6 +211,7 @@ setTimeout(tryVnc,500);
     const loadingBlob = new Blob([loadingPage], { type: 'text/html' })
     const loadingUrl = URL.createObjectURL(loadingBlob)
     const newTab = window.open(loadingUrl, '_blank')
+    const closeTab = () => { try { closeTab() } catch {} }
 
     const derivedPlan = {
       summary: label,
@@ -230,10 +231,18 @@ setTimeout(tryVnc,500);
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
-      // Navigate the loading tab directly to noVNC (this is what worked before)
+      // Load noVNC in an iframe inside the tab (keeps same origin so we can close it later)
       URL.revokeObjectURL(loadingUrl)
       if (newTab && session.novnc_url) {
-        newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+        try {
+          const vncUrl = `${session.novnc_url}?autoconnect=true&resize=scale`
+          newTab.document.open()
+          newTab.document.write(`<!DOCTYPE html><html><head><title>Live Browser</title><style>*{margin:0;padding:0}body{background:#0f172a}iframe{width:100vw;height:100vh;border:none}</style></head><body><iframe src="${vncUrl}" allow="autoplay"></iframe></body></html>`)
+          newTab.document.close()
+        } catch {
+          // Fallback: direct navigation (tab won't auto-close)
+          newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
+        }
       }
 
       setPhase('running')
@@ -375,11 +384,11 @@ setTimeout(tryVnc,500);
 
       setResult({ passed, summary })
       setPhase('done')
-      if (newTab && !newTab.closed) newTab.close()
+      closeTab()
       } catch (err) {
         setExecError(err instanceof Error ? err.message : String(err))
       setPhase('error')
-      if (newTab && !newTab.closed) newTab.close()
+      closeTab()
     } finally {
       if (sessionInfo.task_arn && sessionInfo.cluster) {
         callAgent({ inputText: '', mode: 'stop_session', task_arn: sessionInfo.task_arn, cluster: sessionInfo.cluster }, sessionId.current).catch(() => {})
