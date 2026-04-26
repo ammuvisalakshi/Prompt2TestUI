@@ -195,7 +195,7 @@ export default function TestCasePage() {
 
     // Open viewer page in new tab (before async call to avoid popup blocker).
     // The viewer page polls localStorage for the CDP URL.
-    const viewerTab = window.open('/cdp-viewer.html', '_blank')
+    window.open('/cdp-viewer.html', '_blank')
 
     const derivedPlan = {
       summary: label,
