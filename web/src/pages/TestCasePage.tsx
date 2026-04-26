@@ -190,42 +190,18 @@ export default function TestCasePage() {
     const label = tc.title || tc.description
     setCdpWsUrl(null)  // reset viewer while session starts
 
-    // Open live viewer tab as blob URL (same-origin, so we can set properties later)
-    const viewerHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
+    // Open loading page in new tab immediately (before async, avoids popup blocker)
+    const loadingPage = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
-#loading{display:flex;flex-direction:column;align-items:center;gap:8px}
-h2{font-size:18px;font-weight:600}p#msg{font-size:13px;color:#64748b}
+div{display:flex;flex-direction:column;align-items:center;gap:8px}
+h2{font-size:18px;font-weight:600}p{font-size:13px;color:#64748b}
 .track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
 .bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 65s cubic-bezier(0.4,0,0.2,1) forwards}
 @keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:95%}}</style></head>
-<body><div id="loading"><h2 id="heading">Launching browser...</h2><p id="msg">Starting a dedicated Fargate task for your session</p>
-<div class="track"><div class="bar"></div></div></div>
-<script>
-var retries=0,maxRetries=30;
-function poll(){
-  var url=window.__p2t_cdp_url;
-  if(!url){setTimeout(poll,500);return}
-  document.getElementById("heading").textContent="Connecting to live view...";
-  document.getElementById("msg").textContent="Waiting for TLS certificate (attempt "+(retries+1)+")";
-  var httpUrl=url.replace("wss://","https://").replace("ws://","http://");
-  fetch(httpUrl,{mode:"no-cors"}).then(function(){
-    window.location.href=httpUrl;
-  }).catch(function(){
-    retries++;
-    if(retries<maxRetries){
-      document.getElementById("msg").textContent="Retrying in 3s... (attempt "+(retries+1)+")";
-      setTimeout(poll,3000);
-    }else{
-      document.getElementById("heading").textContent="Could not connect";
-      document.getElementById("msg").textContent="The test is still running.";
-    }
-  });
-}
-setTimeout(poll,500);
-</script></body></html>`
-    const viewerBlob = new Blob([viewerHtml], { type: 'text/html' })
-    const viewerBlobUrl = URL.createObjectURL(viewerBlob)
-    const viewerTab = window.open(viewerBlobUrl, '_blank')
+<body><div><h2>Launching browser...</h2><p>Starting a dedicated Fargate task (~60s)</p>
+<div class="track"><div class="bar"></div></div></div></body></html>`
+    const viewerBlob = new Blob([loadingPage], { type: 'text/html' })
+    const viewerTab = window.open(URL.createObjectURL(viewerBlob), '_blank')
 
     const derivedPlan = {
       summary: label,
@@ -248,9 +224,10 @@ setTimeout(poll,500);
       setCdpWsUrl(session.cdp_ws_url ?? null)
       console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
 
-      // Set CDP URL on the viewer tab (same-origin blob URL, so this works)
+      // Navigate the viewer tab to the CDP proxy viewer page
       if (session.cdp_ws_url && viewerTab && !viewerTab.closed) {
-        (viewerTab as any).__p2t_cdp_url = session.cdp_ws_url
+        const httpsUrl = session.cdp_ws_url.replace('wss://', 'https://').replace('ws://', 'http://')
+        viewerTab.location.href = httpsUrl
       }
 
       setPhase('running')
