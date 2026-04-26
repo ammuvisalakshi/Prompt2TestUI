@@ -210,6 +210,39 @@ export default function TestCasePage() {
 
       setCdpWsUrl(session.cdp_ws_url ?? null)
       console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
+
+      // Open live browser viewer in a new tab
+      if (session.cdp_ws_url) {
+        const viewerHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
+#status{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:13px;color:#94a3b8;z-index:1}
+canvas{max-width:100vw;max-height:100vh;border-radius:4px}</style></head>
+<body><div id="status">Connecting to browser...</div><canvas id="c" width="1280" height="720"></canvas>
+<script>
+const wsUrl="${session.cdp_ws_url}";
+const canvas=document.getElementById("c");const ctx=canvas.getContext("2d");const status=document.getElementById("status");
+let ws;let retries=0;const maxRetries=20;
+function connect(){
+  status.textContent="Connecting... (attempt "+(retries+1)+")";
+  ws=new WebSocket(wsUrl);ws.binaryType="arraybuffer";
+  ws.onopen=()=>{ws.send(JSON.stringify({quality:65,maxWidth:1280,maxHeight:720}))};
+  ws.onmessage=(e)=>{
+    if(typeof e.data==="string"){try{const m=JSON.parse(e.data);if(m.event==="connected"){status.textContent="Connected — watching live";setTimeout(()=>status.style.opacity="0.3",2000)}else if(m.event==="error"){status.textContent="Error: "+m.message}}catch{}}
+    else{const blob=new Blob([e.data],{type:"image/jpeg"});const url=URL.createObjectURL(blob);const img=new Image();img.onload=()=>{ctx.drawImage(img,0,0,1280,720);URL.revokeObjectURL(url)};img.src=url}
+  };
+  ws.onerror=()=>{};
+  ws.onclose=()=>{retries++;if(retries<maxRetries){status.textContent="Reconnecting in 3s... (attempt "+(retries+1)+")";status.style.opacity="1";setTimeout(connect,3000)}else{status.textContent="Browser session ended"}};
+}
+connect();
+canvas.onmousedown=(e)=>{const r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mousePressed",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
+canvas.onmouseup=(e)=>{const r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseReleased",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
+canvas.onmousemove=(e)=>{const r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseMoved",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height))}))};
+</script></body></html>`;
+        const blob = new Blob([viewerHtml], { type: 'text/html' })
+        const viewerUrl = URL.createObjectURL(blob)
+        window.open(viewerUrl, '_blank')
+      }
+
       setPhase('running')
 
       // Build agent payload based on mode
