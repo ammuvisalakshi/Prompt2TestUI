@@ -190,17 +190,48 @@ export default function TestCasePage() {
     const label = tc.title || tc.description
     setCdpWsUrl(null)  // reset viewer while session starts
 
-    // Open live viewer tab NOW (before async call) so browser doesn't block popup
+    // Open live viewer tab NOW (before async call) so browser doesn't block popup.
+    // The tab polls for window.__p2t_cdp_url set by the parent after start_session.
     const viewerTab = window.open('about:blank', '_blank')
     if (viewerTab) {
-      viewerTab.document.write(`<!DOCTYPE html><html><head><title>Live Browser — ${label}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0;gap:0}
-h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
+      viewerTab.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
+#loading{display:flex;flex-direction:column;align-items:center;gap:8px}
+h2{font-size:18px;font-weight:600}p{font-size:13px;color:#64748b}
 .track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
 .bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 55s cubic-bezier(0.4,0,0.2,1) forwards}
-@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:92%}}</style></head>
-<body><h2>Launching browser...</h2><p>Starting a dedicated Fargate task for your session</p>
-<div class="track"><div class="bar"></div></div></body></html>`)
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:92%}}
+#status{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:13px;color:#94a3b8;z-index:1;display:none}
+canvas{max-width:100vw;max-height:100vh;border-radius:4px;display:none}</style></head>
+<body>
+<div id="loading"><h2>Launching browser...</h2><p>Starting a dedicated Fargate task for your session</p><div class="track"><div class="bar"></div></div></div>
+<div id="status"></div>
+<canvas id="c" width="1280" height="720"></canvas>
+<script>
+var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),status=document.getElementById("status"),loading=document.getElementById("loading");
+var ws,retries=0,maxRetries=30;
+function connect(wsUrl){
+  loading.style.display="none";canvas.style.display="block";status.style.display="block";
+  status.textContent="Connecting... (attempt "+(retries+1)+")";
+  ws=new WebSocket(wsUrl);ws.binaryType="arraybuffer";
+  ws.onopen=function(){ws.send(JSON.stringify({quality:65,maxWidth:1280,maxHeight:720}))};
+  ws.onmessage=function(e){
+    if(typeof e.data==="string"){try{var m=JSON.parse(e.data);if(m.event==="connected"){status.textContent="Connected — watching live";setTimeout(function(){status.style.opacity="0.3"},2000)}else if(m.event==="error"){status.textContent="Error: "+m.message}}catch(x){}}
+    else{var blob=new Blob([e.data],{type:"image/jpeg"});var url=URL.createObjectURL(blob);var img=new Image();img.onload=function(){ctx.drawImage(img,0,0,1280,720);URL.revokeObjectURL(url)};img.src=url}
+  };
+  ws.onerror=function(){};
+  ws.onclose=function(){retries++;if(retries<maxRetries){status.textContent="Reconnecting in 3s... (attempt "+(retries+1)+")";status.style.opacity="1";setTimeout(function(){connect(wsUrl)},3000)}else{status.textContent="Browser session ended"}};
+}
+function poll(){
+  if(window.__p2t_cdp_url){connect(window.__p2t_cdp_url);return}
+  setTimeout(poll,500);
+}
+poll();
+canvas.onmousedown=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mousePressed",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
+canvas.onmouseup=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseReleased",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
+canvas.onmousemove=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseMoved",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height))}))};
+</script></body></html>`)
+      viewerTab.document.close()
     }
 
     const derivedPlan = {
@@ -224,35 +255,9 @@ h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#6474
       setCdpWsUrl(session.cdp_ws_url ?? null)
       console.log('[P2T] cdp_ws_url:', session.cdp_ws_url)
 
-      // Write live viewer into the already-open tab
+      // Signal the viewer tab with the CDP WebSocket URL
       if (session.cdp_ws_url && viewerTab && !viewerTab.closed) {
-        viewerTab.document.open()
-        viewerTab.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
-#status{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:13px;color:#94a3b8;z-index:1}
-canvas{max-width:100vw;max-height:100vh;border-radius:4px}</style></head>
-<body><div id="status">Connecting to browser...</div><canvas id="c" width="1280" height="720"></canvas>
-<script>
-const wsUrl="${session.cdp_ws_url}";
-const canvas=document.getElementById("c");const ctx=canvas.getContext("2d");const status=document.getElementById("status");
-let ws;let retries=0;const maxRetries=20;
-function connect(){
-  status.textContent="Connecting... (attempt "+(retries+1)+")";
-  ws=new WebSocket(wsUrl);ws.binaryType="arraybuffer";
-  ws.onopen=function(){ws.send(JSON.stringify({quality:65,maxWidth:1280,maxHeight:720}))};
-  ws.onmessage=function(e){
-    if(typeof e.data==="string"){try{var m=JSON.parse(e.data);if(m.event==="connected"){status.textContent="Connected — watching live";setTimeout(function(){status.style.opacity="0.3"},2000)}else if(m.event==="error"){status.textContent="Error: "+m.message}}catch(x){}}
-    else{var blob=new Blob([e.data],{type:"image/jpeg"});var url=URL.createObjectURL(blob);var img=new Image();img.onload=function(){ctx.drawImage(img,0,0,1280,720);URL.revokeObjectURL(url)};img.src=url}
-  };
-  ws.onerror=function(){};
-  ws.onclose=function(){retries++;if(retries<maxRetries){status.textContent="Reconnecting in 3s... (attempt "+(retries+1)+")";status.style.opacity="1";setTimeout(connect,3000)}else{status.textContent="Browser session ended"}};
-}
-connect();
-canvas.onmousedown=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mousePressed",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
-canvas.onmouseup=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseReleased",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height)),button:"left",clickCount:1}))};
-canvas.onmousemove=function(e){var r=canvas.getBoundingClientRect();ws&&ws.readyState===1&&ws.send(JSON.stringify({type:"mouseMoved",x:Math.round((e.clientX-r.left)*(1280/r.width)),y:Math.round((e.clientY-r.top)*(720/r.height))}))};
-</script></body></html>`)
-        viewerTab.document.close()
+        (viewerTab as any).__p2t_cdp_url = session.cdp_ws_url
       }
 
       setPhase('running')
