@@ -375,9 +375,11 @@ setTimeout(tryVnc,500);
 
       setResult({ passed, summary })
       setPhase('done')
+      if (newTab && !newTab.closed) newTab.close()
       } catch (err) {
         setExecError(err instanceof Error ? err.message : String(err))
       setPhase('error')
+      if (newTab && !newTab.closed) newTab.close()
     } finally {
       if (sessionInfo.task_arn && sessionInfo.cluster) {
         callAgent({ inputText: '', mode: 'stop_session', task_arn: sessionInfo.task_arn, cluster: sessionInfo.cluster }, sessionId.current).catch(() => {})
