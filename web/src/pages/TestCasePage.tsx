@@ -190,18 +190,12 @@ export default function TestCasePage() {
     const label = tc.title || tc.description
     setCdpWsUrl(null)  // reset viewer while session starts
 
-    // Open loading page in new tab immediately (before async, avoids popup blocker)
-    const loadingPage = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Live Browser — ${label}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
-div{display:flex;flex-direction:column;align-items:center;gap:8px}
-h2{font-size:18px;font-weight:600}p{font-size:13px;color:#64748b}
-.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
-.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 65s cubic-bezier(0.4,0,0.2,1) forwards}
-@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:95%}}</style></head>
-<body><div><h2>Launching browser...</h2><p>Starting a dedicated Fargate task (~60s)</p>
-<div class="track"><div class="bar"></div></div></div></body></html>`
-    const viewerBlob = new Blob([loadingPage], { type: 'text/html' })
-    const viewerTab = window.open(URL.createObjectURL(viewerBlob), '_blank')
+    // Clear any stale CDP URL from previous runs
+    localStorage.removeItem('p2t_cdp_url')
+
+    // Open viewer page in new tab (before async call to avoid popup blocker).
+    // The viewer page polls localStorage for the CDP URL.
+    const viewerTab = window.open('/cdp-viewer.html', '_blank')
 
     const derivedPlan = {
       summary: label,
@@ -223,22 +217,9 @@ h2{font-size:18px;font-weight:600}p{font-size:13px;color:#64748b}
 
       setCdpWsUrl(session.cdp_ws_url ?? null)
 
-      // DEBUG: show what we got
-      const debugMsg = `cdp_ws_url: ${session.cdp_ws_url}\nviewerTab: ${viewerTab ? 'exists' : 'null'}\nclosed: ${viewerTab?.closed}`
-      console.log('[P2T] DEBUG:', debugMsg)
-      if (viewerTab && !viewerTab.closed) {
-        try {
-          viewerTab.document.title = 'Connecting...'
-        } catch (e) { /* cross-origin */ }
-      }
-
-      // Navigate the viewer tab to the CDP proxy viewer page
-      if (session.cdp_ws_url && viewerTab && !viewerTab.closed) {
-        const httpsUrl = session.cdp_ws_url.replace('wss://', 'https://').replace('ws://', 'http://')
-        console.log('[P2T] Navigating tab to:', httpsUrl)
-        viewerTab.location = httpsUrl
-      } else {
-        console.log('[P2T] SKIP navigation:', { url: session.cdp_ws_url, tab: !!viewerTab, closed: viewerTab?.closed })
+      // Store CDP URL in localStorage — the viewer tab polls for it
+      if (session.cdp_ws_url) {
+        localStorage.setItem('p2t_cdp_url', session.cdp_ws_url)
       }
 
       setPhase('running')

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Prompt2Test — Live Browser</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0}
+#loading{display:flex;flex-direction:column;align-items:center;gap:8px}
+#loading h2{font-size:18px;font-weight:600}
+#loading p{font-size:13px;color:#64748b}
+.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 65s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:95%}}
+#viewer{display:none;flex-direction:column;align-items:center;width:100%;height:100%}
+#status{font-size:13px;color:#94a3b8;padding:8px;z-index:1}
+canvas{max-width:100vw;max-height:calc(100vh - 32px);border-radius:4px;cursor:default}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <h2 id="heading">Launching browser...</h2>
+  <p id="msg">Starting a dedicated Fargate task (~60s)</p>
+  <div class="track"><div class="bar"></div></div>
+</div>
+
+<div id="viewer">
+  <div id="status">Connecting...</div>
+  <canvas id="c" width="1280" height="720"></canvas>
+</div>
+
+<script>
+var loading = document.getElementById('loading');
+var viewer = document.getElementById('viewer');
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var status = document.getElementById('status');
+var heading = document.getElementById('heading');
+var msg = document.getElementById('msg');
+var ws, retries = 0, maxRetries = 30;
+
+// Poll localStorage for the CDP URL (set by the main tab after start_session)
+function pollForUrl() {
+  var cdpUrl = localStorage.getItem('p2t_cdp_url');
+  if (!cdpUrl) {
+    setTimeout(pollForUrl, 500);
+    return;
+  }
+  // Clear it so next run starts fresh
+  localStorage.removeItem('p2t_cdp_url');
+  // Convert wss:// to https:// for the viewer page URL
+  var httpsUrl = cdpUrl.replace('wss://', 'https://').replace('ws://', 'http://');
+  heading.textContent = 'Connecting to live view...';
+  msg.textContent = 'Waiting for TLS certificate...';
+  tryConnect(httpsUrl);
+}
+
+// Retry fetching the viewer page until Caddy's cert is ready, then navigate
+function tryConnect(httpsUrl) {
+  msg.textContent = 'Connecting... (attempt ' + (retries + 1) + ')';
+  fetch(httpsUrl, { mode: 'no-cors' })
+    .then(function() {
+      // Caddy is ready — navigate to the CDP proxy's built-in viewer page
+      window.location.href = httpsUrl;
+    })
+    .catch(function() {
+      retries++;
+      if (retries < maxRetries) {
+        msg.textContent = 'Retrying in 3s... (attempt ' + (retries + 1) + ')';
+        setTimeout(function() { tryConnect(httpsUrl); }, 3000);
+      } else {
+        heading.textContent = 'Could not connect';
+        msg.textContent = 'The test may have already completed.';
+      }
+    });
+}
+
+setTimeout(pollForUrl, 500);
+</script>
+</body>
+</html>
