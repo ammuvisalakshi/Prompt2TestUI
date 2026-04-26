@@ -7,7 +7,6 @@ import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps } f
 import { callAgent } from '../lib/agentClient'
 import { useEnv } from '../context/EnvContext'
 import { useTeam } from '../context/TeamContext'
-import CdpViewer from '../components/CdpViewer'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const CONFIG_TABLE = 'prompt2test-config'
@@ -71,7 +70,6 @@ export default function TestCasePage() {
   const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [cdpWsUrl, setCdpWsUrl] = useState<string | null>(null)
   const sessionId = useRef(crypto.randomUUID())
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
@@ -126,7 +124,6 @@ export default function TestCasePage() {
 
   function stopExecution() {
     abortedRef.current = true
-    setCdpWsUrl(null)
     setPhase('idle')
     setResult(null)
     setExecError(null)
@@ -188,14 +185,32 @@ export default function TestCasePage() {
     abortedRef.current = false
 
     const label = tc.title || tc.description
-    setCdpWsUrl(null)  // reset viewer while session starts
-
-    // Clear any stale CDP URL from previous runs
-    localStorage.removeItem('p2t_cdp_url')
-
-    // Open viewer page in new tab (before async call to avoid popup blocker).
-    // The viewer page polls localStorage for the CDP URL.
-    window.open('/cdp-viewer.html', '_blank')
+    // Open loading tab immediately (before async call to avoid popup blocker)
+    const loadingPage = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${label} — Launching...</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#e2e8f0}
+h2{font-size:18px;font-weight:600;margin-bottom:8px}p{font-size:13px;color:#64748b;margin-bottom:28px}
+.track{width:320px;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;animation:fill 65s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes fill{0%{width:0%}60%{width:75%}90%{width:90%}100%{width:95%}}</style></head>
+<body><h2 id="h">Launching browser...</h2><p id="p">Starting a dedicated Fargate task (~60s)</p>
+<div class="track"><div class="bar"></div></div>
+<script>
+var r=0;
+function tryVnc(){
+  var u=window.__p2t_novnc;
+  if(!u){setTimeout(tryVnc,500);return}
+  document.getElementById('h').textContent='Connecting to live view...';
+  document.getElementById('p').textContent='Waiting for HTTPS certificate (attempt '+(r+1)+')';
+  fetch(u,{mode:'no-cors'}).then(function(){window.location.href=u}).catch(function(){
+    r++;if(r<30){document.getElementById('p').textContent='Retrying (attempt '+(r+1)+')...';setTimeout(tryVnc,3000)}
+    else{document.getElementById('h').textContent='Connection failed';document.getElementById('p').textContent='Test is still running.'}
+  });
+}
+setTimeout(tryVnc,500);
+</script></body></html>`
+    const loadingBlob = new Blob([loadingPage], { type: 'text/html' })
+    const loadingUrl = URL.createObjectURL(loadingBlob)
+    const newTab = window.open(loadingUrl, '_blank')
 
     const derivedPlan = {
       summary: label,
@@ -215,11 +230,10 @@ export default function TestCasePage() {
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
-      setCdpWsUrl(session.cdp_ws_url ?? null)
-
-      // Store CDP URL in localStorage — the viewer tab polls for it
-      if (session.cdp_ws_url) {
-        localStorage.setItem('p2t_cdp_url', session.cdp_ws_url)
+      // Navigate the loading tab directly to noVNC (this is what worked before)
+      URL.revokeObjectURL(loadingUrl)
+      if (newTab && session.novnc_url) {
+        newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       }
 
       setPhase('running')
@@ -361,10 +375,8 @@ export default function TestCasePage() {
 
       setResult({ passed, summary })
       setPhase('done')
-      setCdpWsUrl(null)
-    } catch (err) {
-      setCdpWsUrl(null)
-      setExecError(err instanceof Error ? err.message : String(err))
+      } catch (err) {
+        setExecError(err instanceof Error ? err.message : String(err))
       setPhase('error')
     } finally {
       if (sessionInfo.task_arn && sessionInfo.cluster) {
@@ -564,13 +576,6 @@ export default function TestCasePage() {
       )}
 
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
-
-      {/* CDP live browser viewer — shown during execution */}
-      {cdpWsUrl && phase === 'running' && (
-        <div style={{ padding: '8px 24px', borderBottom: '1px solid #E8EBF0', background: '#f8fafc' }}>
-          <CdpViewer wsUrl={cdpWsUrl} width={1280} height={720} />
-        </div>
-      )}
 
       {/* Main content: steps (left) + resizer + token panel (right) */}
       <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
