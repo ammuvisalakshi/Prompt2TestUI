@@ -231,18 +231,10 @@ setTimeout(tryVnc,500);
       sessionInfo = { task_arn: session.task_arn, cluster: session.cluster }
       sessionInfoRef.current = sessionInfo
 
-      // Load noVNC in an iframe inside the tab (keeps same origin so we can close it later)
+      // Navigate to noVNC directly
       URL.revokeObjectURL(loadingUrl)
       if (newTab && session.novnc_url) {
-        try {
-          const vncUrl = `${session.novnc_url}?autoconnect=true&resize=scale`
-          newTab.document.open()
-          newTab.document.write(`<!DOCTYPE html><html><head><title>Live Browser</title><style>*{margin:0;padding:0}body{background:#0f172a}iframe{width:100vw;height:100vh;border:none}</style></head><body><iframe src="${vncUrl}" allow="autoplay"></iframe></body></html>`)
-          newTab.document.close()
-        } catch {
-          // Fallback: direct navigation (tab won't auto-close)
-          newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
-        }
+        newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       }
 
       setPhase('running')
