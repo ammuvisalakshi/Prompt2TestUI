@@ -12,6 +12,7 @@ export async function callAgent(
   payload: object,
   sessionId: string,
   onEvent?: (event: Record<string, unknown>) => void,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const session = await fetchAuthSession()
   if (!session.credentials) throw new Error('Not authenticated')
@@ -26,7 +27,7 @@ export async function callAgent(
     payload: new TextEncoder().encode(JSON.stringify(payload)),
   })
 
-  const response = await client.send(cmd)
+  const response = await client.send(cmd, { abortSignal })
   if (!response.response) return ''
 
   const reader = (response.response as ReadableStream<Uint8Array>).getReader()

@@ -121,6 +121,7 @@ export default function TestCasePage() {
   const replayScriptRef = useRef<object[]>([])
   const resultStepsRef = useRef<AutoStep[]>([])
   const abortedRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const sessionInfoRef = useRef<{ task_arn?: string; cluster?: string }>({})
   const stepEventQueue = useRef<{ step: number; status: string }[]>([])
   const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -193,6 +194,9 @@ export default function TestCasePage() {
 
   function stopExecution() {
     abortedRef.current = true
+    // Abort the in-flight agent call immediately
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
     tabRef.current?.close()
     tabRef.current = null
     setPhase('idle')
@@ -201,8 +205,9 @@ export default function TestCasePage() {
     setExecMode(null)
     const si = sessionInfoRef.current
     if (si.task_arn && si.cluster) {
+      // Stop ECS task via stop_session
       callAgent({ inputText: '', mode: 'stop_session', task_arn: si.task_arn, cluster: si.cluster }, sessionId.current).catch(() => {})
-      sessionInfoRef.current = {}  // clear so cleanup doesn't fire again
+      sessionInfoRef.current = {}
     }
   }
 
@@ -314,6 +319,10 @@ export default function TestCasePage() {
         }
       }
 
+      // Create AbortController so Stop button can cancel the agent call
+      const abortController = new AbortController()
+      abortControllerRef.current = abortController
+
       const raw = await callAgent(agentPayload, sessionId.current, (ev) => {
         if (ev.event === 'token_usage') {
           const t: TokenCall = {
@@ -333,7 +342,7 @@ export default function TestCasePage() {
             setLiveStepStatuses(prev => ({ ...prev, [stepNum]: status }))
           }
         }
-      })
+      }, abortController.signal)
 
       // Brief pause to let final step status render before showing result
       while (stepEventQueue.current.length > 0 || stepTimerRef.current) {
