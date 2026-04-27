@@ -153,6 +153,28 @@ export default function TestCasePage() {
     }
   }, [])
 
+  // ── Cleanup ECS task when user leaves the page or closes the tab ────────
+  useEffect(() => {
+    const cleanup = () => {
+      const si = sessionInfoRef.current
+      if (si.task_arn && si.cluster) {
+        // Use sendBeacon for reliable delivery on tab close
+        const payload = JSON.stringify({ inputText: '', mode: 'stop_session', task_arn: si.task_arn, cluster: si.cluster })
+        navigator.sendBeacon?.('/api/stop-session', payload)
+        // Also try the normal way
+        callAgent({ inputText: '', mode: 'stop_session', task_arn: si.task_arn, cluster: si.cluster }, sessionId.current).catch(() => {})
+        sessionInfoRef.current = {}
+      }
+    }
+    window.addEventListener('beforeunload', cleanup)
+    window.addEventListener('pagehide', cleanup)
+    return () => {
+      window.removeEventListener('beforeunload', cleanup)
+      window.removeEventListener('pagehide', cleanup)
+      cleanup()  // also cleanup on component unmount (React navigation)
+    }
+  }, [])
+
   useEffect(() => {
     if (!id) return
     getTestCase(id)
@@ -180,6 +202,7 @@ export default function TestCasePage() {
     const si = sessionInfoRef.current
     if (si.task_arn && si.cluster) {
       callAgent({ inputText: '', mode: 'stop_session', task_arn: si.task_arn, cluster: si.cluster }, sessionId.current).catch(() => {})
+      sessionInfoRef.current = {}  // clear so cleanup doesn't fire again
     }
   }
 
@@ -414,6 +437,7 @@ export default function TestCasePage() {
     } finally {
       if (sessionInfo.task_arn && sessionInfo.cluster) {
         callAgent({ inputText: '', mode: 'stop_session', task_arn: sessionInfo.task_arn, cluster: sessionInfo.cluster }, sessionId.current).catch(() => {})
+        sessionInfoRef.current = {}  // clear so beforeunload doesn't fire again
       }
     }
   }
