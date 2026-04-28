@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom'
 import { fetchAuthSession } from '@aws-amplify/auth'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
-import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps, listVersions, getVersion, restoreVersion } from '../lib/lambdaClient'
-import type { TestCaseVersion } from '../lib/lambdaClient'
+import { getTestCase, saveRunRecord, updateReplayScript, updateTestCaseSteps } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 import { useEnv } from '../context/EnvContext'
 import { useTeam } from '../context/TeamContext'
@@ -115,9 +114,6 @@ export default function TestCasePage() {
   const [tokenCalls, setTokenCalls] = useState<TokenCall[]>([])
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set())
   const [tokenPanelWidth, setTokenPanelWidth] = useState(280)
-  const [versions, setVersions] = useState<TestCaseVersion[]>([])
-  const [showVersions, setShowVersions] = useState(false)
-  const [restoringVersion, setRestoringVersion] = useState<string | null>(null)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const tabRef = useRef<Window | null>(null)
@@ -665,25 +661,6 @@ export default function TestCasePage() {
         {/* Smart action button */}
         {planSteps.length > 0 && (tc.env || env) === 'dev' && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {/* Version History */}
-            {!isActive && (
-              <button
-                onClick={async () => {
-                  if (showVersions) { setShowVersions(false); return }
-                  try {
-                    const v = await listVersions(tc.id)
-                    setVersions(v)
-                    setShowVersions(true)
-                  } catch { setVersions([]); setShowVersions(true) }
-                }}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 8, background: showVersions ? '#F0F0FF' : 'white', color: '#64748B', border: `1px solid ${showVersions ? '#7C3AED' : '#E2E8F0'}`, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-                title="View version history"
-              >
-                <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: '#64748B', fill: 'none', strokeWidth: 2 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                History{versions.length > 0 && showVersions ? ` (${versions.length})` : ''}
-              </button>
-            )}
-
             {/* Dropdown: Start Fresh */}
             {showDropdown && !isActive && (
               <button
@@ -729,45 +706,6 @@ export default function TestCasePage() {
           </div>
         )}
       </div>
-
-      {/* Version History Panel */}
-      {showVersions && (
-        <div style={{ padding: '12px 24px', background: '#F8F9FF', borderBottom: '1px solid #E8EBF0', maxHeight: 200, overflowY: 'auto' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>Version History</div>
-          {versions.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#94A3B8' }}>No versions yet. Versions are created when you edit plan steps or run tests.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {versions.map(v => (
-                <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'white', borderRadius: 6, border: '1px solid #E8EBF0', fontSize: 12 }}>
-                  <span style={{ fontWeight: 600, color: v.versionType === 'plan' ? '#7C3AED' : '#059669', minWidth: 50 }}>
-                    {v.versionType === 'plan' ? 'Plan' : 'Steps'} v{v.versionNumber}
-                  </span>
-                  <span style={{ color: '#94A3B8', flex: 1 }}>
-                    {v.changeReason || 'saved'} {v.changedBy ? `by ${v.changedBy}` : ''} — {new Date(v.changedAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    onClick={async () => {
-                      if (restoringVersion === v.id) return
-                      setRestoringVersion(v.id)
-                      try {
-                        await restoreVersion(v.id)
-                        const updated = await getTestCase(tc.id)
-                        setTc(updated)
-                        setShowVersions(false)
-                      } catch (e) { console.error('Restore failed:', e) }
-                      setRestoringVersion(null)
-                    }}
-                    style={{ padding: '2px 8px', borderRadius: 4, background: 'none', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 11, color: '#64748B' }}
-                  >
-                    {restoringVersion === v.id ? 'Restoring...' : 'Restore'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Step list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: '#FAFBFF' }}>
