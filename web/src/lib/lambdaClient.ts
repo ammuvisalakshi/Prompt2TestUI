@@ -126,6 +126,29 @@ export async function updateReplayScript(id: string, replayScript: object[]): Pr
   await invokeLambda('p2t-testcase-reader', { action: 'update_replay_script', id, replay_script: replayScript })
 }
 
+// ── Versioning ─────────────────────────────────────────────────────────
+
+export type TestCaseVersion = {
+  id: string
+  versionNumber: number
+  versionType: 'plan' | 'steps'
+  changedBy: string
+  changedAt: string
+  changeReason: string
+}
+
+export async function listVersions(testCaseId: string, versionType?: string): Promise<TestCaseVersion[]> {
+  return invokeLambda('p2t-testcase-writer', { action: 'list_versions', id: testCaseId, versionType: versionType ?? '' }) as Promise<TestCaseVersion[]>
+}
+
+export async function getVersion(versionId: string): Promise<{ versionId: string; versionType: string; versionNumber: number; testCaseId: string; content: Record<string, unknown> }> {
+  return invokeLambda('p2t-testcase-writer', { action: 'get_version', versionId }) as Promise<{ versionId: string; versionType: string; versionNumber: number; testCaseId: string; content: Record<string, unknown> }>
+}
+
+export async function restoreVersion(versionId: string, changedBy?: string): Promise<{ restored: string; testCaseId: string; versionType: string }> {
+  return invokeLambda('p2t-testcase-writer', { action: 'restore_version', versionId, changedBy: changedBy ?? '' }) as Promise<{ restored: string; testCaseId: string; versionType: string }>
+}
+
 export async function promoteTestCase(params: {
   id: string
   targetEnv: string
