@@ -101,6 +101,8 @@ export default function TestCasePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [serviceConfig, setServiceConfig] = useState<{ key: string; value: string }[]>([])
+  const [companyCodes, setCompanyCodes] = useState<string[]>([])
+  const [selectedCompanyCode, setSelectedCompanyCode] = useState('')
 
   // Unified execution state (replaces separate run/automate states)
   const [phase, setPhase] = useState<RunPhase>('idle')
@@ -187,6 +189,18 @@ export default function TestCasePage() {
             setServiceConfig(cfg)
           } catch { /* ignore */ }
         }
+        // Load company codes
+        try {
+          const { DynamoDBClient: DC } = await import('@aws-sdk/client-dynamodb')
+          const { DynamoDBDocumentClient: DDC, ScanCommand: SC } = await import('@aws-sdk/lib-dynamodb')
+          const s = await fetchAuthSession()
+          const db = DDC.from(new DC({ region: import.meta.env.VITE_AWS_REGION, credentials: s.credentials }))
+          const prefix = `COMPANY#${team}#${env}#`
+          const resp = await db.send(new SC({ TableName: 'prompt2test-config', FilterExpression: 'begins_with(pk, :p)', ExpressionAttributeValues: { ':p': prefix }, ProjectionExpression: 'pk' }))
+          const codes = new Set<string>()
+          for (const item of resp.Items ?? []) { const c = (item.pk as string).replace(prefix, ''); if (c) codes.add(c) }
+          setCompanyCodes(Array.from(codes).sort())
+        } catch { /* ignore — company codes are optional */ }
         setLoading(false)
       })
       .catch(() => { setError('Failed to load test case.'); setLoading(false) })
@@ -294,6 +308,30 @@ export default function TestCasePage() {
       if (newTab) newTab.location.href = `${session.novnc_url}?autoconnect=true&resize=scale`
       setPhase('running')
 
+      // Load company params + payload templates if company code selected
+      let companyParams: { key: string; value: string }[] = []
+      let payloadTemplates: { key: string; value: string }[] = []
+      if (selectedCompanyCode && tc.service) {
+        try {
+          const { DynamoDBClient: DC } = await import('@aws-sdk/client-dynamodb')
+          const { DynamoDBDocumentClient: DDC, QueryCommand: QC } = await import('@aws-sdk/lib-dynamodb')
+          const s = await fetchAuthSession()
+          const db = DDC.from(new DC({ region: import.meta.env.VITE_AWS_REGION, credentials: s.credentials }))
+          // Company params
+          const cpResp = await db.send(new QC({ TableName: 'prompt2test-config', KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `COMPANY#${team}#${env}#${selectedCompanyCode}` } }))
+          for (const item of cpResp.Items ?? []) {
+            const [, ...rest] = (item.sk as string).split('#')
+            companyParams.push({ key: rest.join('#'), value: item.val as string })
+          }
+          // Payload templates
+          const plResp = await db.send(new QC({ TableName: 'prompt2test-config', KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `PAYLOAD#${team}#${env}` } }))
+          for (const item of plResp.Items ?? []) {
+            const [, ...rest] = (item.sk as string).split('#')
+            payloadTemplates.push({ key: rest.join('#'), value: item.val as string })
+          }
+        } catch { /* ignore */ }
+      }
+
       // Build agent payload based on mode
       let agentPayload: Record<string, unknown>
       if (mode === 'resume' && resumeFromStep) {
@@ -302,6 +340,7 @@ export default function TestCasePage() {
           resume_from_step: resumeFromStep, resume_script: existingReplay,
           sessionId: sessionId.current, task_arn: session.task_arn,
           cluster: session.cluster, mcp_endpoint: session.mcp_endpoint, serviceConfig,
+          companyParams, payloadTemplates,
         }
       } else if (mode === 'smart_replay') {
         agentPayload = {
@@ -310,12 +349,14 @@ export default function TestCasePage() {
           plan_steps: planSteps.map(s => ({ action: s.action, expected: s.expected, detail: s.expected })),
           sessionId: sessionId.current, task_arn: session.task_arn,
           cluster: session.cluster, mcp_endpoint: session.mcp_endpoint, serviceConfig,
+          companyParams, payloadTemplates,
         }
       } else {
         agentPayload = {
           inputText: label, mode: 'automate', plan: derivedPlan,
           sessionId: sessionId.current, task_arn: session.task_arn,
           cluster: session.cluster, mcp_endpoint: session.mcp_endpoint, serviceConfig,
+          companyParams, payloadTemplates,
         }
       }
 
@@ -673,6 +714,15 @@ export default function TestCasePage() {
                 <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: '#64748B', fill: 'none', strokeWidth: 2 }}><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
                 Start Fresh
               </button>
+            )}
+
+            {/* Company code selector */}
+            {companyCodes.length > 0 && !isActive && (
+              <select value={selectedCompanyCode} onChange={e => setSelectedCompanyCode(e.target.value)}
+                style={{ padding: '6px 10px', fontSize: 12, borderRadius: 8, border: '1px solid #E2E8F0', background: selectedCompanyCode ? '#F0F0FF' : '#F8FAFC', color: '#0F172A', fontWeight: 600, cursor: 'pointer' }}>
+                <option value="">No company code</option>
+                {companyCodes.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             )}
 
             {/* Primary action */}
