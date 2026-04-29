@@ -19,8 +19,10 @@ async function getDB() {
   return DynamoDBDocumentClient.from(client)
 }
 
-function svcPK(team: string, env: string) { return `SERVICE#${team}#${env}` }
-function acctPK(env: string)              { return `ACCOUNT#${env}` }
+function svcPK(team: string, env: string)  { return `SERVICE#${team}#${env}` }
+function acctPK(env: string)               { return `ACCOUNT#${env}` }
+function payloadPK(team: string, env: string)                  { return `PAYLOAD#${team}#${env}` }
+function companyPK(team: string, env: string, code: string)    { return `COMPANY#${team}#${env}#${code}` }
 
 async function loadServices(team: string, env: string): Promise<Record<string, ParamRow[]>> {
   const db = await getDB()
