@@ -9,7 +9,6 @@ const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
 const TABLE      = 'prompt2test-config'
 
 type ParamRow   = { key: string; value: string }
-type Account    = { id: string; name: string; code: string }
 type PayloadDef = { name: string; body: string }
 
 // ── DynamoDB helpers ──────────────────────────────────────────────────────────
@@ -21,7 +20,6 @@ async function getDB() {
 }
 
 function svcPK(team: string, env: string)  { return `SERVICE#${team}#${env}` }
-function acctPK(env: string)               { return `ACCOUNT#${env}` }
 function companyPK(team: string, env: string, code: string) { return `COMPANY#${team}#${env}#${code}` }
 
 async function loadServices(team: string, env: string): Promise<Record<string, ParamRow[]>> {
@@ -42,31 +40,6 @@ async function saveServiceParam(team: string, env: string, svc: string, key: str
 async function deleteServiceParam(team: string, env: string, svc: string, key: string) {
   const db = await getDB()
   await db.send(new DeleteCommand({ TableName: TABLE, Key: { pk: svcPK(team, env), sk: `${svc}#${key}` } }))
-}
-async function loadAccounts(env: string): Promise<Account[]> {
-  const db = await getDB()
-  const resp = await db.send(new QueryCommand({ TableName: TABLE, KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': acctPK(env) } }))
-  const map: Record<string, Record<string, string>> = {}
-  for (const item of resp.Items ?? []) {
-    const [id, field] = (item.sk as string).split('#')
-    if (!map[id]) map[id] = {}
-    map[id][field] = item.val as string
-  }
-  return Object.entries(map).map(([id, f]) => ({ id, name: f['NAME'] ?? '', code: f['CODE'] ?? '' }))
-}
-async function saveAccount(env: string, id: string, name: string, code: string) {
-  const db = await getDB()
-  await Promise.all([
-    db.send(new PutCommand({ TableName: TABLE, Item: { pk: acctPK(env), sk: `${id}#NAME`, val: name } })),
-    db.send(new PutCommand({ TableName: TABLE, Item: { pk: acctPK(env), sk: `${id}#CODE`, val: code } })),
-  ])
-}
-async function deleteAccount(env: string, id: string) {
-  const db = await getDB()
-  await Promise.all([
-    db.send(new DeleteCommand({ TableName: TABLE, Key: { pk: acctPK(env), sk: `${id}#NAME` } })),
-    db.send(new DeleteCommand({ TableName: TABLE, Key: { pk: acctPK(env), sk: `${id}#CODE` } })),
-  ])
 }
 async function loadPayloads(team: string, env: string, companyCode: string): Promise<Record<string, PayloadDef[]>> {
   const db = await getDB()
@@ -157,10 +130,6 @@ export default function ConfigPage() {
   const [showAddPayloadModal, setShowAddPayloadModal] = useState(false)
   const [payloadModalSvc, setPayloadModalSvc] = useState('')
 
-  // Accounts
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [acctLoading, setAcctLoading] = useState(false)
-  const [showAddAcctModal, setShowAddAcctModal] = useState(false)
 
   const fetchServices = useCallback(async () => {
     if (!team) return; setSvcLoading(true)
@@ -191,17 +160,11 @@ export default function ConfigPage() {
     finally { setCompanyLoading(false) }
   }, [env, team])
 
-  const fetchAccounts = useCallback(async () => {
-    setAcctLoading(true)
-    try { setAccounts(await loadAccounts(env)) } catch { /* */ }
-    finally { setAcctLoading(false) }
-  }, [env])
 
   useEffect(() => {
     if (tab === 'base') { fetchServices(); fetchBasePayloads() }
     if (tab === 'company') { fetchServices(); fetchCompanyCodes() }
-    if (tab === 'accounts') fetchAccounts()
-  }, [env, tab, fetchServices, fetchCompanyCodes, fetchAccounts])
+  }, [env, tab, fetchServices, fetchCompanyCodes])
 
   useEffect(() => {
     if (selectedCode) fetchCompanyData(selectedCode)
@@ -220,7 +183,6 @@ export default function ConfigPage() {
             {([
               { id: 'base' as const, label: 'Base Services' },
               { id: 'company' as const, label: 'Company Codes' },
-              { id: 'accounts' as const, label: 'Test Accounts' },
             ]).map(t => (
               <button key={t.id} onClick={() => setTab(t.id)} style={{
                 padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 20,
@@ -451,31 +413,6 @@ export default function ConfigPage() {
         )}
 
         {/* ══ TEST ACCOUNTS TAB ══════════════════════════════════════════ */}
-        {tab === 'accounts' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#64748B' }}>
-                {acctLoading ? 'Loading...' : `${accounts.length} account${accounts.length !== 1 ? 's' : ''}`}
-              </div>
-              <button onClick={() => setShowAddAcctModal(true)} style={btnPrimary}>+ Add Account</button>
-            </div>
-            {accounts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontSize: 13 }}>No test accounts yet.</div>
-            ) : accounts.map(acc => (
-              <div key={acc.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EDE9FE', border: '1px solid #DDD6FE', color: '#6D28D9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                  {acc.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{acc.name}</div>
-                  <div style={{ fontSize: 12, color: '#94A3B8', fontFamily: 'monospace' }}>{acc.code}</div>
-                </div>
-                <button onClick={() => { if (confirm('Delete?')) { deleteAccount(env,acc.id); setAccounts(p=>p.filter(a=>a.id!==acc.id)) } }}
-                  style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:16 }}>x</button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Modals ──────────────────────────────────────────────────────── */}
@@ -551,22 +488,6 @@ export default function ConfigPage() {
         }}
       </Modal>}
 
-      {showAddAcctModal && <Modal title={`Add Test Account · ${env.toUpperCase()}`} onClose={() => setShowAddAcctModal(false)}>
-        {(close) => {
-          const [name, setName] = useState('')
-          const [code, setCode] = useState('')
-          return (<div>
-            <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4 }}>Name</label>
-            <input style={{ ...inp, width: '100%', boxSizing: 'border-box' }} placeholder="Acme Corp" autoFocus value={name} onChange={e => setName(e.target.value)} />
-            <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4,marginTop:12 }}>Code</label>
-            <input style={{ ...inp, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace' }} placeholder="ACME001" value={code} onChange={e => setCode(e.target.value.toUpperCase())} />
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={close} style={btnSecondary}>Cancel</button>
-              <button onClick={async () => { if (name.trim()&&code.trim()) { await saveAccount(env,Date.now().toString(36),name.trim(),code.trim()); fetchAccounts(); close() } }} style={btnPrimary}>Save</button>
-            </div>
-          </div>)
-        }}
-      </Modal>}
     </div>
   )
 }
