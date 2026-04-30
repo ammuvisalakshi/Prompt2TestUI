@@ -158,6 +158,15 @@ export default function AgentPage() {
           ])
           for (const item of cpResp.Items ?? []) { const [, ...rest] = (item.sk as string).split('#'); companyParams.push({ key: rest.join('#'), value: item.val as string }) }
           for (const item of plResp.Items ?? []) { const [, ...rest] = (item.sk as string).split('#'); payloadTemplates.push({ key: rest.join('#'), value: item.val as string }) }
+
+          // Resolve {param.KEY} in payloads with company code values
+          const paramMap: Record<string, string> = {}
+          for (const p of companyParams) if (p.key) paramMap[`{param.${p.key}}`] = p.value
+          payloadTemplates = payloadTemplates.map(pt => {
+            let body = pt.value
+            for (const [tmpl, val] of Object.entries(paramMap)) body = body.replaceAll(tmpl, val)
+            return { ...pt, value: body }
+          })
         } catch { /* */ }
       }
 
@@ -167,7 +176,7 @@ export default function AgentPage() {
         service: tcService,
         serviceConfig: serviceConfigs[tcService] ?? [],
         companyCode: selectedCompanyCode || undefined,
-        companyParams: companyParams.length > 0 ? companyParams : undefined,
+        // Payloads already resolved with company params — LLM sees actual values
         payloadTemplates: payloadTemplates.length > 0 ? payloadTemplates : undefined,
         env,
         team,
