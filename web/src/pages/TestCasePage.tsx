@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { fetchAuthSession } from '@aws-amplify/auth'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
@@ -95,6 +95,7 @@ setTimeout(tryConnect, 1000);
 
 export default function TestCasePage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { env } = useEnv()
   const { team } = useTeam()
   const [tc, setTc] = useState<Awaited<ReturnType<typeof getTestCase>> | null>(null)
@@ -702,6 +703,20 @@ export default function TestCasePage() {
         {/* Smart action button */}
         {planSteps.length > 0 && (tc.env || env) === 'dev' && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {/* Replan — edit steps in Agent page */}
+            {!isActive && (
+              <button
+                onClick={() => navigate(`/agent?replan=${tc.id}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 8, background: 'white', color: '#64748B', border: '1px solid #E2E8F0', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'white')}
+                title="Edit test steps in the Author Agent"
+              >
+                <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: '#64748B', fill: 'none', strokeWidth: 2 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Replan
+              </button>
+            )}
+
             {/* Dropdown: Start Fresh */}
             {showDropdown && !isActive && (
               <button

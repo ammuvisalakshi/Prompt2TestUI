@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { fetchUserAttributes, fetchAuthSession } from '@aws-amplify/auth'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
@@ -6,7 +7,7 @@ import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 
 import { useEnv } from '../context/EnvContext'
 import { useTeam } from '../context/TeamContext'
-import { saveTestCase, updateTestCasePlanSteps } from '../lib/lambdaClient'
+import { saveTestCase, updateTestCasePlanSteps, getTestCase } from '../lib/lambdaClient'
 import { callAgent } from '../lib/agentClient'
 
 const AWS_REGION = import.meta.env.VITE_AWS_REGION as string
@@ -68,9 +69,13 @@ function parseAgentResponse(text: string): { steps: StepItem[]; note: string; is
 }
 
 export default function AgentPage() {
+  const [searchParams] = useSearchParams()
+  const replanId = searchParams.get('replan')
 
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'agent', text: "Hi! Ready to author tests.\n\nPaste a scenario below, pick a service, and I'll enrich it with your real config values." },
+    { role: 'agent', text: replanId
+      ? `Replanning test case ${replanId}. Edit the steps below or describe what you want to change.`
+      : "Hi! Ready to author tests.\n\nPaste a scenario below, pick a service, and I'll enrich it with your real config values." },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -107,6 +112,20 @@ export default function AgentPage() {
       setUserName(name)
     }).catch(() => {})
   }, [])
+
+  // Load test case for replan
+  useEffect(() => {
+    if (!replanId) return
+    getTestCase(replanId).then(tc => {
+      if (tc.service) setTcService(tc.service)
+      if (tc.planSteps && Array.isArray(tc.planSteps)) {
+        setPlanSteps(tc.planSteps as StepItem[])
+      }
+      setSaveTitleInput(tc.title || tc.description || '')
+      setSaveTcIdInput(replanId)
+      savedTcId.current = replanId
+    }).catch(() => {})
+  }, [replanId])
 
   useEffect(() => {
     setServicesLoading(true)
