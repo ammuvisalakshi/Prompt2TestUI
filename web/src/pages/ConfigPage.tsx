@@ -125,10 +125,7 @@ export default function ConfigPage() {
   const [companyPayloads, setCompanyPayloads] = useState<Record<string, PayloadDef[]>>({})
   const [companyLoading, setCompanyLoading] = useState(false)
   const [expandedSvc, setExpandedSvc] = useState<string>('')
-  const [svcSubTab, setSvcSubTab] = useState<'configs' | 'payloads'>('configs')
   const [showAddCodeModal, setShowAddCodeModal] = useState(false)
-  const [showAddPayloadModal, setShowAddPayloadModal] = useState(false)
-  const [payloadModalSvc, setPayloadModalSvc] = useState('')
 
 
   const fetchServices = useCallback(async () => {
@@ -241,7 +238,7 @@ export default function ConfigPage() {
                                 background: baseSubTab === st ? '#7C3AED' : '#F1F5F9',
                                 color: baseSubTab === st ? 'white' : '#64748B',
                                 border: baseSubTab === st ? '1px solid #7C3AED' : '1px solid #E2E8F0',
-                              }}>{st === 'configs' ? 'Configs' : 'Test Payloads'}</button>
+                              }}>{st === 'configs' ? 'URLs' : 'Test Payloads'}</button>
                             ))}
                           </div>
 
@@ -332,7 +329,7 @@ export default function ConfigPage() {
                   return (
                     <div key={svc} style={card}>
                       {/* Service header — click to expand */}
-                      <div onClick={() => { setExpandedSvc(isExpanded ? '' : svc); setSvcSubTab('configs') }}
+                      <div onClick={() => { setExpandedSvc(isExpanded ? '' : svc) }}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 12, color: '#94A3B8' }}>{isExpanded ? '▼' : '▶'}</span>
@@ -344,64 +341,26 @@ export default function ConfigPage() {
                       {/* Expanded: sub-tabs (Configs | Test Payloads) */}
                       {isExpanded && (
                         <div style={{ marginTop: 12 }}>
-                          <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-                            {(['configs', 'payloads'] as const).map(st => (
-                              <button key={st} onClick={() => setSvcSubTab(st)} style={{
-                                padding: '4px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: 'pointer',
-                                background: svcSubTab === st ? '#7C3AED' : '#F1F5F9',
-                                color: svcSubTab === st ? 'white' : '#64748B',
-                                border: svcSubTab === st ? '1px solid #7C3AED' : '1px solid #E2E8F0',
-                              }}>{st === 'configs' ? 'Configs' : 'Test Payloads'}</button>
-                            ))}
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>Parameters</div>
+                          {params.map((row, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                              <input style={{ ...inp, width: 160, fontFamily: 'monospace', fontSize: 12 }} placeholder="param_key" value={row.key}
+                                onChange={e => setCompanyParams(p => ({ ...p, [svc]: params.map((r,idx) => idx===i ? { ...r, key: e.target.value.toLowerCase().replace(/\s+/g,'_') } : r) }))} />
+                              <input style={{ ...inp, flex: 1, fontSize: 12 }} placeholder="value" value={row.value}
+                                onChange={e => setCompanyParams(p => ({ ...p, [svc]: params.map((r,idx) => idx===i ? { ...r, value: e.target.value } : r) }))} />
+                              <button onClick={async () => {
+                                if (row.key.trim()) await deleteCompanyParam(team,env,selectedCode,svc,row.key.trim()).catch(()=>{})
+                                setCompanyParams(p => ({ ...p, [svc]: params.filter((_,idx) => idx!==i) }))
+                              }} style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:14 }}>x</button>
+                            </div>
+                          ))}
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button onClick={() => setCompanyParams(p => ({ ...p, [svc]: [...params, { key: '', value: '' }] }))} style={btnSecondary}>+ Add param</button>
+                            <button onClick={async () => {
+                              const valid = params.filter(r => r.key.trim() && r.value.trim())
+                              await Promise.all(valid.map(r => saveCompanyParam(team,env,selectedCode,svc,r.key.trim(),r.value.trim())))
+                            }} style={btnPrimary}>Save</button>
                           </div>
-
-                          {/* ── Configs sub-tab ── */}
-                          {svcSubTab === 'configs' && (
-                            <div>
-                              {params.map((row, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                  <input style={{ ...inp, width: 160, fontFamily: 'monospace', fontSize: 12 }} placeholder="param_key" value={row.key}
-                                    onChange={e => setCompanyParams(p => ({ ...p, [svc]: params.map((r,idx) => idx===i ? { ...r, key: e.target.value.toLowerCase().replace(/\s+/g,'_') } : r) }))} />
-                                  <input style={{ ...inp, flex: 1, fontSize: 12 }} placeholder="value" value={row.value}
-                                    onChange={e => setCompanyParams(p => ({ ...p, [svc]: params.map((r,idx) => idx===i ? { ...r, value: e.target.value } : r) }))} />
-                                  <button onClick={async () => {
-                                    if (row.key.trim()) await deleteCompanyParam(team,env,selectedCode,svc,row.key.trim()).catch(()=>{})
-                                    setCompanyParams(p => ({ ...p, [svc]: params.filter((_,idx) => idx!==i) }))
-                                  }} style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:14 }}>x</button>
-                                </div>
-                              ))}
-                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                <button onClick={() => setCompanyParams(p => ({ ...p, [svc]: [...params, { key: '', value: '' }] }))} style={btnSecondary}>+ Add param</button>
-                                <button onClick={async () => {
-                                  const valid = params.filter(r => r.key.trim() && r.value.trim())
-                                  await Promise.all(valid.map(r => saveCompanyParam(team,env,selectedCode,svc,r.key.trim(),r.value.trim())))
-                                }} style={btnPrimary}>Save</button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* ── Test Payloads sub-tab ── */}
-                          {svcSubTab === 'payloads' && (
-                            <div>
-                              {payloads.length === 0 ? (
-                                <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 8 }}>No payloads yet for {svc}.</div>
-                              ) : payloads.map(p => (
-                                <div key={p.name} style={{ marginBottom: 10, padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#7C3AED', fontFamily: 'monospace' }}>{p.name}</span>
-                                    <button onClick={async () => { await deletePayload(team,env,selectedCode,svc,p.name); fetchCompanyData(selectedCode) }}
-                                      style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:14 }}>x</button>
-                                  </div>
-                                  <textarea value={p.body} rows={3}
-                                    onChange={e => setCompanyPayloads(prev => ({ ...prev, [svc]: (prev[svc]||[]).map(d => d.name===p.name ? { ...d, body: e.target.value } : d) }))}
-                                    style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, padding: 8, border: '1px solid #E2E8F0', borderRadius: 6, background: 'white', resize: 'vertical', boxSizing: 'border-box' }} />
-                                  <button onClick={async () => await savePayload(team,env,selectedCode,svc,p.name,p.body)}
-                                    style={{ marginTop: 4, padding: '3px 10px', fontSize: 11, background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-                                </div>
-                              ))}
-                              <button onClick={() => { setPayloadModalSvc(svc); setShowAddPayloadModal(true) }} style={btnSecondary}>+ Add Payload</button>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -463,26 +422,6 @@ export default function ConfigPage() {
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={close} style={btnSecondary}>Cancel</button>
               <button onClick={() => { if (code.trim()) registerCompanyCode(team,env,code.trim()).then(()=>{fetchCompanyCodes();setSelectedCode(code.trim());close()}) }} style={btnPrimary}>Add</button>
-            </div>
-          </div>)
-        }}
-      </Modal>}
-
-      {showAddPayloadModal && <Modal title={`Add Payload — ${payloadModalSvc}`} onClose={() => setShowAddPayloadModal(false)}>
-        {(close) => {
-          const [name, setName] = useState('')
-          const [body, setBody] = useState('{\n  \n}')
-          return (<div>
-            <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4 }}>Payload Name</label>
-            <input style={{ ...inp, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace' }} placeholder="e.g. create_user" value={name}
-              onChange={e => setName(e.target.value.toLowerCase().replace(/\s+/g,'_'))} />
-            <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4,marginTop:12 }}>JSON Body</label>
-            <textarea style={{ ...inp, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12, height: 120, resize: 'vertical' }} value={body}
-              onChange={e => setBody(e.target.value)} />
-            <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Use {'{param.KEY}'} for company-specific values.</div>
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={close} style={btnSecondary}>Cancel</button>
-              <button onClick={async () => { if (name.trim()) { await savePayload(team,env,selectedCode,payloadModalSvc,name.trim(),body); fetchCompanyData(selectedCode); close() } }} style={btnPrimary}>Save Payload</button>
             </div>
           </div>)
         }}
