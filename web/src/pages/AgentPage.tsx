@@ -82,6 +82,8 @@ export default function AgentPage() {
   const [serviceConfigs, setServiceConfigs] = useState<ServiceConfig>({})
   const [servicesLoading, setServicesLoading] = useState(false)
   const availableServices = Object.keys(serviceConfigs).sort()
+  const [companyCodes, setCompanyCodes] = useState<string[]>([])
+  const [selectedCompanyCode, setSelectedCompanyCode] = useState('')
   const [planScenario, setPlanScenario] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [saveTitleInput, setSaveTitleInput] = useState('')
@@ -109,6 +111,16 @@ export default function AgentPage() {
   useEffect(() => {
     setServicesLoading(true)
     loadAllServiceConfigs(team, env).then(setServiceConfigs).catch(() => {}).finally(() => setServicesLoading(false))
+    // Load company codes
+    ;(async () => {
+      try {
+        const session = await fetchAuthSession()
+        const { DynamoDBDocumentClient: DDC, QueryCommand: QC } = await import('@aws-sdk/lib-dynamodb')
+        const db = DDC.from(new DynamoDBClient({ region: AWS_REGION, credentials: session.credentials as never }))
+        const resp = await db.send(new QC({ TableName: 'prompt2test-config', KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `COMPANYCODES#${team}#${env}` } }))
+        setCompanyCodes((resp.Items ?? []).map(item => item.sk as string).sort())
+      } catch { /* */ }
+    })()
   }, [env, team])
 
   async function send() {
@@ -132,11 +144,31 @@ export default function AgentPage() {
 
       setMessages(prev => [...prev, { role: 'agent', text: 'Enriching scenario…' }])
 
+      // Load company params + payloads if company code selected
+      let companyParams: { key: string; value: string }[] = []
+      let payloadTemplates: { key: string; value: string }[] = []
+      if (selectedCompanyCode && tcService) {
+        try {
+          const s = await fetchAuthSession()
+          const { DynamoDBDocumentClient: DDC, QueryCommand: QC } = await import('@aws-sdk/lib-dynamodb')
+          const db = DDC.from(new DynamoDBClient({ region: AWS_REGION, credentials: s.credentials as never }))
+          const [cpResp, plResp] = await Promise.all([
+            db.send(new QC({ TableName: 'prompt2test-config', KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `COMPANY#${team}#${env}#${selectedCompanyCode}` } })),
+            db.send(new QC({ TableName: 'prompt2test-config', KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `PAYLOAD#${team}#${env}#_base` } })),
+          ])
+          for (const item of cpResp.Items ?? []) { const [, ...rest] = (item.sk as string).split('#'); companyParams.push({ key: rest.join('#'), value: item.val as string }) }
+          for (const item of plResp.Items ?? []) { const [, ...rest] = (item.sk as string).split('#'); payloadTemplates.push({ key: rest.join('#'), value: item.val as string }) }
+        } catch { /* */ }
+      }
+
       const raw = await callAgent({
         inputText: text,
         mode: 'plan_scenario',
         service: tcService,
         serviceConfig: serviceConfigs[tcService] ?? [],
+        companyCode: selectedCompanyCode || undefined,
+        companyParams: companyParams.length > 0 ? companyParams : undefined,
+        payloadTemplates: payloadTemplates.length > 0 ? payloadTemplates : undefined,
         env,
         team,
         sessionId,
@@ -389,8 +421,18 @@ export default function AgentPage() {
                       ))}
                     </div>
                   )}
+                  {companyCodes.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 6 }}>Company Code</div>
+                      <select value={selectedCompanyCode} onChange={e => setSelectedCompanyCode(e.target.value)}
+                        style={{ padding: '5px 10px', fontSize: 13, borderRadius: 8, border: '1px solid #E2E8F0', background: selectedCompanyCode ? '#F0F0FF' : '#F8FAFC', fontWeight: 600, color: '#0F172A' }}>
+                        <option value="">None</option>
+                        {companyCodes.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
                   <p style={{ marginTop: 16, fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>
-                    Select a service, then paste your scenario in the chat to start enriching it.
+                    Select a service{companyCodes.length > 0 ? ' and company code' : ''}, then paste your scenario in the chat.
                   </p>
                 </div>
               ) : planSteps.length > 0 ? (
