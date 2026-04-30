@@ -100,10 +100,8 @@ async function registerCompanyCode(team: string, env: string, code: string) {
   await db.send(new PutCommand({ TableName: TABLE, Item: { pk: `COMPANYCODES#${team}#${env}`, sk: code, val: code, team, env } }))
 }
 
-async function deleteCompanyCode(team: string, env: string, code: string) {
-  const db = await getDB()
-  await db.send(new DeleteCommand({ TableName: TABLE, Key: { pk: `COMPANYCODES#${team}#${env}`, sk: code } }))
-}
+// deleteCompanyCode available if needed:
+// async function deleteCompanyCode(team, env, code) { await getDB().then(db => db.send(new DeleteCommand({ TableName: TABLE, Key: { pk: `COMPANYCODES#${team}#${env}`, sk: code } }))) }
 async function loadCompanyParams(team: string, env: string, code: string): Promise<Record<string, ParamRow[]>> {
   const db = await getDB()
   const resp = await db.send(new QueryCommand({ TableName: TABLE, KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': companyPK(team, env, code) } }))
