@@ -528,10 +528,10 @@ export default function AgentPage() {
                   />
                   <input
                     value={saveTcIdInput}
-                    onChange={e => setSaveTcIdInput(e.target.value)}
+                    onChange={e => { if (!replanId) setSaveTcIdInput(e.target.value) }}
                     placeholder="Test Case ID (e.g. TC-001)"
-                    disabled={tcSaved === 'saved'}
-                    style={{ width: '100%', padding: '6px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
+                    disabled={tcSaved === 'saved' || !!replanId}
+                    style={{ width: '100%', padding: '6px 12px', background: replanId ? '#EDE9FE' : '#F8FAFC', border: `1px solid ${replanId ? '#C4B5FD' : '#E2E8F0'}`, borderRadius: 8, fontSize: 13, color: '#0F172A', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box', opacity: tcSaved === 'saved' ? 0.5 : 1 }}
                   />
                   <button
                     onClick={async () => {
