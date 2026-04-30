@@ -90,12 +90,19 @@ async function deletePayload(team: string, env: string, companyCode: string, svc
 }
 async function loadCompanyCodes(team: string, env: string): Promise<string[]> {
   const db = await getDB()
-  const prefix = `COMPANY#${team}#${env}#`
-  const { ScanCommand } = await import('@aws-sdk/lib-dynamodb')
-  const resp = await db.send(new ScanCommand({ TableName: TABLE, FilterExpression: 'begins_with(pk, :prefix)', ExpressionAttributeValues: { ':prefix': prefix }, ProjectionExpression: 'pk' }))
-  const codes = new Set<string>()
-  for (const item of resp.Items ?? []) { const c = (item.pk as string).replace(prefix, ''); if (c) codes.add(c) }
-  return Array.from(codes).sort()
+  // Company codes stored as: PK=COMPANYCODES#{team}#{env}, SK={code}
+  const resp = await db.send(new QueryCommand({ TableName: TABLE, KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': `COMPANYCODES#${team}#${env}` } }))
+  return (resp.Items ?? []).map(item => item.sk as string).sort()
+}
+
+async function registerCompanyCode(team: string, env: string, code: string) {
+  const db = await getDB()
+  await db.send(new PutCommand({ TableName: TABLE, Item: { pk: `COMPANYCODES#${team}#${env}`, sk: code, val: code, team, env } }))
+}
+
+async function deleteCompanyCode(team: string, env: string, code: string) {
+  const db = await getDB()
+  await db.send(new DeleteCommand({ TableName: TABLE, Key: { pk: `COMPANYCODES#${team}#${env}`, sk: code } }))
 }
 async function loadCompanyParams(team: string, env: string, code: string): Promise<Record<string, ParamRow[]>> {
   const db = await getDB()
@@ -134,6 +141,11 @@ export default function ConfigPage() {
   const [svcRows, setSvcRows] = useState<Record<string, ParamRow[]>>({})
   const [svcLoading, setSvcLoading] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [baseExpandedSvc, setBaseExpandedSvc] = useState('')
+  const [baseSubTab, setBaseSubTab] = useState<'configs' | 'payloads'>('configs')
+  const [basePayloads, setBasePayloads] = useState<Record<string, PayloadDef[]>>({})
+  const [showBasePayloadModal, setShowBasePayloadModal] = useState(false)
+  const [basePayloadSvc, setBasePayloadSvc] = useState('')
 
   // Company codes
   const [companyCodes, setCompanyCodes] = useState<string[]>([])
@@ -434,10 +446,10 @@ export default function ConfigPage() {
             <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4 }}>Company Code</label>
             <input style={{ ...inp, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', textTransform: 'uppercase' }} placeholder="e.g. ACME, GLOBEX" autoFocus value={code}
               onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,''))}
-              onKeyDown={e => { if (e.key==='Enter'&&code.trim()) { saveCompanyParam(team,env,code.trim(),Object.keys(svcRows)[0]||'default','_registered','true').then(()=>{fetchCompanyCodes();setSelectedCode(code.trim());close()}) } }} />
+              onKeyDown={e => { if (e.key==='Enter'&&code.trim()) { registerCompanyCode(team,env,code.trim()).then(()=>{fetchCompanyCodes();setSelectedCode(code.trim());close()}) } }} />
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={close} style={btnSecondary}>Cancel</button>
-              <button onClick={() => { if (code.trim()) saveCompanyParam(team,env,code.trim(),Object.keys(svcRows)[0]||'default','_registered','true').then(()=>{fetchCompanyCodes();setSelectedCode(code.trim());close()}) }} style={btnPrimary}>Add</button>
+              <button onClick={() => { if (code.trim()) registerCompanyCode(team,env,code.trim()).then(()=>{fetchCompanyCodes();setSelectedCode(code.trim());close()}) }} style={btnPrimary}>Add</button>
             </div>
           </div>)
         }}
