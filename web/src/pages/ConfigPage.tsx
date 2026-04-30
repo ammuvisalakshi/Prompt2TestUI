@@ -170,6 +170,11 @@ export default function ConfigPage() {
     finally { setSvcLoading(false) }
   }, [env, team])
 
+  const fetchBasePayloads = useCallback(async () => {
+    if (!team) return
+    try { setBasePayloads(await loadPayloads(team, env, '_base')) } catch { /* */ }
+  }, [env, team])
+
   const fetchCompanyCodes = useCallback(async () => {
     if (!team) return
     try { setCompanyCodes(await loadCompanyCodes(team, env)) } catch { /* */ }
@@ -195,7 +200,7 @@ export default function ConfigPage() {
   }, [env])
 
   useEffect(() => {
-    if (tab === 'base') fetchServices()
+    if (tab === 'base') { fetchServices(); fetchBasePayloads() }
     if (tab === 'company') { fetchServices(); fetchCompanyCodes() }
     if (tab === 'accounts') fetchAccounts()
   }, [env, tab, fetchServices, fetchCompanyCodes, fetchAccounts])
@@ -246,37 +251,90 @@ export default function ConfigPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {Object.keys(svcRows).sort().map(svc => (
-                  <div key={svc} style={card}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', textTransform: 'capitalize' }}>{svc}
-                        <span style={{ fontSize: 11, color: '#94A3B8', marginLeft: 8 }}>{team} · {env.toUpperCase()}</span>
-                      </div>
-                      <button onClick={() => { if (confirm(`Delete "${svc}"?`)) { Promise.all((svcRows[svc]??[]).map(r=>deleteServiceParam(team,env,svc,r.key).catch(()=>{}))); setSvcRows(p=>{const n={...p};delete n[svc];return n}) } }}
-                        style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:18 }}
-                        onMouseEnter={e=>(e.currentTarget.style.color='#EF4444')} onMouseLeave={e=>(e.currentTarget.style.color='#94A3B8')}>x</button>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                      {(svcRows[svc]??[]).map((row, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <input style={{ ...inp, width: 180, fontFamily: 'monospace' }} placeholder="PARAM_KEY" value={row.key}
-                            onChange={e => setSvcRows(p => ({ ...p, [svc]: p[svc].map((r,idx) => idx===i ? { ...r, key: e.target.value.toUpperCase().replace(/\s+/g,'_') } : r) }))} />
-                          <input style={{ ...inp, flex: 1 }} placeholder="value" value={row.value}
-                            onChange={e => setSvcRows(p => ({ ...p, [svc]: p[svc].map((r,idx) => idx===i ? { ...r, value: e.target.value } : r) }))} />
-                          <button onClick={() => { if(row.key.trim()) deleteServiceParam(team,env,svc,row.key.trim().toUpperCase()).catch(()=>{}); setSvcRows(p=>({...p,[svc]:p[svc].filter((_,idx)=>idx!==i)})) }}
-                            style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:14 }}>x</button>
+                {Object.keys(svcRows).sort().map(svc => {
+                  const isExpanded = baseExpandedSvc === svc
+                  const rows = svcRows[svc] ?? []
+                  const payloads = basePayloads[svc] ?? []
+                  return (
+                    <div key={svc} style={card}>
+                      {/* Service header — click to expand */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div onClick={() => { setBaseExpandedSvc(isExpanded ? '' : svc); setBaseSubTab('configs') }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1 }}>
+                          <span style={{ fontSize: 12, color: '#94A3B8' }}>{isExpanded ? '▼' : '▶'}</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', textTransform: 'capitalize' }}>{svc}</span>
+                          <span style={{ fontSize: 11, color: '#94A3B8' }}>{rows.length} configs · {payloads.length} payloads</span>
                         </div>
-                      ))}
+                        <button onClick={() => { if (confirm(`Delete "${svc}"?`)) { Promise.all(rows.map(r=>deleteServiceParam(team,env,svc,r.key).catch(()=>{}))); setSvcRows(p=>{const n={...p};delete n[svc];return n}) } }}
+                          style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:18 }}
+                          onMouseEnter={e=>(e.currentTarget.style.color='#EF4444')} onMouseLeave={e=>(e.currentTarget.style.color='#94A3B8')}>x</button>
+                      </div>
+
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div style={{ marginTop: 12 }}>
+                          {/* Sub-tabs: Configs | Test Payloads */}
+                          <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+                            {(['configs', 'payloads'] as const).map(st => (
+                              <button key={st} onClick={() => setBaseSubTab(st)} style={{
+                                padding: '4px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: 'pointer',
+                                background: baseSubTab === st ? '#7C3AED' : '#F1F5F9',
+                                color: baseSubTab === st ? 'white' : '#64748B',
+                                border: baseSubTab === st ? '1px solid #7C3AED' : '1px solid #E2E8F0',
+                              }}>{st === 'configs' ? 'Configs' : 'Test Payloads'}</button>
+                            ))}
+                          </div>
+
+                          {/* Configs sub-tab */}
+                          {baseSubTab === 'configs' && (
+                            <div>
+                              {rows.map((row, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                  <input style={{ ...inp, width: 180, fontFamily: 'monospace' }} placeholder="PARAM_KEY" value={row.key}
+                                    onChange={e => setSvcRows(p => ({ ...p, [svc]: p[svc].map((r,idx) => idx===i ? { ...r, key: e.target.value.toUpperCase().replace(/\s+/g,'_') } : r) }))} />
+                                  <input style={{ ...inp, flex: 1 }} placeholder="value" value={row.value}
+                                    onChange={e => setSvcRows(p => ({ ...p, [svc]: p[svc].map((r,idx) => idx===i ? { ...r, value: e.target.value } : r) }))} />
+                                  <button onClick={() => { if(row.key.trim()) deleteServiceParam(team,env,svc,row.key.trim().toUpperCase()).catch(()=>{}); setSvcRows(p=>({...p,[svc]:p[svc].filter((_,idx)=>idx!==i)})) }}
+                                    style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:14 }}>x</button>
+                                </div>
+                              ))}
+                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <button onClick={() => setSvcRows(p => ({ ...p, [svc]: [...(p[svc]||[]), { key: '', value: '' }] }))} style={btnSecondary}>+ Add param</button>
+                                <button onClick={async () => {
+                                  const valid = rows.filter(r=>r.key.trim()&&r.value.trim())
+                                  await Promise.all(valid.map(r => saveServiceParam(team,env,svc,r.key.trim().toUpperCase(),r.value.trim())))
+                                }} style={btnPrimary}>Save</button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Test Payloads sub-tab */}
+                          {baseSubTab === 'payloads' && (
+                            <div>
+                              {payloads.length === 0 ? (
+                                <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 8 }}>No payload templates yet for {svc}.</div>
+                              ) : payloads.map(p => (
+                                <div key={p.name} style={{ marginBottom: 10, padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#7C3AED', fontFamily: 'monospace' }}>{p.name}</span>
+                                    <button onClick={async () => { await deletePayload(team,env,'_base',svc,p.name); fetchBasePayloads() }}
+                                      style={{ background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:14 }}>x</button>
+                                  </div>
+                                  <textarea value={p.body} rows={3}
+                                    onChange={e => setBasePayloads(prev => ({ ...prev, [svc]: (prev[svc]||[]).map(d => d.name===p.name ? { ...d, body: e.target.value } : d) }))}
+                                    style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, padding: 8, border: '1px solid #E2E8F0', borderRadius: 6, background: 'white', resize: 'vertical', boxSizing: 'border-box' }} />
+                                  <button onClick={async () => await savePayload(team,env,'_base',svc,p.name,p.body)}
+                                    style={{ marginTop: 4, padding: '3px 10px', fontSize: 11, background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
+                                </div>
+                              ))}
+                              <button onClick={() => { setBasePayloadSvc(svc); setShowBasePayloadModal(true) }} style={btnSecondary}>+ Add Payload</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => setSvcRows(p => ({ ...p, [svc]: [...(p[svc]||[]), { key: '', value: '' }] }))} style={btnSecondary}>+ Add param</button>
-                      <button onClick={async () => {
-                        const rows = (svcRows[svc]??[]).filter(r=>r.key.trim()&&r.value.trim())
-                        await Promise.all(rows.map(r => saveServiceParam(team,env,svc,r.key.trim().toUpperCase(),r.value.trim())))
-                      }} style={btnPrimary}>Save</button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -434,6 +492,26 @@ export default function ConfigPage() {
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={close} style={btnSecondary}>Cancel</button>
               <button onClick={() => { if (name.trim()) { setSvcRows(p=>({...p,[name.trim().toLowerCase()]:[{key:'',value:''}]})); close() } }} style={btnPrimary}>Register</button>
+            </div>
+          </div>)
+        }}
+      </Modal>}
+
+      {showBasePayloadModal && <Modal title={`Add Payload — ${basePayloadSvc}`} onClose={() => setShowBasePayloadModal(false)}>
+        {(close) => {
+          const [name, setName] = useState('')
+          const [body, setBody] = useState('{\n  \n}')
+          return (<div>
+            <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4 }}>Payload Name</label>
+            <input style={{ ...inp, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace' }} placeholder="e.g. create_user" value={name}
+              onChange={e => setName(e.target.value.toLowerCase().replace(/\s+/g,'_'))} />
+            <label style={{ display:'block',fontSize:13,fontWeight:500,color:'#64748B',marginBottom:4,marginTop:12 }}>JSON Body</label>
+            <textarea style={{ ...inp, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12, height: 120, resize: 'vertical' }} value={body}
+              onChange={e => setBody(e.target.value)} />
+            <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Use {'{param.KEY}'} for company-specific values.</div>
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={close} style={btnSecondary}>Cancel</button>
+              <button onClick={async () => { if (name.trim()) { await savePayload(team,env,'_base',basePayloadSvc,name.trim(),body); fetchBasePayloads(); close() } }} style={btnPrimary}>Save Payload</button>
             </div>
           </div>)
         }}
